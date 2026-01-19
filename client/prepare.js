@@ -169,6 +169,10 @@ function main() {
   const cfgIndex = args.indexOf('--config');
   const cfgPath = (cfgIndex >= 0 && args[cfgIndex + 1]) ? args[cfgIndex + 1] : path.join(__dirname, '../sync-helper/sync-config.json');
 
+  // Output paths are resolved relative to where the command is executed.
+  // This keeps all generated artifacts in the GitIssue-Manager repo even when scanning external repos.
+  const outBaseDir = process.cwd();
+
   if (!fs.existsSync(cfgPath)) {
     console.error('Config not found:', cfgPath);
     process.exit(2);
@@ -213,8 +217,8 @@ function main() {
 
     sumSubtaskEstimates(tasks, subtasks, defaultEstimateHours);
 
-    writeJson(path.resolve(absRoot, tasksPath), tasks);
-    writeJson(path.resolve(absRoot, subtasksPath), subtasks);
+    writeJson(path.resolve(outBaseDir, tasksPath), tasks);
+    writeJson(path.resolve(outBaseDir, subtasksPath), subtasks);
 
     engine.targets.push({
       repo: target.repo,
@@ -223,8 +227,8 @@ function main() {
       subtasks,
     });
 
-    // Write engine input near repo root to keep it easy for CI.
-    writeJson(path.resolve(absRoot, engineInputPath), engine);
+    // Write engine input in the GitIssue-Manager repo (cwd) so the executor can always find it.
+    writeJson(path.resolve(outBaseDir, engineInputPath), engine);
 
     console.log('Prepared:', target.repo);
     console.log('  tasks:', tasks.length, 'subtasks:', subtasks.length);

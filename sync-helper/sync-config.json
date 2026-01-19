@@ -1,16 +1,29 @@
 {
-  "repo": "mzfshark/AragonOSX",
-  "enableProjectSync": false,
-  "projectUrl": "",
-  "projectNumber": 15,
-  "defaultEstimateHours": 1,
-  "tasksPath": "./tmp/tasks.json",
-  "subtasksPath": "./tmp/subtasks.json",
-  "projectFieldIds": {
-    "statusFieldId": "",
-    "priorityFieldId": "",
-    "estimateFieldId": "251668000",
-    "startDateFieldId": "",
-    "endDateFieldId": ""
-  }
+  "owner": "mzfshark",
+  "project": {
+    "url": "https://github.com/users/mzfshark/projects/15",
+    "number": 15,
+    "fieldIds": {
+      "statusFieldId": "",
+      "priorityFieldId": "",
+      "estimateHoursFieldId": "251668000",
+      "startDateFieldId": "",
+      "endDateFieldId": ""
+    }
+  },
+  "defaults": {
+    "defaultEstimateHours": 0.5
+  },
+  "targets": [
+    {
+      "repo": "AragonOSX",
+      "localPath": "../AragonOSX",
+      "enableProjectSync": false,
+      "outputs": {
+        "tasksPath": "./tmp/tasks.json",
+        "subtasksPath": "./tmp/subtasks.json",
+        "engineInputPath": "./tmp/engine-input.json"
+      }
+    }
+  ]
 }
