@@ -14,6 +14,12 @@ function parseEstimate(text) {
 function loadJson(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
 function writeJson(p, obj) { fs.writeFileSync(p, JSON.stringify(obj, null, 2)); }
 
+function extractProjectNumberFromUrl(url) {
+  if (!url) return null;
+  const m = url.match(/^https:\/\/github\.com\/users\/[^/]+\/projects\/(\d+)(?:$|\/|\?)/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
 async function main() {
   // lightweight argv parsing (avoid external deps)
   function parseArgs() {
@@ -58,110 +64,156 @@ async function main() {
     process.exit(2);
   }
   const cfg = loadJson(cfgPath);
-  const tasksPath = cfg.tasksPath || './tmp/tasks.json';
-  const subtasksPath = cfg.subtasksPath || './tmp/subtasks.json';
 
-  if (!fs.existsSync(tasksPath) || !fs.existsSync(subtasksPath)) {
-    console.error('tasks or subtasks file missing:', tasksPath, subtasksPath);
-    process.exit(1);
+  const legacyTasksPath = cfg.tasksPath;
+  const legacySubtasksPath = cfg.subtasksPath;
+  const targets = Array.isArray(cfg.targets) ? cfg.targets : [];
+
+  function getDefaultEstimateHours() {
+    if (cfg.defaults && typeof cfg.defaults.defaultEstimateHours === 'number') return cfg.defaults.defaultEstimateHours;
+    if (typeof cfg.defaultEstimateHours === 'number') return cfg.defaultEstimateHours;
+    return 1;
   }
 
-  const tasks = loadJson(tasksPath);
-  const subtasks = loadJson(subtasksPath);
-
-  // index subtasks by parentStableId or parentId
-  const subsByParent = {};
-  for (const s of subtasks) {
-    const parent = s.parentStableId || s.parentId || s.parent || s.parent_task || null;
-    if (!parent) continue;
-    subsByParent[parent] = subsByParent[parent] || [];
-    subsByParent[parent].push(s);
-  }
-
-  const defaultEstimate = cfg.defaultEstimateHours || 1;
-  let modified = false;
-
-  for (const t of tasks) {
-    const stableId = t.stableId || t.id || t.lineHash || t.hash;
-    const subs = subsByParent[stableId] || [];
-    let sum = 0;
-    for (const s of subs) {
-      let est = null;
-      if (s.estimateHours) est = parseFloat(s.estimateHours);
-      if (s.text) est = est || parseEstimate(s.text);
-      if (est == null) est = defaultEstimate;
-      sum += est;
-    }
-    // write back into task
-    if (t.estimateHours !== sum) {
-      t.estimateHours = sum;
-      modified = true;
-    }
-  }
-
-  if (modified) {
-    const outPath = tasksPath;
-    writeJson(outPath, tasks);
-    const audit = { updatedAt: new Date().toISOString(), tasksPath, subtasksPath };
-    writeJson(path.join(path.dirname(outPath), 'tasks-audit.json'), audit);
-    console.log('Updated tasks with estimateHours');
-  } else {
-    console.log('No updates needed for estimateHours');
-  }
-
-  if (apply) {
-    // Attempt to update Project V2 via gh api graphql if possible
-    if (!process.env.GH_PAT) {
-      console.error('GH_PAT not found in env; cannot apply to Project');
-      process.exit(3);
-    }
-    if (!cfg.projectNumber && !cfg.projectNodeId) {
-      console.error('No projectNumber/projectNodeId in config; cannot apply');
-      process.exit(4);
+  function processOne(tasksPath, subtasksPath) {
+    if (!fs.existsSync(tasksPath) || !fs.existsSync(subtasksPath)) {
+      console.error('tasks or subtasks file missing:', tasksPath, subtasksPath);
+      process.exit(1);
     }
 
-    // Resolve project node id if only projectNumber provided
-    let projectNodeId = cfg.projectNodeId;
-    if (!projectNodeId && cfg.projectNumber) {
-      console.log('Resolving project node id for project number', cfg.projectNumber);
-      const q = `query($number:Int!){ viewer{ projectV2(number:$number){ id } } }`;
-      const vars = JSON.stringify({ number: cfg.projectNumber });
-      const cmd = `gh api graphql -f query="${q.replace(/"/g,'\"')}" -f variables='${vars}'`;
-      const out = execSync(cmd, { env: process.env, stdio: ['pipe','pipe','pipe'] }).toString();
-      try {
-        const json = JSON.parse(out);
-        projectNodeId = json.data.viewer.projectV2.id;
-      } catch (e) {
-        console.error('Failed to resolve project node id:', e.message);
-        process.exit(5);
-      }
+    const tasks = loadJson(tasksPath);
+    const subtasks = loadJson(subtasksPath);
+
+    const subsByParent = {};
+    for (const s of subtasks) {
+      const parent = s.parentStableId || s.parentId || s.parent || s.parent_task || null;
+      if (!parent) continue;
+      subsByParent[parent] = subsByParent[parent] || [];
+      subsByParent[parent].push(s);
     }
 
-    // For each task, update estimate field if estimateFieldId is provided
-    const estimateFieldId = cfg.projectFieldIds && cfg.projectFieldIds.estimateFieldId;
-    if (!estimateFieldId) {
-      console.error('No estimateFieldId in config; skipping project updates');
-      process.exit(0);
-    }
+    const defaultEstimate = getDefaultEstimateHours();
+    let modified = false;
 
     for (const t of tasks) {
-      if (!t.resourceId) {
-        console.log('Task no resourceId (not attached to project), skipping:', t.title || t.text || t.stableId);
+      const stableId = t.stableId || t.id || t.lineHash || t.hash;
+      const subs = subsByParent[stableId] || [];
+      let sum = 0;
+      for (const s of subs) {
+        let est = null;
+        if (s.estimateHours) est = parseFloat(s.estimateHours);
+        if (s.text) est = est || parseEstimate(s.text);
+        if (est == null) est = defaultEstimate;
+        sum += est;
+      }
+      if (t.estimateHours !== sum) {
+        t.estimateHours = sum;
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      writeJson(tasksPath, tasks);
+      const audit = { updatedAt: new Date().toISOString(), tasksPath, subtasksPath };
+      writeJson(path.join(path.dirname(tasksPath), 'tasks-audit.json'), audit);
+      console.log('Updated tasks with estimateHours:', tasksPath);
+    } else {
+      console.log('No updates needed for estimateHours:', tasksPath);
+    }
+
+    return tasks;
+  }
+
+  // Backward compatibility: if no targets array, use legacy paths.
+  if (!targets.length) {
+    const tasksPath = legacyTasksPath || './tmp/tasks.json';
+    const subtasksPath = legacySubtasksPath || './tmp/subtasks.json';
+    const tasks = processOne(tasksPath, subtasksPath);
+
+    if (apply) {
+      if (cfg.enableProjectSync === false) {
+        console.log('enableProjectSync=false; skipping Project V2 updates');
+        process.exit(0);
+      }
+      await applyProjectUpdates(cfg, tasks);
+    }
+    return;
+  }
+
+  // New config: process each target outputs
+  for (const t of targets) {
+    const out = t.outputs || {};
+    const tasksPath = out.tasksPath || './tmp/tasks.json';
+    const subtasksPath = out.subtasksPath || './tmp/subtasks.json';
+    const tasks = processOne(tasksPath, subtasksPath);
+
+    if (apply) {
+      if (t.enableProjectSync === false) {
+        console.log('enableProjectSync=false; skipping Project V2 updates for', t.repo);
         continue;
       }
-      const itemId = t.resourceId; // project item node id
-      const value = { number: t.estimateHours };
-      const mutation = `mutation($input: UpdateProjectV2ItemFieldValueInput!){ updateProjectV2ItemFieldValue(input:$input){ projectV2Item{ id } } }`;
-      const variables = { input: { projectId: projectNodeId, itemId, fieldId: estimateFieldId, value } };
-      const varsStr = JSON.stringify(variables).replace(/"/g,'\"');
-      const cmd = `gh api graphql -f query="${mutation.replace(/"/g,'\"')}" -f variables='${JSON.stringify(variables)}'`;
-      console.log('Updating project item estimate for item', itemId, '->', t.estimateHours);
-      try {
-        const res = execSync(cmd, { env: process.env, stdio: ['pipe','pipe','pipe'] }).toString();
-        console.log('Project update response:', res.slice(0, 200));
-      } catch (e) {
-        console.error('Failed to update project item:', e.message);
-      }
+      await applyProjectUpdates(cfg, tasks);
+    }
+  }
+
+  return;
+
+}
+
+async function applyProjectUpdates(cfg, tasks) {
+  const projectCfg = cfg.project || {};
+  const fieldIds = projectCfg.fieldIds || {};
+
+  if (!process.env.GH_PAT) {
+    console.error('GH_PAT not found in env; cannot apply to Project');
+    process.exit(3);
+  }
+
+  const projectNumberFromUrl = extractProjectNumberFromUrl(projectCfg.url);
+  const effectiveProjectNumber = projectCfg.number || projectNumberFromUrl;
+
+  if (!effectiveProjectNumber && !cfg.projectNodeId) {
+    console.error('No project number (or projectNodeId) in config; cannot apply');
+    process.exit(4);
+  }
+
+  let projectNodeId = cfg.projectNodeId;
+  if (!projectNodeId && effectiveProjectNumber) {
+    console.log('Resolving project node id for project number', effectiveProjectNumber);
+    const q = `query($number:Int!){ viewer{ projectV2(number:$number){ id } } }`;
+    const vars = JSON.stringify({ number: effectiveProjectNumber });
+    const cmd = `gh api graphql -f query="${q.replace(/"/g,'\"')}" -f variables='${vars}'`;
+    const out = execSync(cmd, { env: process.env, stdio: ['pipe','pipe','pipe'] }).toString();
+    try {
+      const json = JSON.parse(out);
+      projectNodeId = json.data.viewer.projectV2.id;
+    } catch (e) {
+      console.error('Failed to resolve project node id:', e.message);
+      process.exit(5);
+    }
+  }
+
+  const estimateFieldId = fieldIds.estimateHoursFieldId;
+  if (!estimateFieldId) {
+    console.error('No estimateHoursFieldId in config; skipping project updates');
+    return;
+  }
+
+  for (const t of tasks) {
+    if (!t.resourceId) {
+      console.log('Task has no resourceId (not attached to project), skipping:', t.title || t.text || t.stableId);
+      continue;
+    }
+    const itemId = t.resourceId;
+    const value = { number: t.estimateHours };
+    const mutation = `mutation($input: UpdateProjectV2ItemFieldValueInput!){ updateProjectV2ItemFieldValue(input:$input){ projectV2Item{ id } } }`;
+    const variables = { input: { projectId: projectNodeId, itemId, fieldId: estimateFieldId, value } };
+    const cmd = `gh api graphql -f query="${mutation.replace(/"/g,'\"')}" -f variables='${JSON.stringify(variables)}'`;
+    console.log('Updating project item estimateHours for item', itemId, '->', t.estimateHours);
+    try {
+      execSync(cmd, { env: process.env, stdio: ['pipe','pipe','pipe'] }).toString();
+    } catch (e) {
+      console.error('Failed to update project item:', e.message);
     }
   }
 }

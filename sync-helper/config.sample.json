@@ -1,14 +1,29 @@
 {
-  "repo":"mzfshark/REPO_NAME",
-  "projectNumber":15,
-  "defaultEstimateHours":1,
-  "tasksPath":"./tmp/tasks.json",
-  "subtasksPath":"./tmp/subtasks.json",
-  "projectFieldIds":{
-    "statusFieldId":"",
-    "priorityFieldId":"",
-    "estimateFieldId":"251668000",
-    "startDateFieldId":"",
-    "endDateFieldId":""
-  }
+  "owner": "mzfshark",
+  "project": {
+    "url": "https://github.com/users/<user>/projects/<id>",
+    "number": 15,
+    "fieldIds": {
+      "statusFieldId": "",
+      "priorityFieldId": "",
+      "estimateHoursFieldId": "251668000",
+      "startDateFieldId": "",
+      "endDateFieldId": ""
+    }
+  },
+  "defaults": {
+    "defaultEstimateHours": 1
+  },
+  "targets": [
+    {
+      "repo": "mzfshark/REPO_NAME",
+      "localPath": ".",
+      "enableProjectSync": true,
+      "outputs": {
+        "tasksPath": "./tmp/tasks.json",
+        "subtasksPath": "./tmp/subtasks.json",
+        "engineInputPath": "./tmp/engine-input.json"
+      }
+    }
+  ]
 }

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GitIssue-Manager Engine Input",
+  "type": "object",
+  "required": ["version", "generatedAt", "owner", "project", "targets"],
+  "properties": {
+    "version": { "type": "string" },
+    "generatedAt": { "type": "string" },
+    "owner": { "type": "string" },
+    "project": {
+      "type": "object",
+      "required": ["url", "number", "fieldIds"],
+      "properties": {
+        "url": { "type": "string" },
+        "number": { "type": "integer" },
+        "fieldIds": { "type": "object" }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["repo", "enableProjectSync", "tasks", "subtasks"],
+        "properties": {
+          "repo": { "type": "string" },
+          "enableProjectSync": { "type": "boolean" },
+          "tasks": { "type": "array" },
+          "subtasks": { "type": "array" }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,7 @@
 {
   "repo": "mzfshark/AragonOSX",
+  "enableProjectSync": false,
+  "projectUrl": "",
   "projectNumber": 15,
   "defaultEstimateHours": 1,
   "tasksPath": "./tmp/tasks.json",
