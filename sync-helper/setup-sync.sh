@@ -81,45 +81,69 @@ select_project_for_owner() {
   # usage: select_project_for_owner <OWNER>
   require_cmd gh
   local owner="${1:-}"
+  local err_file
   if [ -z "$owner" ]; then
     echo "select_project_for_owner requires owner argument" >&2
     return 1
   fi
 
-  echo
-  echo "Fetching Projects V2 for owner: $owner"
+  echo >&2
+  printf "Fetching Projects V2 for owner: %s\n" "$owner" >&2
   local raw
-  raw=$(gh api graphql -f query="query{ organization(login:\"$owner\"){ projectsV2(first:50){nodes{number title url}} } }" --jq '.data.organization.projectsV2.nodes[] | "\(.number)|\(.title)|\(.url)"' 2>/dev/null || true)
+  err_file="$(mktemp)"
+  raw=$(gh api graphql -f query="query{ organization(login:\"$owner\"){ projectsV2(first:50){nodes{number title url}} } }" --jq '.data.organization.projectsV2.nodes[] | "\(.number)|\(.title)|\(.url)"' 2>"$err_file" || true)
   if [ -z "$raw" ]; then
-    raw=$(gh api graphql -f query="query{ user(login:\"$owner\"){ projectsV2(first:50){nodes{number title url}} } }" --jq '.data.user.projectsV2.nodes[] | "\(.number)|\(.title)|\(.url)"' 2>/dev/null || true)
+    raw=$(gh api graphql -f query="query{ user(login:\"$owner\"){ projectsV2(first:50){nodes{number title url}} } }" --jq '.data.user.projectsV2.nodes[] | "\(.number)|\(.title)|\(.url)"' 2>"$err_file" || true)
   fi
 
   if [ -z "$raw" ]; then
-    echo "No projects found for $owner or error fetching." >&2
+    if [ -s "$err_file" ]; then
+      echo "Failed to fetch Projects V2 for $owner:" >&2
+      cat "$err_file" >&2
+    else
+      echo "No projects found for $owner or error fetching." >&2
+    fi
+    rm -f "$err_file"
     return 1
   fi
 
-  echo
-  echo "Select a project:"
+  echo >&2
+  echo "Select a project:" >&2
   local i=1
   local arr=()
   while IFS= read -r line; do
+    if [ -z "$line" ] || [ "$line" = "null" ]; then
+      continue
+    fi
     arr+=("$line")
     local num
     num=$(echo "$line" | cut -d'|' -f1)
     local title
     title=$(echo "$line" | cut -d'|' -f2)
-    echo "  $i) #$num - $title"
+    printf "  %s) #%s - %s\n" "$i" "$num" "$title" >&2
     i=$((i + 1))
   done <<< "$raw"
 
-  read -p "Enter number [1]: " sel
+  if [ ${#arr[@]} -eq 0 ]; then
+    if [ -s "$err_file" ]; then
+      echo "Failed to fetch Projects V2 for $owner:" >&2
+      cat "$err_file" >&2
+    else
+      echo "No projects found for $owner or error fetching." >&2
+    fi
+    rm -f "$err_file"
+    return 1
+  fi
+
+  printf "Enter number [1]: " >&2
+  read -r sel
   sel=${sel:-1}
   local idx=$((sel - 1))
   if [ $idx -lt 0 ] || [ $idx -ge ${#arr[@]} ]; then
     echo "Invalid selection" >&2
     return 1
   fi
+  rm -f "$err_file"
   echo "${arr[$idx]}"
 }
 
@@ -246,9 +270,18 @@ if [[ "$ENABLE_PROJECT_SYNC" =~ ^[Yy]$ ]]; then
       exit 1
     fi
   else
-    sel=$(select_project_for_owner "$OWNER")
-    PROJECT_NUMBER=$(echo "$sel" | cut -d'|' -f1)
-    PROJECT_URL=$(echo "$sel" | cut -d'|' -f3)
+    if sel=$(select_project_for_owner "$OWNER"); then
+      PROJECT_NUMBER=$(echo "$sel" | cut -d'|' -f1)
+      PROJECT_URL=$(echo "$sel" | cut -d'|' -f3)
+    else
+      echo "Could not list projects automatically; please paste a project URL." >&2
+      read -p "Project URL: " PROJECT_URL
+      PROJECT_NUMBER=$(extract_project_number_from_url "$PROJECT_URL")
+      if [ -z "$PROJECT_NUMBER" ]; then
+        echo "Could not extract project number from URL" >&2
+        exit 1
+      fi
+    fi
   fi
 else
   echo
