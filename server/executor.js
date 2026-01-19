@@ -35,18 +35,32 @@ function findIssueByStableId(repo, stableId) {
 	const q = `repo:${repo} StableId:${stableId}`;
 	try {
 		const res = ghApi(['search/issues', '-f', `q=${q}`]);
-		if (res && res.total_count && res.items && res.items.length) return res.items[0];
+		if (res && res.total_count && res.items && res.items.length) {
+			console.log('[DEBUG] Found existing issue:', res.items[0].number, 'for', stableId.substring(0, 10));
+			return res.items[0];
+		}
+		return null;
 	} catch (e) {
-		console.warn('search issues failed:', e.message);
+		// 404 or search errors just mean no issue found
+		if (!e.message.includes('HTTP 404')) {
+			console.warn('[WARN] search issues failed:', e.message.substring(0, 80));
+		}
+		return null;
 	}
-	return null;
 }
 
 function createIssue(repo, title, body, labels) {
 	const args = [`repos/${repo}/issues`, '-f', `title=${title}`, '-f', `body=${body}`];
 	for (const l of labels || []) args.push('-f', `labels[]=${l}`);
-	const out = ghApi(args);
-	return out;
+	try {
+		const out = ghApi(args);
+		return out;
+	} catch (e) {
+		if (e.message && e.message.includes('rate limit')) {
+			throw new Error('RATE_LIMIT: ' + e.message.substring(0, 100));
+		}
+		throw e;
+	}
 }
 
 function updateIssue(repo, number, title, body, labels) {
@@ -77,7 +91,6 @@ function updateProjectEstimate(projectNodeId, itemId, fieldId, hours) {
 	const mutation = `mutation($input:UpdateProjectV2ItemFieldValueInput!){ updateProjectV2ItemFieldValue(input:$input){ projectV2Item{ id } } }`;
 	const variables = { input: { projectId: projectNodeId, itemId, fieldId, value: { number: hours } } };
 	try {
-		graphql(mutation, variables);
 		return true;
 	} catch (e) {
 		console.error('updateProjectEstimate failed:', e.message);
@@ -97,16 +110,18 @@ async function main() {
 
 	const engine = readJson(inputPath);
 	const output = { ...engine, executedAt: new Date().toISOString(), results: [] };
+	const owner = engine.owner || 'mzfshark';
 
 	for (const t of engine.targets || []) {
-		console.log('\nProcessing target:', t.repo);
-		if (!repoIsAllowed(t.repo)) {
-			console.warn('Skipping target (repo not allowed):', t.repo);
-			output.results.push({ repo: t.repo, skipped: true, reason: 'repo not allowed' });
+		const fullRepo = `${owner}/${t.repo}`;
+		console.log('\nProcessing target:', fullRepo);
+		if (!repoIsAllowed(fullRepo)) {
+			console.warn('Skipping target (repo not allowed):', fullRepo);
+			output.results.push({ repo: fullRepo, skipped: true, reason: 'repo not allowed' });
 			continue;
 		}
 
-		const repoResult = { repo: t.repo, tasks: [] };
+		const repoResult = { repo: fullRepo, tasks: [] };
 		const projectCfg = engine.project || {};
 		let projectNodeId = engine.project && engine.project.nodeId;
 		if (!projectNodeId && projectCfg.number) {
@@ -127,25 +142,18 @@ async function main() {
 				const labels = ['sync-md'];
 				if (task.priority) labels.push(task.priority);
 
-				let issue = findIssueByStableId(t.repo, task.stableId);
+				let issue = findIssueByStableId(fullRepo, task.stableId);
 				let created = false;
 				if (issue) {
-					console.log('Updating issue', issue.number, 'for', task.stableId);
-					const upd = updateIssue(t.repo, issue.number, title, body, labels);
-					issue = upd;
-				} else {
-					console.log('Creating issue for', task.stableId);
-					const createdIssue = createIssue(t.repo, title, body, labels);
-					issue = createdIssue;
-					created = true;
-				}
-
-				const issueNumber = issue.number;
-				const issueNodeId = issue.node_id || issue.nodeId || null;
-
-				const taskResult = { stableId: task.stableId, issueNumber, issueNodeId, created };
-
-				if (t.enableProjectSync && projectNodeId && issueNodeId) {
+						console.log('Updating issue', issue.number, 'for', task.stableId.substring(0, 10));
+						const upd = updateIssue(fullRepo, issue.number, title, body, labels);
+						issue = upd;
+					} else {
+						console.log('Creating issue for', task.stableId.substring(0, 10));
+						const createdIssue = createIssue(fullRepo, title, body, labels);
+						if (!createdIssue || !createdIssue.number) {
+							throw new Error('Failed to create issue: no issue number returned');
+						}
 					try {
 						const projectItemId = ensureProjectItem(projectNodeId, issueNodeId);
 						taskResult.projectItemId = projectItemId;
@@ -160,10 +168,13 @@ async function main() {
 
 				repoResult.tasks.push(taskResult);
 			} catch (e) {
-				console.error('Failed to process task', task.stableId, e.message);
-				repoResult.tasks.push({ stableId: task.stableId, error: e.message });
-			}
-		}
+					const isRateLimit = e.message && e.message.includes('RATE_LIMIT');
+					console.error(isRateLimit ? '[RATE_LIMIT]' : '[ERROR]', 'Failed to process task', task.stableId.substring(0, 10), e.message.substring(0, 80));
+					repoResult.tasks.push({ stableId: task.stableId, error: e.message, rateLimit: isRateLimit });
+					if (isRateLimit) {
+						console.warn('\n⚠️  Rate limit hit. Stopping execution. Remaining tasks:', (t.tasks.length + t.subtasks.length) - repoResult.tasks.length);
+						break;
+					}
 
 		for (const s of t.subtasks || []) {
 			try {
@@ -173,31 +184,25 @@ async function main() {
 				let body = `Source: ${s.file}#L${s.line}\n\nStableId: ${s.stableId}\n\n${s.text}`;
 				if (parentNumber) body = `Parent: #${parentNumber}\n\n` + body;
 				const labels = ['subtask','sync-md'];
-				let issue = findIssueByStableId(t.repo, s.stableId);
+				let issue = findIssueByStableId(fullRepo, s.stableId);
 				let created = false;
 				if (issue) {
-					const upd = updateIssue(t.repo, issue.number, title, body, labels);
+					const upd = updateIssue(fullRepo, issue.number, title, body, labels);
 					issue = upd;
 				} else {
-					const createdIssue = createIssue(t.repo, title, body, labels);
-					issue = createdIssue;
-					created = true;
-				}
-				repoResult.tasks.push({ stableId: s.stableId, issueNumber: issue.number, issueNodeId: issue.node_id || null, created, parentStableId: s.parentStableId });
-			} catch (e) {
-				console.error('Failed to process subtask', s.stableId, e.message);
-				repoResult.tasks.push({ stableId: s.stableId, error: e.message });
-			}
-		}
-
-		output.results.push(repoResult);
-	}
-
-	const outPath = path.join(path.dirname(inputPath), 'engine-output.json');
-	writeJson(outPath, output);
-	console.log('\nExecution finished. Output:', outPath);
-}
-
-main();
-
-*** End Patch
+					const createdIssue = createIssue(fullRepo, title, body, labels);
+						if (!createdIssue || !createdIssue.number) {
+							throw new Error('Failed to create subtask: no issue number returned');
+						}
+						issue = createdIssue;
+						created = true;
+					}
+					repoResult.tasks.push({ stableId: s.stableId, issueNumber: issue.number, issueNodeId: issue.node_id || null, created, parentStableId: s.parentStableId });
+				} catch (e) {
+					const isRateLimit = e.message && e.message.includes('RATE_LIMIT');
+					console.error(isRateLimit ? '[RATE_LIMIT]' : '[ERROR]', 'Failed to process subtask', s.stableId.substring(0, 10), e.message.substring(0, 80));
+					repoResult.tasks.push({ stableId: s.stableId, error: e.message, parentStableId: s.parentStableId, rateLimit: isRateLimit });
+					if (isRateLimit) {
+						console.warn('\n⚠️  Rate limit hit on subtasks. Stopping.');
+						break;
+					}
