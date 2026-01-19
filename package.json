@@ -25,6 +25,7 @@
     "verify:count": "bash -c 'CONFIG=${npm_config_config:-sync-helper/configs/*.json}; REPO=$(jq -r .repo $CONFIG | head -1); gh issue list --repo $REPO --label sync-md --limit 1000 --json number | jq length'",
     "clean": "rm -rf tmp/*/",
     "clean:config": "rm -rf sync-helper/configs/*.json",
+    "clean:all": "rm -rf tmp/*/ sync-helper/configs/*.json",
     "test:executor": "node server/executor.js 2>&1 | tail -50",
     "codacy:install": "bash ./.codacy/install.sh",
     "codacy:version": "bash -lc './.codacy/codacy --version'",
