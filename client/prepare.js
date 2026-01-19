@@ -156,9 +156,25 @@ function loadConfig(cfgPath) {
   const defaults = cfg.defaults || {};
   const defaultEstimateHours = typeof defaults.defaultEstimateHours === 'number' ? defaults.defaultEstimateHours : 1;
 
-  const targets = Array.isArray(cfg.targets) ? cfg.targets : [];
+  // Support both old format (with targets array) and new format (single repo)
+  let targets;
+  if (Array.isArray(cfg.targets)) {
+    // Old format - multi-target
+    targets = cfg.targets;
+  } else if (cfg.repo) {
+    // New format - single repo config
+    targets = [{
+      repo: cfg.repo,
+      localPath: cfg.localPath || '.',
+      enableProjectSync: !!cfg.enableProjectSync,
+      outputs: cfg.outputs || {}
+    }];
+  } else {
+    throw new Error('Config must have either a targets array or repo field');
+  }
+
   if (!targets.length) {
-    throw new Error('Config must have a targets array');
+    throw new Error('Config must have at least one target');
   }
 
   return { cfg, defaultEstimateHours, targets };
@@ -195,9 +211,12 @@ function main() {
     const subtasksPath = out.subtasksPath || './tmp/subtasks.json';
     const engineInputPath = out.engineInputPath || './tmp/engine-input.json';
 
-    const absRoot = path.resolve(path.dirname(cfgPath), '..', localPath);
+    // Resolve localPath relative to GitIssue-Manager root (outBaseDir)
+    const absRoot = path.resolve(outBaseDir, localPath);
     if (!fs.existsSync(absRoot)) {
       console.error('Target localPath does not exist:', absRoot);
+      console.error('Expected path:', localPath);
+      console.error('Base dir:', outBaseDir);
       process.exit(3);
     }
 

@@ -1,30 +1,14 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-CONFIG_DIR="$ROOT_DIR/sync-helper/configs"
-mkdir -p "$CONFIG_DIR"
+CFG_FILE="$ROOT_DIR/sync-helper/sync-config.json"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "Missing required command: $1" >&2
     exit 1
   }
-}
-
-list_configured_repos() {
-  if [ ! -d "$CONFIG_DIR" ] || [ -z "$(ls -A "$CONFIG_DIR" 2>/dev/null)" ]; then
-    return 1
-  fi
-  echo "Configured repositories:"
-  local i=1
-  for cfg in "$CONFIG_DIR"/*.json; do
-    [ -f "$cfg" ] || continue
-    local basename=$(basename "$cfg" .json)
-    echo "  $i) $basename"
-    i=$((i+1))
-  done
-  return 0
 }
 
 select_project_via_gh() {
@@ -34,48 +18,40 @@ select_project_via_gh() {
   echo
   echo "Fetching your Projects (Projects V2)..."
   local raw
-  raw=$(gh api graphql -f query='query{viewer{projectsV2(first:20){nodes{number title url}}}}' --jq '.data.viewer.projectsV2.nodes[]|"\(.number)|\(.title)|\(.url)"')
-  
+  raw=$(gh api graphql -f query='query($n:Int!){ viewer { login projectsV2(first:$n){ nodes { number title url } } } }' -f variables='{"n":50}' --jq '.data.viewer.projectsV2.nodes[] | "\(.number)|\(.title)|\(.url)"' 2>/dev/null || true)
   if [ -z "$raw" ]; then
-    echo "No projects found or error fetching." >&2
-    exit 1
+    echo "No projects found (or missing permissions)." >&2
+    return 1
   fi
 
   echo
-  echo "Select a project:"
-  local i=1
-  local arr=()
-  while IFS= read -r line; do
-    arr+=("$line")
-    local num=$(echo "$line" | cut -d'|' -f1)
-    local title=$(echo "$line" | cut -d'|' -f2)
-    echo "  $i) #$num - $title"
-    i=$((i+1))
-  done <<< "$raw"
-
-  read -p "Enter number [1]: " sel
-  sel=${sel:-1}
-  local idx=$((sel-1))
-  if [ $idx -lt 0 ] || [ $idx -ge ${#arr[@]} ]; then
-    echo "Invalid selection" >&2
-    exit 1
+  echo "Available projects:"
+  echo "$raw" | awk -F'|' '{ printf "  [%s] %s\n", $1, $2 }'
+  echo
+  read -p "Select project number: " sel
+  if [ -z "$sel" ]; then
+    echo "No project selected" >&2
+    return 1
   fi
-  echo "${arr[$idx]}"
+
+  echo "$raw" | awk -F'|' -v n="$sel" '$1==n {print $0; found=1} END{exit found?0:1}'
 }
 
 extract_project_number_from_url() {
   local url="$1"
-  echo "$url" | sed -n 's|.*/projects/\([0-9]\+\).*|\1|p'
-}
-
-get_viewer_login() {
-  gh api user --jq '.login' 2>/dev/null || echo ""
+  # https://github.com/users/<user>/projects/<id>
+  echo "$url" | sed -nE 's#^https://github.com/users/[^/]+/projects/([0-9]+).*$#\1#p'
 }
 
 default_project_url_for_user() {
   local user="$1"
   local number="$2"
-  echo "https://github.com/users/$user/projects/$number"
+  echo "https://github.com/users/${user}/projects/${number}"
+}
+
+get_viewer_login() {
+  require_cmd gh
+  gh api graphql -f query='query{ viewer{ login } }' --jq '.data.viewer.login' 2>/dev/null || true
 }
 
 echo "============================================"
@@ -88,12 +64,12 @@ if list_configured_repos; then
   echo
   echo "Options:"
   echo "  1) Configure a new repository"
-  echo "  2) Edit an existing repository configuration"
+  echo "  2) Edit an existing repository"
   read -p "Choose (1/2) [1]: " SETUP_MODE
   SETUP_MODE=${SETUP_MODE:-1}
   
   if [ "$SETUP_MODE" = "2" ]; then
-    read -p "Enter config name to edit (e.g., mzfshark-AragonOSX): " EXISTING_CONFIG
+    read -p "Enter repository name to edit (e.g., mzfshark-AragonOSX): " EXISTING_CONFIG
     EXISTING_CONFIG_PATH="$CONFIG_DIR/${EXISTING_CONFIG}.json"
     if [ -f "$EXISTING_CONFIG_PATH" ]; then
       echo "Editing: $EXISTING_CONFIG_PATH"
@@ -120,8 +96,8 @@ REPO="${OWNER}/${REPO_NAME}"
 echo "Full repo: $REPO"
 echo
 
-read -p "Local path to scan for *.md [default: ../${REPO_NAME}]: " LOCAL_PATH
-LOCAL_PATH=${LOCAL_PATH:-../${REPO_NAME}}
+read -p "Local path to scan for *.md [default: ../$(basename "$REPO_NAME")]: " LOCAL_PATH
+LOCAL_PATH=${LOCAL_PATH:-../$(basename "$REPO_NAME")}
 
 echo
 echo "=== Project Sync Configuration ==="
@@ -191,13 +167,20 @@ fi
 
 read -p "Default estimate hours per subtask (default 1): " DEFAULT_ESTIMATE
 DEFAULT_ESTIMATE=${DEFAULT_ESTIMATE:-1}
+read -p "Output tasks.json path (default ./tmp/tasks.json): " TASKS_PATH
+TASKS_PATH=${TASKS_PATH:-./tmp/tasks.json}
+read -p "Output subtasks.json path (default ./tmp/subtasks.json): " SUBTASKS_PATH
+SUBTASKS_PATH=${SUBTASKS_PATH:-./tmp/subtasks.json}
+read -p "Output engine-input.json path (default ./tmp/engine-input.json): " ENGINE_INPUT_PATH
+ENGINE_INPUT_PATH=${ENGINE_INPUT_PATH:-./tmp/engine-input.json}
 
+echo
 # Generate config filename from owner and repo
-CONFIG_NAME="${OWNER}-${REPO_NAME}"
+CONFIG_NAME="${OWNER}-$(basename "$REPO_NAME")"
 CFG_FILE="$CONFIG_DIR/${CONFIG_NAME}.json"
 
 # Set per-repo output paths
-REPO_TMP_DIR="$ROOT_DIR/tmp/${CONFIG_NAME}"
+REPO_TMP_DIR="./tmp/${CONFIG_NAME}"
 TASKS_PATH="${REPO_TMP_DIR}/tasks.json"
 SUBTASKS_PATH="${REPO_TMP_DIR}/subtasks.json"
 ENGINE_INPUT_PATH="${REPO_TMP_DIR}/engine-input.json"
@@ -235,19 +218,9 @@ cat > "$CFG_FILE" <<EOF
 }
 EOF
 
-echo "✓ Created $CFG_FILE"
+echo "Created $CFG_FILE"
+echo "Next: edit the file to set field IDs if using Project sync."
 echo
-echo "Repository '$CONFIG_NAME' configured successfully!"
-echo
-echo "Output directory: $REPO_TMP_DIR"
-echo
-if [[ "$ENABLE_PROJECT_SYNC" =~ ^[Yy]$ ]]; then
-  echo "⚠️  Next: edit the config file to set Project field IDs:"
-  echo "    ${EDITOR:-nano} $CFG_FILE"
-  echo
-fi
-echo "To prepare and execute for this repo:"
+echo "To manage this repo:"
 echo "  npm run prepare -- --config $CFG_FILE"
 echo "  npm run execute -- --config $CFG_FILE"
-echo
-echo "Or use the helper scripts (see package.json for all options)"

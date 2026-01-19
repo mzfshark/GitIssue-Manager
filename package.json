@@ -1,0 +1,48 @@
+{
+  "name": "gitissue-manager",
+  "version": "1.0.0",
+  "description": "Automate GitHub issue creation from Markdown checklists with optional Project V2 sync",
+  "main": "server/executor.js",
+  "type": "commonjs",
+  "scripts": {
+    "setup": "bash sync-helper/setup-sync.sh",
+    "repos": "node scripts/list-repos.js",
+    "prepare": "node client/prepare.js",
+    "execute": "node server/executor.js",
+    "execute:bg": "nohup node server/executor.js > ./tmp/executor.log 2>&1 &",
+    "full": "npm run prepare && npm run execute",
+    "labels:create": "bash scripts/create-labels.sh",
+    "project:help": "node sync-helper/project-helper.js",
+    "project:update": "node sync-helper/project-helper.js --apply",
+    "output:summary": "jq '{executed: .executedAt, repo: .results[0].repo, total: (.results[0].tasks | length), created: [.results[0].tasks[] | select(.created == true)] | length, errors: [.results[0].tasks[] | select(.error)] | length}' tmp/*/engine-output.json 2>/dev/null || echo 'No output files found'",
+    "output:errors": "jq '[.results[0].tasks[] | select(.error)] | .[0:5]' tmp/*/engine-output.json 2>/dev/null || echo 'No output files found'",
+    "output:last": "jq '.results[0].tasks[-10:]' tmp/*/engine-output.json 2>/dev/null || echo 'No output files found'",
+    "verify:issues": "bash -c 'CONFIG=${npm_config_config:-sync-helper/configs/*.json}; REPO=$(jq -r .repo $CONFIG | head -1); gh issue list --repo $REPO --label sync-md --limit 10'",
+    "verify:count": "bash -c 'CONFIG=${npm_config_config:-sync-helper/configs/*.json}; REPO=$(jq -r .repo $CONFIG | head -1); gh issue list --repo $REPO --label sync-md --limit 1000 --json number | jq length'",
+    "clean": "rm -rf tmp/*/",
+    "clean:config": "rm -rf sync-helper/configs/*.json",
+    "test:executor": "node server/executor.js 2>&1 | tail -50"
+  },
+  "keywords": [
+    "github",
+    "issues",
+    "automation",
+    "markdown",
+    "project-management",
+    "github-api",
+    "cli"
+  ],
+  "author": "mzfshark",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mzfshark/GitIssue-Manager"
+  },
+  "bin": {
+    "gitissue-prepare": "./client/prepare.js",
+    "gitissue-execute": "./server/executor.js"
+  }
+}
