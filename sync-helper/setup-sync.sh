@@ -65,27 +65,6 @@ is_organization() {
   return 1
 }
 
-  read -p "Enter number [1]: " sel
-  sel=${sel:-1}
-  local idx=$((sel-1))
-  if [ $idx -lt 0 ] || [ $idx -ge ${#arr[@]} ]; then
-    echo "Invalid selection" >&2
-    exit 1
-  fi
-  echo "${arr[$idx]}"
-}
-
-is_organization() {
-  local OWNER_LOOKUP="${1:-}"
-  require_cmd gh
-  # Try to query organization; if present return 0, else return 1
-  local res
-  res=$(gh api graphql -f query="query{ organization(login:\"$OWNER_LOOKUP\"){ id } }" --jq '.data.organization.id' 2>/dev/null || true)
-  if [ -n "$res" ] && [ "$res" != "null" ]; then
-    return 0
-  fi
-  return 1
-}
 
 extract_project_number_from_url() {
   local url="$1"
