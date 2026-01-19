@@ -5,40 +5,30 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG_DIR="$ROOT_DIR/sync-helper/configs"
 mkdir -p "$CONFIG_DIR"
 
-require_cmd() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "Missing required command: $1" >&2
-    exit 1
-  }
-}
-
-list_configured_repos() {
-  if [ ! -d "$CONFIG_DIR" ] || [ -z "$(ls -A "$CONFIG_DIR" 2>/dev/null)" ]; then
+select_project_for_owner() {
+  # returns a line: <number>|<title>|<url>
+  # usage: select_project_for_owner <OWNER>
+  require_cmd gh
+  local OWNER_LOOKUP="${1:-}"
+  if [ -z "$OWNER_LOOKUP" ]; then
+    echo "select_project_for_owner requires owner argument" >&2
     return 1
   fi
-  echo "Configured repositories:"
-  local i=1
-  for cfg in "$CONFIG_DIR"/*.json; do
-    [ -f "$cfg" ] || continue
-    local basename=$(basename "$cfg" .json)
-    echo "  $i) $basename"
-    i=$((i+1))
-  done
-  return 0
-}
-
-select_project_via_gh() {
-  # returns a line: <number>|<title>|<url>
-  require_cmd gh
 
   echo
-  echo "Fetching your Projects (Projects V2)..."
+  echo "Fetching Projects V2 for owner: $OWNER_LOOKUP"
   local raw
-  raw=$(gh api graphql -f query='query{viewer{projectsV2(first:20){nodes{number title url}}}}' --jq '.data.viewer.projectsV2.nodes[]|"\(.number)|\(.title)|\(.url)"')
-  
+  # Try organization first
+  raw=$(gh api graphql -f query="query{ organization(login:\"$OWNER_LOOKUP\"){ projectsV2(first:50){nodes{number title url}} } }" --jq '.data.organization.projectsV2.nodes[] | "\(.number)|\(.title)|\(.url)"' 2>/dev/null || true)
+
+  # If not organization or none, try user projects
   if [ -z "$raw" ]; then
-    echo "No projects found or error fetching." >&2
-    exit 1
+    raw=$(gh api graphql -f query="query{ user(login:\"$OWNER_LOOKUP\"){ projectsV2(first:50){nodes{number title url}} } }" --jq '.data.user.projectsV2.nodes[] | "\(.number)|\(.title)|\(.url)"' 2>/dev/null || true)
+  fi
+
+  if [ -z "$raw" ]; then
+    echo "No projects found for $OWNER_LOOKUP or error fetching." >&2
+    return 1
   fi
 
   echo
@@ -58,9 +48,43 @@ select_project_via_gh() {
   local idx=$((sel-1))
   if [ $idx -lt 0 ] || [ $idx -ge ${#arr[@]} ]; then
     echo "Invalid selection" >&2
+    return 1
+  fi
+  echo "${arr[$idx]}"
+}
+
+is_organization() {
+  local OWNER_LOOKUP="${1:-}"
+  require_cmd gh
+  # Try to query organization; if present return 0, else return 1
+  local res
+  res=$(gh api graphql -f query="query{ organization(login:\"$OWNER_LOOKUP\"){ id } }" --jq '.data.organization.id' 2>/dev/null || true)
+  if [ -n "$res" ] && [ "$res" != "null" ]; then
+    return 0
+  fi
+  return 1
+}
+
+  read -p "Enter number [1]: " sel
+  sel=${sel:-1}
+  local idx=$((sel-1))
+  if [ $idx -lt 0 ] || [ $idx -ge ${#arr[@]} ]; then
+    echo "Invalid selection" >&2
     exit 1
   fi
   echo "${arr[$idx]}"
+}
+
+is_organization() {
+  local OWNER_LOOKUP="${1:-}"
+  require_cmd gh
+  # Try to query organization; if present return 0, else return 1
+  local res
+  res=$(gh api graphql -f query="query{ organization(login:\"$OWNER_LOOKUP\"){ id } }" --jq '.data.organization.id' 2>/dev/null || true)
+  if [ -n "$res" ] && [ "$res" != "null" ]; then
+    return 0
+  fi
+  return 1
 }
 
 extract_project_number_from_url() {
@@ -76,6 +100,22 @@ default_project_url_for_user() {
   local user="$1"
   local number="$2"
   echo "https://github.com/users/$user/projects/$number"
+}
+
+default_project_url_for_org() {
+  local org="$1"
+  local number="$2"
+  echo "https://github.com/orgs/$org/projects/$number"
+}
+
+default_project_url_for_owner() {
+  local owner="$1"
+  local number="$2"
+  if is_organization "$owner"; then
+    default_project_url_for_org "$owner" "$number"
+  else
+    default_project_url_for_user "$owner" "$number"
+  fi
 }
 
 echo "============================================"
@@ -116,6 +156,17 @@ OWNER=${OWNER:-mzfshark}
 read -p "Repository name (without owner) [default: AragonOSX]: " REPO_NAME
 REPO_NAME=${REPO_NAME:-AragonOSX}
 
+# Auto-detect owner type (organization or user) to drive ProjectV2 queries and URL examples.
+# We do this early so prompts can show the correct URL format automatically.
+OWNER_TYPE="user"
+if command -v gh >/dev/null 2>&1; then
+  if is_organization "$OWNER"; then
+    OWNER_TYPE="organization"
+  else
+    OWNER_TYPE="user"
+  fi
+fi
+
 REPO="${OWNER}/${REPO_NAME}"
 echo "Full repo: $REPO"
 echo
@@ -134,7 +185,7 @@ PROJECT_NUMBER=0
 if [[ "$ENABLE_PROJECT_SYNC" =~ ^[Yy]$ ]]; then
   require_cmd gh
   echo
-  echo "Project selection (user projects V2):"
+  echo "Project selection (owner Projects V2 — detected: $OWNER_TYPE)"
   echo "  1) List projects via gh and select"
   echo "  2) Paste project URL (https://github.com/users/<user>/projects/<id>)"
   read -p "Choose (1/2) [1]: " PROJECT_MODE
@@ -148,7 +199,7 @@ if [[ "$ENABLE_PROJECT_SYNC" =~ ^[Yy]$ ]]; then
       exit 1
     fi
   else
-    sel=$(select_project_via_gh)
+    sel=$(select_project_for_owner "$OWNER")
     PROJECT_NUMBER=$(echo "$sel" | cut -d'|' -f1)
     PROJECT_URL=$(echo "$sel" | cut -d'|' -f3)
   fi
@@ -159,34 +210,50 @@ else
   if [[ "$STORE_PROJECT" =~ ^[Yy]$ ]]; then
     require_cmd gh
     echo
-    echo "Project reference:"
-    echo "  1) List projects via gh and select"
+    echo "Project reference:" 
+    echo "  1) List projects via gh and select (owner projects V2)"
     echo "  2) Paste project URL"
-    echo "  3) Enter project number (will use your viewer login to build URL)"
+    echo "  3) Enter project number (will build URL for the owner)"
     read -p "Choose (1/2/3) [1]: " PROJECT_MODE
     PROJECT_MODE=${PROJECT_MODE:-1}
 
     if [ "$PROJECT_MODE" = "2" ]; then
-      read -p "Project URL: " PROJECT_URL
+      if [ "$OWNER_TYPE" = "organization" ]; then
+        hint="https://github.com/orgs/$OWNER/projects/<id>"
+      else
+        hint="https://github.com/users/$OWNER/projects/<id>"
+      fi
+      read -p "Project URL (e.g. $hint): " PROJECT_URL
       PROJECT_NUMBER=$(extract_project_number_from_url "$PROJECT_URL")
       if [ -z "$PROJECT_NUMBER" ]; then
         echo "Could not extract project number from URL" >&2
         exit 1
       fi
+
     elif [ "$PROJECT_MODE" = "3" ]; then
       read -p "Project number: " PROJECT_NUMBER
-      VIEWER=$(get_viewer_login)
-      if [ -z "$VIEWER" ]; then
-        echo "Could not resolve viewer login via gh" >&2
-        exit 1
-      fi
-      PROJECT_URL=$(default_project_url_for_user "$VIEWER" "$PROJECT_NUMBER")
+      PROJECT_URL=$(default_project_url_for_owner "$OWNER" "$PROJECT_NUMBER")
+
     else
-      sel=$(select_project_via_gh)
-      PROJECT_NUMBER=$(echo "$sel" | cut -d'|' -f1)
-      PROJECT_URL=$(echo "$sel" | cut -d'|' -f3)
+      # Try to list projects for the owner (org or user). If listing fails, fall back to asking for URL/number.
+      if sel=$(select_project_for_owner "$OWNER" 2>/dev/null); then
+        PROJECT_NUMBER=$(echo "$sel" | cut -d'|' -f1)
+        PROJECT_URL=$(echo "$sel" | cut -d'|' -f3)
+      else
+        echo "Could not list projects for owner '$OWNER' (permissions or none). Please paste URL or enter number." >&2
+        read -p "Project URL (leave empty to enter number): " PROJECT_URL
+        if [ -n "$PROJECT_URL" ]; then
+          PROJECT_NUMBER=$(extract_project_number_from_url "$PROJECT_URL")
+          if [ -z "$PROJECT_NUMBER" ]; then
+            echo "Could not extract project number from URL" >&2
+            exit 1
+          fi
+        else
+          read -p "Project number: " PROJECT_NUMBER
+          PROJECT_URL=$(default_project_url_for_owner "$OWNER" "$PROJECT_NUMBER")
+        fi
+      fi
     fi
-  fi
 fi
 
 read -p "Default estimate hours per subtask (default 1): " DEFAULT_ESTIMATE
@@ -272,8 +339,31 @@ echo
 echo "Output directory: $REPO_TMP_DIR"
 echo
 if [[ "$ENABLE_PROJECT_SYNC" =~ ^[Yy]$ ]]; then
-  echo "⚠️  Next: edit the config file to set Project field IDs:"
-  echo "    ${EDITOR:-nano} $CFG_FILE"
+  echo "Running ProjectV2 field discovery to populate field IDs and project node ID..."
+  require_cmd bash
+  require_cmd gh
+  require_cmd jq
+
+  # Run discovery which writes a config with field IDs; write to same CFG_FILE
+  bash "$ROOT_DIR/sync-helper/discover-project-fields.sh" --owner "$OWNER" --repo "$REPO_NAME" --project-number $PROJECT_NUMBER --out "$CFG_FILE" || {
+    echo "Field discovery script failed; leaving generated config for manual edit." >&2
+  }
+
+  # Attempt to resolve the ProjectV2 node id and write it into the config
+  echo "Resolving ProjectV2 node ID for $OWNER/projects/$PROJECT_NUMBER..."
+  if is_organization "$OWNER"; then
+    PVT_ID=$(gh api graphql -f query="query{ organization(login:\"$OWNER\"){ projectV2(number:$PROJECT_NUMBER){ id } } }" --jq '.data.organization.projectV2.id' 2>/dev/null || true)
+  else
+    PVT_ID=$(gh api graphql -f query="query{ user(login:\"$OWNER\"){ projectV2(number:$PROJECT_NUMBER){ id } } }" --jq '.data.user.projectV2.id' 2>/dev/null || true)
+  fi
+
+  if [ -n "$PVT_ID" ] && [ "$PVT_ID" != "null" ]; then
+    tmpcfg="$(mktemp)"
+    jq --arg id "$PVT_ID" '.project.projectNodeId=$id' "$CFG_FILE" > "$tmpcfg" && mv "$tmpcfg" "$CFG_FILE"
+    echo "Wrote projectNodeId=$PVT_ID into $CFG_FILE"
+  else
+    echo "Could not resolve projectNodeId automatically; you may need to set it manually: ${EDITOR:-nano} $CFG_FILE" >&2
+  fi
   echo
 fi
 echo "To prepare and execute for this repo:"

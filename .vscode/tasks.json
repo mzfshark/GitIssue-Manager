@@ -1,0 +1,50 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install Codacy CLI",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"codacy:install"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install Codacy CLI (bash)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"./.codacy/install.sh"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Check Codacy assets",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"curl -sL https://api.github.com/repos/codacy/codacy-analysis-cli/releases/latest | grep browser_download_url | sed -E 's/.*browser_download_url.: (.*)/\\1/'"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "List Codacy asset URLs",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"curl -sL https://api.github.com/repos/codacy/codacy-analysis-cli/releases/latest | grep -oE \"https://[^\"]+\" | grep codacy-analysis-cli | sed -n \"1,200p\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}

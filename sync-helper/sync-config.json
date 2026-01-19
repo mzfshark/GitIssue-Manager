@@ -1,0 +1,16 @@
+{
+  "projectNodeId": "PVT_kwHOAZZpx84BM1N0",
+  "tasksPath": "./tmp/Axodus-AragonOSX/tasks.json",
+  "subtasksPath": "./tmp/Axodus-AragonOSX/subtasks.json",
+  "project": {
+    "url": "https://github.com/users/mzfshark/projects/15",
+    "number": 15,
+    "projectNodeId": "PVT_kwHOAZZpx84BM1N0",
+    "fieldIds": {
+      "estimateHoursFieldId": "PVTF_lAHOAZZpx84BM1N0zg8AJiA"
+    }
+  },
+  "defaults": {
+    "defaultEstimateHours": 1
+  }
+}

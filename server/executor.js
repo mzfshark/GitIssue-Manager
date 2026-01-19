@@ -77,31 +77,126 @@ function updateIssue(repo, number, title, body, labels) {
 }
 
 function graphql(query, variables) {
-	const out = execFileSync('gh', ['api', 'graphql', '-f', `query=${query}`, '-f', `variables=${JSON.stringify(variables)}`], { encoding: 'utf8' });
-	return JSON.parse(out);
+	// Write variables to a temp file and pass it as @file to gh to avoid shell-quoting issues
+	const os = require('os');
+	const tmpdir = os.tmpdir();
+	const fname = path.join(tmpdir, `gitissue-graphql-vars-${Date.now()}-${Math.floor(Math.random()*10000)}.json`);
+	fs.writeFileSync(fname, JSON.stringify(variables));
+	try {
+		const out = execFileSync('gh', ['api', 'graphql', '-f', `query=${query}`, '-f', `variables=@${fname}`], { encoding: 'utf8' });
+		return JSON.parse(out);
+	} finally {
+		try { fs.unlinkSync(fname); } catch (e) { /* ignore cleanup errors */ }
+	}
+}
+
+function resolveProjectNodeIdFromViewer(number) {
+	const q = `query($number:Int!){ viewer{ projectV2(number:$number){ id } } }`;
+	const res = execFileSync('gh', ['api', 'graphql', '-f', `query=${q}`, '-F', `number=${number}`], { encoding: 'utf8' });
+	const data = JSON.parse(res);
+	return data.data.viewer.projectV2.id;
+}
+
+function resolveProjectNodeIdForUser(login, number) {
+	const q = `query($login:String!,$number:Int!){ user(login:$login){ projectV2(number:$number){ id } } }`;
+	const res = execFileSync('gh', ['api', 'graphql', '-f', `query=${q}`, '-F', `login=${login}`, '-F', `number=${number}`], { encoding: 'utf8' });
+	const data = JSON.parse(res);
+	return data.data.user.projectV2.id;
+}
+
+function resolveProjectNodeIdForOrg(login, number) {
+	const q = `query($login:String!,$number:Int!){ organization(login:$login){ projectV2(number:$number){ id } } }`;
+	const res = execFileSync('gh', ['api', 'graphql', '-f', `query=${q}`, '-F', `login=${login}`, '-F', `number=${number}`], { encoding: 'utf8' });
+	const data = JSON.parse(res);
+	return data.data.organization.projectV2.id;
+}
+
+function parseProjectMirrorPath(pathStr) {
+	// Formats supported:
+	//  - user/<login>/projects/<number>
+	//  - org/<login>/projects/<number>
+	//  - viewer/projects/<number>
+	if (!pathStr || typeof pathStr !== 'string') return null;
+	const parts = pathStr.split('/').map(s => s.trim()).filter(Boolean);
+	if (parts.length === 3 && parts[0] === 'viewer' && parts[1] === 'projects') {
+		return { scope: 'viewer', number: parseInt(parts[2], 10) };
+	}
+	if (parts.length === 4 && (parts[0] === 'user' || parts[0] === 'org') && parts[2] === 'projects') {
+		return { scope: parts[0], login: parts[1], number: parseInt(parts[3], 10) };
+	}
+	return null;
 }
 
 function ensureProjectItem(projectNodeId, issueNodeId) {
 	const mutation = `mutation($input:AddProjectV2ItemByIdInput!){ addProjectV2ItemById(input:$input){ item{ id } } }`;
 	const variables = { input: { projectId: projectNodeId, contentId: issueNodeId } };
+	if (!projectNodeId || typeof projectNodeId !== 'string' || !projectNodeId.startsWith('PVT_')) {
+		console.error('Invalid projectNodeId for addProjectV2ItemById:', projectNodeId);
+		return null;
+	}
+	if (!issueNodeId || typeof issueNodeId !== 'string' || !issueNodeId.startsWith('I_')) {
+		console.error('Invalid issueNodeId for addProjectV2ItemById:', issueNodeId);
+		return null;
+	}
 	try {
 		const res = graphql(mutation, variables);
-		return res.data.addProjectV2ItemById.item.id;
-	} catch (e) {
-		console.error('addProjectV2ItemById failed:', e.message);
+		if (res && res.data && res.data.addProjectV2ItemById && res.data.addProjectV2ItemById.item) {
+			return res.data.addProjectV2ItemById.item.id;
+		}
+		console.error('addProjectV2ItemById: unexpected response', JSON.stringify(res));
 		return null;
+	} catch (e) {
+		console.error('addProjectV2ItemById failed (variables path):', e.message);
+		// Fallback: construct inline mutation with escaped IDs (works in practice)
+		try {
+			const inline = `mutation{ addProjectV2ItemById(input:{projectId:\"${projectNodeId}\",contentId:\"${issueNodeId}\"}){ item{ id } } }`;
+			const out = execFileSync('gh', ['api', 'graphql', '-f', `query=${inline}`], { encoding: 'utf8' });
+			const data = JSON.parse(out);
+			if (data && data.data && data.data.addProjectV2ItemById && data.data.addProjectV2ItemById.item) {
+				return data.data.addProjectV2ItemById.item.id;
+			}
+			console.error('addProjectV2ItemById fallback: unexpected response', JSON.stringify(data));
+			return null;
+		} catch (ee) {
+			console.error('addProjectV2ItemById fallback failed:', ee.message);
+			return null;
+		}
 	}
 }
 
 function updateProjectEstimate(projectNodeId, itemId, fieldId, hours) {
 	const mutation = `mutation($input:UpdateProjectV2ItemFieldValueInput!){ updateProjectV2ItemFieldValue(input:$input){ projectV2Item{ id } } }`;
 	const variables = { input: { projectId: projectNodeId, itemId, fieldId, value: { number: hours } } };
+	if (!projectNodeId || typeof projectNodeId !== 'string' || !projectNodeId.startsWith('PVT_')) {
+		console.error('Invalid projectNodeId for updateProjectEstimate:', projectNodeId);
+		return false;
+	}
+	if (!itemId || typeof itemId !== 'string') {
+		console.error('Invalid itemId for updateProjectEstimate:', itemId);
+		return false;
+	}
+	// The GraphQL API expects a global node ID for fieldId (not a numeric UI id).
+	if (fieldId && /^[0-9]+$/.test(String(fieldId))) {
+		console.error('estimateFieldId appears numeric. ProjectV2 GraphQL requires a global node id for fieldId. Skipping estimate update. Provided fieldId:', fieldId);
+		return false;
+	}
 	try {
 		graphql(mutation, variables);
 		return true;
 	} catch (e) {
-		console.error('updateProjectEstimate failed:', e.message);
-		return false;
+		console.error('updateProjectEstimate failed (variables path):', e.message);
+		// Fallback: inline mutation
+		try {
+			const inline = `mutation{ updateProjectV2ItemFieldValue(input:{projectId:\"${projectNodeId}\",itemId:\"${itemId}\",fieldId:\"${fieldId}\",value:{number:${hours}}}){ projectV2Item{ id } } }`;
+			const out = execFileSync('gh', ['api', 'graphql', '-f', `query=${inline}`], { encoding: 'utf8' });
+			const data = JSON.parse(out);
+			if (data && data.data && data.data.updateProjectV2ItemFieldValue) return true;
+			console.error('updateProjectEstimate fallback: unexpected response', JSON.stringify(data));
+			return false;
+		} catch (ee) {
+			console.error('updateProjectEstimate fallback failed:', ee.message);
+			return false;
+		}
 	}
 }
 
@@ -112,6 +207,8 @@ async function main() {
 	
 	let inputPath;
 	let outputPath;
+	let mirrorProjectPath = null; // e.g., 'user/mzfshark/projects/15'
+	let mirrorEstimateFieldId = null;
 	
 	// Support both --config (new per-repo format) and --input (old format)
 	if (configIndex >= 0 && args[configIndex + 1]) {
@@ -124,6 +221,13 @@ async function main() {
 		const cfg = readJson(configPath);
 		inputPath = cfg.outputs?.engineInputPath || './tmp/engine-input.json';
 		outputPath = cfg.outputs?.engineOutputPath || './tmp/engine-output.json';
+		// Optional mirror project configuration in config file
+		if (cfg.projectMirror && cfg.projectMirror.path) {
+			mirrorProjectPath = cfg.projectMirror.path;
+		}
+		if (cfg.projectMirror && cfg.projectMirror.estimateFieldId) {
+			mirrorEstimateFieldId = cfg.projectMirror.estimateFieldId;
+		}
 	} else {
 		// Old format: explicit --input or default
 		inputPath = (inputIndex >= 0 && args[inputIndex + 1]) ? args[inputIndex + 1] : './tmp/engine-input.json';
@@ -141,6 +245,40 @@ async function main() {
 	const output = { ...engine, executedAt: new Date().toISOString(), results: [] };
 	const owner = engine.owner || 'mzfshark';
 
+	// Resolve main viewer project node id if provided
+	let viewerProjectNodeId = null;
+	const projectCfg = engine.project || {};
+	if (projectCfg && projectCfg.number) {
+		try {
+			viewerProjectNodeId = resolveProjectNodeIdFromViewer(projectCfg.number);
+		} catch (e) {
+			console.warn('Could not resolve viewer project node id:', e.message.split('\n')[0]);
+		}
+	}
+
+	// Resolve mirror project node id if provided via engine or config
+	let mirrorProjectNodeId = null;
+	// Prefer explicit engine.project.mirrorPath if present
+	if (engine.project && engine.project.mirrorPath && !mirrorProjectPath) {
+		mirrorProjectPath = engine.project.mirrorPath;
+	}
+	if (mirrorProjectPath) {
+		try {
+			const parsed = parseProjectMirrorPath(mirrorProjectPath);
+			if (!parsed) {
+				console.warn('Mirror project path unparsable:', mirrorProjectPath);
+			} else if (parsed.scope === 'viewer') {
+				mirrorProjectNodeId = resolveProjectNodeIdFromViewer(parsed.number);
+			} else if (parsed.scope === 'user') {
+				mirrorProjectNodeId = resolveProjectNodeIdForUser(parsed.login, parsed.number);
+			} else if (parsed.scope === 'org') {
+				mirrorProjectNodeId = resolveProjectNodeIdForOrg(parsed.login, parsed.number);
+			}
+		} catch (e) {
+			console.warn('Could not resolve mirror project node id:', e.message.split('\n')[0]);
+		}
+	}
+
 	for (const t of engine.targets || []) {
 		// Handle both formats: "repo" and "owner/repo"
 		const fullRepo = t.repo.includes('/') ? t.repo : `${owner}/${t.repo}`;
@@ -153,18 +291,8 @@ async function main() {
 
 		const repoResult = { repo: fullRepo, tasks: [] };
 		const projectCfg = engine.project || {};
-		let projectNodeId = engine.project && engine.project.nodeId;
-		if (!projectNodeId && projectCfg.number) {
-			try {
-				const q = `query($number:Int!){ viewer{ projectV2(number:$number){ id } } }`;
-				// Pass number as integer using -F instead of -f variables
-				const res = execFileSync('gh', ['api', 'graphql', '-f', `query=${q}`, '-F', `number=${projectCfg.number}`], { encoding: 'utf8' });
-				const data = JSON.parse(res);
-				projectNodeId = data.data.viewer.projectV2.id;
-			} catch (e) {
-				console.warn('Could not resolve project node id:', e.message);
-			}
-		}
+		// Prefer pre-resolved viewerProjectNodeId
+		let projectNodeId = viewerProjectNodeId || (engine.project && engine.project.nodeId);
 
 		for (const task of t.tasks || []) {
 			try {
@@ -207,6 +335,19 @@ async function main() {
 					}
 				}
 
+				// Mirror into secondary project if configured
+				if (issueNodeId && mirrorProjectNodeId) {
+					try {
+						const mirrorItemId = ensureProjectItem(mirrorProjectNodeId, issueNodeId);
+						taskResult.mirrorProjectItemId = mirrorItemId;
+						if (mirrorEstimateFieldId && task.estimateHours != null) {
+							updateProjectEstimate(mirrorProjectNodeId, mirrorItemId, mirrorEstimateFieldId, task.estimateHours);
+						}
+					} catch (e) {
+						console.error('Mirror project attach/update failed for', task.stableId, e.message);
+					}
+				}
+
 				repoResult.tasks.push(taskResult);
 			} catch (e) {
 				const isRateLimit = e.message && e.message.includes('RATE_LIMIT');
@@ -241,7 +382,24 @@ async function main() {
 					issue = createdIssue;
 					created = true;
 				}
-				repoResult.tasks.push({ stableId: s.stableId, issueNumber: issue.number, issueNodeId: issue.node_id || null, created, parentStableId: s.parentStableId });
+				const subIssueNodeId = issue.node_id || null;
+
+				const subResult = { stableId: s.stableId, issueNumber: issue.number, issueNodeId: subIssueNodeId, created, parentStableId: s.parentStableId };
+
+				// Mirror subtasks as well
+				if (subIssueNodeId && mirrorProjectNodeId) {
+					try {
+						const mirrorItemId = ensureProjectItem(mirrorProjectNodeId, subIssueNodeId);
+						subResult.mirrorProjectItemId = mirrorItemId;
+						if (mirrorEstimateFieldId && s.estimateHours != null) {
+							updateProjectEstimate(mirrorProjectNodeId, mirrorItemId, mirrorEstimateFieldId, s.estimateHours);
+						}
+					} catch (e) {
+						console.error('Mirror project attach/update failed for subtask', s.stableId, e.message);
+					}
+				}
+
+				repoResult.tasks.push(subResult);
 			} catch (e) {
 				const isRateLimit = e.message && e.message.includes('RATE_LIMIT');
 				console.error(isRateLimit ? '[RATE_LIMIT]' : '[ERROR]', 'Failed to process subtask', s.stableId.substring(0, 10), e.message.substring(0, 80));
