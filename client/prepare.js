@@ -303,6 +303,50 @@ function main() {
     // Write engine input in the GitIssue-Manager repo (cwd) so the executor can always find it.
     writeJson(path.resolve(outBaseDir, engineInputPath), engine);
 
+    // Build and write metadata file for this target (labels, status, estimate, priority, dates)
+    const metadataPath = out.metadataPath || path.join(path.dirname(tasksPath), 'metadata.json');
+    const metadata = {
+      generatedAt: new Date().toISOString(),
+      repo: target.repo,
+      defaults: {
+        defaultEstimateHours: defaults.defaultEstimateHours,
+        defaultPriority: defaults.defaultPriority,
+        defaultStatus: defaults.defaultStatus,
+        defaultStartDate: defaults.defaultStartDate,
+        defaultEndDate: defaults.defaultEndDate,
+        defaultLabels: defaults.defaultLabels,
+      },
+      tasks: tasks.map((t) => ({
+        stableId: t.stableId,
+        file: t.file,
+        line: t.line,
+        text: t.text,
+        checked: t.checked,
+        labels: t.labels,
+        priority: t.priority,
+        status: t.status,
+        startDate: t.startDate,
+        endDate: t.endDate,
+        estimateHours: t.estimateHours,
+      })),
+      subtasks: subtasks.map((s) => ({
+        stableId: s.stableId,
+        parentStableId: s.parentStableId,
+        file: s.file,
+        line: s.line,
+        text: s.text,
+        checked: s.checked,
+        labels: s.labels,
+        priority: s.priority,
+        status: s.status,
+        startDate: s.startDate,
+        endDate: s.endDate,
+        estimateHours: s.estimateHours,
+      })),
+    };
+
+    writeJson(path.resolve(outBaseDir, metadataPath), metadata);
+
     console.log('Prepared:', target.repo);
     console.log('  tasks:', tasks.length, 'subtasks:', subtasks.length);
     console.log('  outputs:', tasksPath, subtasksPath, engineInputPath);

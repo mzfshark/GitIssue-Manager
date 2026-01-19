@@ -1,0 +1,38 @@
+{
+  "$schema": "../../schemas/metadata-config.schema.json",
+  "version": 1,
+  "defaults": {
+    "labels": ["plan"],
+    "status": "TODO",
+    "priority": "NORMAL",
+    "estimateHours": 1,
+    "startDate": "TBD",
+    "endDate": "TBD"
+  },
+  "allowed": {
+    "status": ["TODO", "IN_PROGRESS", "BLOCKED", "DONE"],
+    "priority": ["LOW", "NORMAL", "HIGH", "URGENT"]
+  },
+  "labelRules": {
+    "maxLabelsPerItem": 10,
+    "normalize": {
+      "trim": true,
+      "lowercase": false,
+      "dedupe": true
+    }
+  },
+  "tagFormat": {
+    "estimate": "[estimate:<number>h]",
+    "labels": "[labels:label-a,label-b]",
+    "status": "[status:TODO]",
+    "priority": "[priority:NORMAL]",
+    "start": "[start:YYYY-MM-DD]",
+    "end": "[end:YYYY-MM-DD]"
+  },
+  "notes": [
+    "This file defines defaults/constraints for PLAN.md tags.",
+    "The GitIssuer agent should inject missing tags using defaults.",
+    "If a checkbox is marked [x], status should default to DONE.",
+    "Dates can be ISO (YYYY-MM-DD) or 'TBD'."
+  ]
+}
