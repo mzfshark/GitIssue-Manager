@@ -191,6 +191,31 @@ fi
 
 read -p "Default estimate hours per subtask (default 1): " DEFAULT_ESTIMATE
 DEFAULT_ESTIMATE=${DEFAULT_ESTIMATE:-1}
+read -p "Default priority (e.g., URGENT, HIGH, NORMAL) [NORMAL]: " DEFAULT_PRIORITY
+DEFAULT_PRIORITY=${DEFAULT_PRIORITY:-NORMAL}
+read -p "Default status [TODO]: " DEFAULT_STATUS
+DEFAULT_STATUS=${DEFAULT_STATUS:-TODO}
+read -p "Default start date [TBD]: " DEFAULT_START_DATE
+DEFAULT_START_DATE=${DEFAULT_START_DATE:-TBD}
+read -p "Default end date [TBD]: " DEFAULT_END_DATE
+DEFAULT_END_DATE=${DEFAULT_END_DATE:-TBD}
+read -p "Default labels (comma-separated) [plan]: " DEFAULT_LABELS
+DEFAULT_LABELS=${DEFAULT_LABELS:-plan}
+
+DEFAULT_LABELS_JSON=""
+IFS=',' read -ra LABELS_ARR <<< "$DEFAULT_LABELS"
+for lbl in "${LABELS_ARR[@]}"; do
+  lbl_trim=$(echo "$lbl" | xargs)
+  if [ -n "$lbl_trim" ]; then
+    if [ -n "$DEFAULT_LABELS_JSON" ]; then
+      DEFAULT_LABELS_JSON="$DEFAULT_LABELS_JSON, "
+    fi
+    DEFAULT_LABELS_JSON="$DEFAULT_LABELS_JSON\"$lbl_trim\""
+  fi
+done
+if [ -z "$DEFAULT_LABELS_JSON" ]; then
+  DEFAULT_LABELS_JSON="\"plan\""
+fi
 
 # Generate config filename from owner and repo
 CONFIG_NAME="${OWNER}-${REPO_NAME}"
@@ -224,7 +249,12 @@ cat > "$CFG_FILE" <<EOF
     }
   },
   "defaults": {
-    "defaultEstimateHours": $DEFAULT_ESTIMATE
+    "defaultEstimateHours": $DEFAULT_ESTIMATE,
+    "defaultPriority": "$DEFAULT_PRIORITY",
+    "defaultStatus": "$DEFAULT_STATUS",
+    "defaultStartDate": "$DEFAULT_START_DATE",
+    "defaultEndDate": "$DEFAULT_END_DATE",
+    "defaultLabels": [ $DEFAULT_LABELS_JSON ]
   },
   "outputs": {
     "tasksPath": "$TASKS_PATH",

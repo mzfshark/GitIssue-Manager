@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -e
+
+CONFIG_DIR="./sync-helper/configs"
+
+# Parse --repo flag
+SELECTED_REPO=""
+if [ "$1" = "--repo" ] && [ -n "$2" ]; then
+  SELECTED_REPO="$2"
+fi
+
+if [ ! -d "$CONFIG_DIR" ] || [ -z "$(ls -A "$CONFIG_DIR" 2>/dev/null)" ]; then
+  echo "No repositories configured. Run: npm run setup"
+  exit 1
+fi
+
+# If --repo specified, find and use that config
+if [ -n "$SELECTED_REPO" ]; then
+  # Try as config name first (e.g., "Axodus-aragon-app")
+  config="$CONFIG_DIR/${SELECTED_REPO}.json"
+  if [ ! -f "$config" ]; then
+    # Try finding by repo path (e.g., "Axodus/aragon-app")
+    for cfg in "$CONFIG_DIR"/*.json; do
+      repo=$(jq -r '.repo' "$cfg")
+      if [ "$repo" = "$SELECTED_REPO" ]; then
+        config="$cfg"
+        break
+      fi
+    done
+  fi
+  
+  if [ ! -f "$config" ]; then
+    echo "Error: Repository '$SELECTED_REPO' not found in configs"
+    echo "Available repos:"
+    for cfg in "$CONFIG_DIR"/*.json; do
+      echo "  - $(jq -r '.repo' "$cfg") ($(basename "$cfg" .json))"
+    done
+    exit 1
+  fi
+  
+  repo=$(jq -r '.repo' "$config")
+  echo "Using: $repo"
+  echo "Config: $config"
+  echo
+  node client/prepare.js --config "$config"
+  echo
+  node server/executor.js --config "$config"
+  exit 0
+fi
+
+# Count configs
+count=$(ls -1 "$CONFIG_DIR"/*.json 2>/dev/null | wc -l)
+
+if [ "$count" -eq 0 ]; then
+  echo "No repositories configured. Run: npm run setup"
+  exit 1
+elif [ "$count" -eq 1 ]; then
+  # Only one config, use it automatically
+  config=$(ls "$CONFIG_DIR"/*.json)
+  repo=$(jq -r '.repo' "$config")
+  echo "Using: $repo"
+  echo "Config: $config"
+  echo
+  node client/prepare.js --config "$config"
+  echo
+  node server/executor.js --config "$config"
+else
+  # Multiple configs, let user choose
+  echo "Select a repository for full workflow (prepare + execute):"
+  echo
+  
+  configs=()
+  i=1
+  for cfg in "$CONFIG_DIR"/*.json; do
+    repo=$(jq -r '.repo' "$cfg")
+    basename=$(basename "$cfg" .json)
+    echo "  $i) $repo"
+    configs+=("$cfg")
+    i=$((i+1))
+  done
+  echo "  a) All repositories"
+  echo
+  
+  read -p "Choose (1-$((i-1))/a): " choice
+  
+  if [ "$choice" = "a" ] || [ "$choice" = "A" ]; then
+    # Process all
+    for cfg in "${configs[@]}"; do
+      repo=$(jq -r '.repo' "$cfg")
+      echo
+      echo "========================================"
+      echo "Full workflow: $repo"
+      echo "========================================"
+      node client/prepare.js --config "$cfg"
+      echo
+      node server/executor.js --config "$cfg"
+    done
+  else
+    # Process selected
+    idx=$((choice-1))
+    if [ $idx -lt 0 ] || [ $idx -ge ${#configs[@]} ]; then
+      echo "Invalid selection"
+      exit 1
+    fi
+    config="${configs[$idx]}"
+    repo=$(jq -r '.repo' "$config")
+    echo "Selected: $repo"
+    echo
+    node client/prepare.js --config "$config"
+    echo
+    node server/executor.js --config "$config"
+  fi
+fi

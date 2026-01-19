@@ -25,24 +25,51 @@ function writeJson(p, obj) {
   fs.writeFileSync(p, JSON.stringify(obj, null, 2));
 }
 
-function walkMarkdown(dir, files = []) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const e of entries) {
-    if ([
-      'node_modules', '.git', 'tmp', 'dist', 'artifacts', 'cache', 'coverage', 'broadcast'
-    ].includes(e.name)) continue;
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) walkMarkdown(full, files);
-    else if (e.isFile() && e.name.toLowerCase().endsWith('.md')) files.push(full);
+function hasDotSegment(relPath) {
+  return relPath.split(/[\\/]/).some((seg) => seg.startsWith('.'));
+}
+
+function extractLinkedMarkdownFiles(planPath, absRoot) {
+  const content = fs.readFileSync(planPath, 'utf8');
+  const links = new Set();
+  const linkRe = /\[[^\]]*\]\(([^)]+)\)/g;
+  let m;
+  while ((m = linkRe.exec(content)) !== null) {
+    let link = m[1].trim();
+    if (!link || link.startsWith('http://') || link.startsWith('https://') || link.startsWith('mailto:') || link.startsWith('#')) {
+      continue;
+    }
+    link = link.split('#')[0];
+    if (!link || !link.toLowerCase().endsWith('.md')) continue;
+    const resolved = path.resolve(path.dirname(planPath), link);
+    const rel = path.relative(absRoot, resolved);
+    if (rel.startsWith('..') || path.isAbsolute(rel) && !resolved.startsWith(absRoot)) continue;
+    if (hasDotSegment(rel)) continue;
+    if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+      links.add(resolved);
+    }
   }
+  return Array.from(links);
+}
+
+function getPlanFiles(absRoot) {
+  const planPath = path.join(absRoot, 'PLAN.md');
+  if (!fs.existsSync(planPath)) {
+    console.warn('PLAN.md not found at:', planPath);
+    return [];
+  }
+
+  const files = [planPath];
+  const linked = extractLinkedMarkdownFiles(planPath, absRoot);
+  for (const f of linked) files.push(f);
   return files;
 }
 
 function parseTags(text) {
   // Supported inline tags:
-  // [estimate:2h] [priority:P1] [status:In Progress] [start:2026-01-01] [end:2026-01-31]
+  // [estimate:2h] [priority:URGENT] [status:In Progress] [start:2026-01-01] [end:2026-01-31] [labels:plan,backend]
   const out = { cleaned: text };
-  const tagRe = /\[(estimate|priority|status|start|end):([^\]]+)\]/gi;
+  const tagRe = /\[(estimate|priority|status|start|end|label|labels):([^\]]+)\]/gi;
   let m;
   while ((m = tagRe.exec(text)) !== null) {
     const key = m[1].toLowerCase();
@@ -58,6 +85,9 @@ function parseTags(text) {
       out.priority = value;
     } else if (key === 'status') {
       out.status = value;
+    } else if (key === 'label' || key === 'labels') {
+      const parts = value.split(',').map((v) => v.trim()).filter(Boolean);
+      if (parts.length) out.labels = parts;
     }
   }
   out.cleaned = text.replace(tagRe, '').replace(/\s{2,}/g, ' ').trim();
@@ -88,6 +118,7 @@ function parseChecklistWithIndent(content) {
         status: tags.status,
         startDate: tags.startDate,
         endDate: tags.endDate,
+        labels: tags.labels,
       },
     });
   }
@@ -95,7 +126,12 @@ function parseChecklistWithIndent(content) {
   return items;
 }
 
-function buildHierarchy(relFile, items) {
+function mergeLabels(defaultLabels, itemLabels) {
+  const combined = [...(defaultLabels || []), ...(itemLabels || [])];
+  return Array.from(new Set(combined.map((l) => l.trim()).filter(Boolean)));
+}
+
+function buildHierarchy(relFile, items, defaults) {
   const tasks = [];
   const subtasks = [];
   const stack = []; // { indent, stableId }
@@ -106,18 +142,25 @@ function buildHierarchy(relFile, items) {
     while (stack.length && stack[stack.length - 1].indent >= it.indent) stack.pop();
     const parent = stack.length ? stack[stack.length - 1] : null;
 
+    const labels = mergeLabels(defaults.defaultLabels, it.meta.labels);
+    const priority = it.meta.priority ?? defaults.defaultPriority;
+    const status = it.meta.status ?? (it.checked ? 'DONE' : defaults.defaultStatus);
+    const startDate = it.meta.startDate ?? defaults.defaultStartDate;
+    const endDate = it.meta.endDate ?? defaults.defaultEndDate;
+    const estimateHours = it.meta.estimateHours ?? defaults.defaultEstimateHours;
+
     const base = {
       stableId,
       file: relFile,
       line: it.line,
       text: it.text,
       checked: it.checked,
-      labels: [],
-      priority: it.meta.priority || null,
-      status: it.meta.status || null,
-      startDate: it.meta.startDate || null,
-      endDate: it.meta.endDate || null,
-      estimateHours: it.meta.estimateHours ?? null,
+      labels,
+      priority,
+      status,
+      startDate,
+      endDate,
+      estimateHours,
     };
 
     if (!parent) {
@@ -154,7 +197,14 @@ function sumSubtaskEstimates(tasks, subtasks, defaultEstimateHours) {
 function loadConfig(cfgPath) {
   const cfg = readJson(cfgPath);
   const defaults = cfg.defaults || {};
-  const defaultEstimateHours = typeof defaults.defaultEstimateHours === 'number' ? defaults.defaultEstimateHours : 1;
+  const normalizedDefaults = {
+    defaultEstimateHours: typeof defaults.defaultEstimateHours === 'number' ? defaults.defaultEstimateHours : 1,
+    defaultPriority: defaults.defaultPriority || 'NORMAL',
+    defaultStatus: defaults.defaultStatus || 'TODO',
+    defaultStartDate: defaults.defaultStartDate || 'TBD',
+    defaultEndDate: defaults.defaultEndDate || 'TBD',
+    defaultLabels: Array.isArray(defaults.defaultLabels) && defaults.defaultLabels.length ? defaults.defaultLabels : ['plan'],
+  };
 
   // Support both old format (with targets array) and new format (single repo)
   let targets;
@@ -177,7 +227,7 @@ function loadConfig(cfgPath) {
     throw new Error('Config must have at least one target');
   }
 
-  return { cfg, defaultEstimateHours, targets };
+  return { cfg, defaults: normalizedDefaults, targets };
 }
 
 function main() {
@@ -194,7 +244,7 @@ function main() {
     process.exit(2);
   }
 
-  const { cfg, defaultEstimateHours, targets } = loadConfig(cfgPath);
+  const { cfg, defaults, targets } = loadConfig(cfgPath);
 
   const engine = {
     version: '1.0',
@@ -220,7 +270,11 @@ function main() {
       process.exit(3);
     }
 
-    const mdFiles = walkMarkdown(absRoot);
+    const mdFiles = getPlanFiles(absRoot);
+    if (!mdFiles.length) {
+      console.warn('No PLAN.md or linked files found for:', target.repo);
+      continue;
+    }
     let tasks = [];
     let subtasks = [];
 
@@ -229,12 +283,12 @@ function main() {
       const items = parseChecklistWithIndent(content);
       if (!items.length) continue;
       const relFile = path.relative(absRoot, f).replace(/\\/g, '/');
-      const built = buildHierarchy(relFile, items);
+      const built = buildHierarchy(relFile, items, defaults);
       tasks = tasks.concat(built.tasks);
       subtasks = subtasks.concat(built.subtasks);
     }
 
-    sumSubtaskEstimates(tasks, subtasks, defaultEstimateHours);
+    sumSubtaskEstimates(tasks, subtasks, defaults.defaultEstimateHours);
 
     writeJson(path.resolve(outBaseDir, tasksPath), tasks);
     writeJson(path.resolve(outBaseDir, subtasksPath), subtasks);

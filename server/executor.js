@@ -28,7 +28,13 @@ function ghExec(args) {
 }
 
 function repoIsAllowed(repo) {
-	return repo && repo.startsWith('mzfshark/');
+	// Allow mzfshark/* and Axodus/* repos
+	return repo && (repo.startsWith('mzfshark/') || repo.startsWith('Axodus/'));
+}
+
+function normalizeLabels(labels, extra = []) {
+	const combined = [...(Array.isArray(labels) ? labels : []), ...extra];
+	return Array.from(new Set(combined.map((l) => String(l).trim()).filter(Boolean)));
 }
 
 function findIssueByStableId(repo, stableId) {
@@ -151,9 +157,10 @@ async function main() {
 		if (!projectNodeId && projectCfg.number) {
 			try {
 				const q = `query($number:Int!){ viewer{ projectV2(number:$number){ id } } }`;
-				const vars = { number: projectCfg.number };
-				const res = graphql(q, vars);
-				projectNodeId = res.data.viewer.projectV2.id;
+				// Pass number as integer using -F instead of -f variables
+				const res = execFileSync('gh', ['api', 'graphql', '-f', `query=${q}`, '-F', `number=${projectCfg.number}`], { encoding: 'utf8' });
+				const data = JSON.parse(res);
+				projectNodeId = data.data.viewer.projectV2.id;
 			} catch (e) {
 				console.warn('Could not resolve project node id:', e.message);
 			}
@@ -163,7 +170,7 @@ async function main() {
 			try {
 				const title = task.text.length > 120 ? task.text.slice(0, 117) + '...' : task.text;
 				const body = `Source: ${task.file}#L${task.line}\n\nStableId: ${task.stableId}\n\n${task.text}`;
-				const labels = ['sync-md'];
+				const labels = normalizeLabels(task.labels, ['sync-md']);
 				if (task.priority) labels.push(task.priority);
 
 				let issue = findIssueByStableId(fullRepo, task.stableId);
@@ -219,7 +226,8 @@ async function main() {
 				const title = s.text.length > 120 ? s.text.slice(0, 117) + '...' : s.text;
 				let body = `Source: ${s.file}#L${s.line}\n\nStableId: ${s.stableId}\n\n${s.text}`;
 				if (parentNumber) body = `Parent: #${parentNumber}\n\n` + body;
-				const labels = ['subtask','sync-md'];
+				const labels = normalizeLabels(s.labels, ['subtask', 'sync-md']);
+				if (s.priority) labels.push(s.priority);
 				let issue = findIssueByStableId(fullRepo, s.stableId);
 				let created = false;
 				if (issue) {

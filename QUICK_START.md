@@ -1,99 +1,171 @@
-# Quick Start Guide
+# Quick Start - Multi-Repository Setup
 
-## Installation
+## Overview
 
-No installation needed! Uses Node.js built-in modules + GitHub CLI.
+GitIssue-Manager now supports managing multiple repositories with isolated configurations and outputs.
 
-**Prerequisites:**
-- Node.js >= 16
-- GitHub CLI (`gh`) authenticated
+## Structure
+
+```
+GitIssue-Manager/
+├── sync-helper/
+│   └── configs/
+│       ├── mzfshark-AragonOSX.json      # Config for AragonOSX
+│       ├── mzfshark-aragon-app.json     # Config for aragon-app
+│       └── mzfshark-Backend.json        # Config for Backend
+└── tmp/
+    ├── mzfshark-AragonOSX/              # Outputs for AragonOSX
+    │   ├── tasks.json
+    │   ├── subtasks.json
+    │   ├── engine-input.json
+    │   └── engine-output.json
+    ├── mzfshark-aragon-app/             # Outputs for aragon-app
+    └── mzfshark-Backend/                # Outputs for Backend
+```
+
+## Quick Commands
+
+### Setup & List
 
 ```bash
-gh auth status  # Verify authentication
-```
-
-## Commands Cheatsheet
-
-### 🚀 First Time Setup
-```bash
-npm run setup           # Interactive config wizard
-npm run labels:create   # Create standard labels (optional)
-```
-
-### 📝 Daily Workflow
-```bash
-# 1. Update your Markdown checklists (*.md files)
-# 2. Run:
-npm run full            # Prepare + Execute in one command
-```
-
-### 🔍 Check Results
-```bash
-npm run output:summary  # Quick stats
-npm run verify:count    # Count issues on GitHub
-npm run verify:issues   # List recent issues
-```
-
-### 🔧 Advanced
-```bash
-npm run prepare         # Generate engine-input.json only
-npm run execute         # Execute only (uses existing engine-input.json)
-npm run execute:bg      # Background execution for large repos
-```
-
-### 🐛 Troubleshooting
-```bash
-npm run output:errors   # Show first 5 errors
-npm run output:last     # Show last 10 processed items
-npm run clean          # Remove temp files
-```
-
-## Example Output
-
-### After `npm run output:summary`:
-```json
-{
-  "executed": "2026-01-19T13:09:09.626Z",
-  "repo": "mzfshark/AragonOSX",
-  "total": 397,
-  "created": 397,
-  "errors": 0
-}
-```
-
-### After `npm run verify:count`:
-```
-528
-```
-
-## Typical Workflow
-
-```bash
-# Day 1: Setup
+# Configure a new repository
 npm run setup
-npm run full
-npm run verify:count  # Verify issues created
 
-# Day 2: Update Markdown and sync
-# Edit some *.md files...
-npm run full
-npm run output:summary  # Check what changed
+# List all configured repositories
+npm run repos
 
-# Day 3: Check for issues
-npm run verify:issues
-# Open browser to review issues
+# Get commands for specific repo
+npm run repos -- --commands mzfshark-AragonOSX
 ```
 
-## Rate Limits
+### Single Repository Workflow
 
-If you hit rate limits:
-1. Wait ~1 hour for reset
-2. Re-run `npm run execute` (it's idempotent—will skip existing issues)
+```bash
+# Full path to config
+npm run prepare -- --config sync-helper/configs/mzfshark-AragonOSX.json
+npm run execute -- --config sync-helper/configs/mzfshark-AragonOSX.json
 
-## Tips
+# Short version (copy from `npm run repos -- --commands <name>`)
+CONFIG=sync-helper/configs/mzfshark-AragonOSX.json
+npm run prepare -- --config $CONFIG && npm run execute -- --config $CONFIG
+```
 
-- Issues are idempotent via `stableId` (SHA1 of file:line:text)
-- Changing text creates a new issue; use `stableId` to track identity
-- Use `[estimate:2h]` tags inline in Markdown for project tracking
-- Enable Project sync in config for automatic Project V2 updates
+### Multiple Repositories
+
+Process all configured repos:
+
+```bash
+# Simple loop
+for config in sync-helper/configs/*.json; do
+  npm run prepare -- --config "$config"
+  npm run execute -- --config "$config"
+done
+```
+
+### Inspect Outputs
+
+```bash
+# View tasks for specific repo
+jq '.targets[0].tasks[:5]' tmp/mzfshark-AragonOSX/engine-input.json
+
+# Count issues created
+jq '[.results[0].tasks[] | select(.created)] | length' tmp/mzfshark-AragonOSX/engine-output.json
+
+# View errors
+jq '[.results[0].tasks[] | select(.error)]' tmp/mzfshark-AragonOSX/engine-output.json
+```
+
+## Common Workflows
+
+### 1. First Time Setup
+
+```bash
+# Step 1: Configure AragonOSX
+npm run setup
+# Owner: mzfshark
+# Repo: AragonOSX
+# Path: ../AragonOSX
+# Project sync: N
+
+# Step 2: Configure aragon-app
+npm run setup
+# Choose option 1: Configure a new repository
+# Owner: mzfshark
+# Repo: aragon-app
+# Path: ../aragon-app
+# Project sync: N
+
+# Step 3: List configured repos
+npm run repos
+```
+
+### 2. Daily Work - Single Repo
+
+```bash
+# Update from latest Markdown changes
+npm run prepare -- --config sync-helper/configs/mzfshark-AragonOSX.json
+
+# Create/update issues on GitHub
+npm run execute -- --config sync-helper/configs/mzfshark-AragonOSX.json
+```
+
+### 3. Weekly Sync - All Repos
+
+```bash
+# Process all repos
+for cfg in sync-helper/configs/*.json; do
+  echo "Processing: $(jq -r .repo $cfg)"
+  npm run prepare -- --config "$cfg"
+  npm run execute -- --config "$cfg"
+  echo "---"
+done
+```
+
+### 4. Edit Configuration
+
+```bash
+# Via setup script
+npm run setup
+# Choose option 2: Edit an existing repository
+
+# Or direct edit
+nano sync-helper/configs/mzfshark-AragonOSX.json
+```
+
+## Defaults Reference
+
+All prompts support defaults (press Enter to use):
+
+- **Owner**: `mzfshark`
+- **Repo name**: `AragonOSX`
+- **Local path**: `../<repo-name>`
+- **Project sync**: `N` (disabled)
+- **Default estimate**: `1` hour
+
+## Troubleshooting
+
+**Error**: "Target localPath does not exist"
+```bash
+# Fix: Update localPath in config
+nano sync-helper/configs/mzfshark-AragonOSX.json
+# Change "localPath": "../correct-path"
+```
+
+**Error**: "Config not found"
+```bash
+# Solution: Use --config flag
+npm run prepare -- --config sync-helper/configs/mzfshark-AragonOSX.json
+```
+
+**Want to delete a repo config?**
+```bash
+rm sync-helper/configs/mzfshark-AragonOSX.json
+rm -rf tmp/mzfshark-AragonOSX/
+```
+
+## See Also
+
+- [docs/MULTI_REPO_GUIDE.md](docs/MULTI_REPO_GUIDE.md) - Complete multi-repo documentation
+- [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) - Detailed setup options
+- [README.md](README.md) - Project overview
 
