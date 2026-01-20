@@ -1,0 +1,47 @@
+{
+  "description": "GitHub Issue Cleanup Configuration",
+  "documentation": "See docs/CLEANUP_SCRIPT_GUIDE.md for full reference",
+  "repos": [
+    "mzfshark/AragonOSX",
+    "Axodus/aragon-app",
+    "Axodus/Aragon-app-backend"
+  ],
+  "plan_files": {
+    "mzfshark/AragonOSX": [
+      "PLAN.md",
+      "PLAN_admin_grant_closeout.md",
+      "PLAN_subtasks.md"
+    ],
+    "Axodus/aragon-app": [
+      "PLAN.md",
+      "PLAN_subtasks.md"
+    ],
+    "Axodus/Aragon-app-backend": [
+      "PLAN.md",
+      "PLAN_subtasks.md"
+    ]
+  },
+  "defaults": {
+    "status": "open",
+    "limit": null,
+    "skip_labels": [
+      "pinned",
+      "important",
+      "critical"
+    ],
+    "mode": "without-plan"
+  },
+  "comment_on_close": {
+    "enabled": true,
+    "message": "This issue is marked as 'not-implemented' because it does not appear in the current PLAN.md documentation. It may be:\n- Auto-generated from an older framework sync\n- Duplicate or superseded by other work\n- Out of scope for the current sprint\n\nIf needed, reopen and link to PLAN.md."
+  },
+  "rate_limiting": {
+    "sleep_between_requests_seconds": 0.5,
+    "max_parallel_operations": 5
+  },
+  "logging": {
+    "log_directory": "./logs",
+    "timestamp_format": "%Y%m%d_%H%M%S",
+    "verbose": false
+  }
+}
