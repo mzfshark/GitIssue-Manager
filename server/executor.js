@@ -70,7 +70,7 @@ function createIssue(repo, title, body, labels) {
 }
 
 function updateIssue(repo, number, title, body, labels) {
-	const args = [`repos/${repo}/issues/${number}`, '-X', 'PATCH', '-f', `title=${title}`, '-f', `body=${body}`];
+	const args = [`repos/${repo}/issues/${number}`, '-X', 'PATCH', '-f', `title=${title}`, '-f', `body=${body}`];        
 	for (const l of labels || []) args.push('-f', `labels[]=${l}`);
 	const out = ghApi(args);
 	return out;
@@ -87,6 +87,16 @@ function graphql(query, variables) {
 		return JSON.parse(out);
 	} finally {
 		try { fs.unlinkSync(fname); } catch (e) { /* ignore cleanup errors */ }
+	}
+}
+
+function getViewerLogin() {
+	try {
+		const res = execFileSync('gh', ['api', 'graphql', '-f', 'query={ viewer { login } }'], { encoding: 'utf8' });
+		const data = JSON.parse(res);
+		return data && data.data && data.data.viewer && data.data.viewer.login ? data.data.viewer.login : null;
+	} catch (e) {
+		return null;
 	}
 }
 
@@ -200,6 +210,114 @@ function updateProjectEstimate(projectNodeId, itemId, fieldId, hours) {
 	}
 }
 
+function findSingleSelectOptionId(fieldNodeId, optionName) {
+	if (!fieldNodeId || typeof fieldNodeId !== 'string') return null;
+	try {
+		const q = `query($id:ID!){ node(id:$id){ __typename ... on ProjectV2SingleSelectField{ options(first:100){ nodes{ id name } } } } }`;
+		const res = graphql(q, { id: fieldNodeId });
+		const nodes = res && res.data && res.data.node && res.data.node.options && res.data.node.options.nodes ? res.data.node.options.nodes : [];
+		for (const n of nodes) {
+			if (String(n.name || '').toLowerCase() === String(optionName || '').toLowerCase()) return n.id;
+		}
+		return null;
+	} catch (e) {
+		console.error('findSingleSelectOptionId failed for', fieldNodeId, e.message);
+		return null;
+	}
+}
+
+function updateProjectField(projectNodeId, itemId, fieldId, valueObj) {
+	if (!fieldId) return false;
+	if (/^[0-9]+$/.test(String(fieldId))) {
+		console.warn('Project field id appears numeric. GraphQL requires global node id. Skipping field update for', fieldId);
+		return false;
+	}
+	const mutation = `mutation($input:UpdateProjectV2ItemFieldValueInput!){ updateProjectV2ItemFieldValue(input:$input){ projectV2Item{ id } } }`;
+	const variables = { input: { projectId: projectNodeId, itemId, fieldId, value: valueObj } };
+	try {
+		graphql(mutation, variables);
+		return true;
+	} catch (e) {
+		console.error('updateProjectField failed (variables path):', e.message);
+		try {
+			const inline = `mutation{ updateProjectV2ItemFieldValue(input:{projectId:\"${projectNodeId}\",itemId:\"${itemId}\",fieldId:\"${fieldId}\",value:${JSON.stringify(valueObj)}}){ projectV2Item{ id } } }`;
+			const out = execFileSync('gh', ['api', 'graphql', '-f', `query=${inline}`], { encoding: 'utf8' });
+			const data = JSON.parse(out);
+			if (data && data.data && data.data.updateProjectV2ItemFieldValue) return true;
+			return false;
+		} catch (ee) {
+			console.error('updateProjectField fallback failed:', ee.message);
+			return false;
+		}
+	}
+}
+
+// Cache for project fields
+const projectFieldsCache = {};
+
+function loadProjectFields(projectNodeId) {
+	if (projectFieldsCache[projectNodeId]) return projectFieldsCache[projectNodeId];
+	try {
+		const q = `query($id:ID!){ node(id:$id){ __typename ... on ProjectV2{ fields(first:200){ nodes{ id databaseId name __typename } } } } }`;
+		const res = graphql(q, { id: projectNodeId });
+		const nodes = res && res.data && res.data.node && res.data.node.fields && res.data.node.fields.nodes ? res.data.node.fields.nodes : [];
+		projectFieldsCache[projectNodeId] = nodes;
+		return nodes;
+	} catch (e) {
+		console.error('loadProjectFields failed for', projectNodeId, e.message);
+		projectFieldsCache[projectNodeId] = [];
+		return [];
+	}
+}
+
+function loadProjectFieldsForOrg(ownerLogin, projectNumber) {
+	try {
+		const q = `query($owner:String!,$number:Int!){ organization(login:$owner){ projectV2(number:$number){ fields(first:200){ nodes{ id name __typename } } } } }`;
+		const res = graphql(q, { owner: ownerLogin, number: projectNumber });
+		const nodes = res && res.data && res.data.organization && res.data.organization.projectV2 && res.data.organization.projectV2.fields && res.data.organization.projectV2.fields.nodes ? res.data.organization.projectV2.fields.nodes : [];
+		return nodes;
+	} catch (e) {
+		console.error('loadProjectFieldsForOrg failed for', ownerLogin, projectNumber, e.message);
+		return [];
+	}
+}
+
+function resolveProjectFieldNodeIdByProject(ownerLogin, projectNumber, candidate) {
+	if (!ownerLogin || !projectNumber || !candidate) return null;
+	const fields = loadProjectFieldsForOrg(ownerLogin, projectNumber);
+	if (/^[0-9]+$/.test(String(candidate))) {
+		const num = parseInt(candidate, 10);
+		for (const f of fields) {
+			if (f.databaseId == num || String(f.databaseId) === String(num)) return f.id;
+		}
+	}
+	const cname = String(candidate).toLowerCase();
+	for (const f of fields) {
+		if ((f.name || '').toLowerCase().includes(cname)) return f.id;
+	}
+	return null;
+}
+
+function resolveProjectFieldNodeId(projectNodeId, candidate) {
+	if (!projectNodeId || !candidate) return null;
+	// if candidate already looks like a global id, return it
+	if (String(candidate).startsWith('PFV_') || String(candidate).startsWith('PVT_') || String(candidate).startsWith('PVF_') || String(candidate).startsWith('PVT')) return candidate;
+	const fields = loadProjectFields(projectNodeId);
+	// numeric databaseId
+	if (/^[0-9]+$/.test(String(candidate))) {
+		const num = parseInt(candidate, 10);
+		for (const f of fields) {
+			if (f.databaseId == num) return f.id;
+		}
+	}
+	// match by name (case-insensitive contains)
+	const cname = String(candidate).toLowerCase();
+	for (const f of fields) {
+		if ((f.name || '').toLowerCase().includes(cname)) return f.id;
+	}
+	return null;
+}
+
 async function main() {
 	const args = process.argv.slice(2);
 	const configIndex = args.indexOf('--config');
@@ -244,6 +362,7 @@ async function main() {
 	const engine = readJson(inputPath);
 	const output = { ...engine, executedAt: new Date().toISOString(), results: [] };
 	const owner = engine.owner || 'mzfshark';
+	const defaultAssignee = getViewerLogin() || process.env.GITISSUE_DEFAULT_ASSIGNEE || 'mzfshark';
 
 	// Resolve main viewer project node id if provided
 	let viewerProjectNodeId = null;
@@ -291,25 +410,48 @@ async function main() {
 
 		const repoResult = { repo: fullRepo, tasks: [] };
 		const projectCfg = engine.project || {};
-		// Prefer pre-resolved viewerProjectNodeId
-		let projectNodeId = viewerProjectNodeId || (engine.project && engine.project.nodeId);
+		// Prefer pre-resolved viewerProjectNodeId. Accept multiple possible keys for a pre-populated node id
+		// (some configs use `projectNodeId` while others use `nodeId`).
+		let projectNodeId = viewerProjectNodeId || (engine.project && (engine.project.nodeId || engine.project.projectNodeId || engine.project.project_node_id || engine.project.project_id));
+		if (!projectNodeId && engine.project && engine.project.projectNodeId) {
+			console.warn('Using legacy engine.project.projectNodeId key for project node id');
+			projectNodeId = engine.project.projectNodeId;
+		}
 
 		for (const task of t.tasks || []) {
 			try {
 				const title = task.text.length > 120 ? task.text.slice(0, 117) + '...' : task.text;
 				const body = `Source: ${task.file}#L${task.line}\n\nStableId: ${task.stableId}\n\n${task.text}`;
-				const labels = normalizeLabels(task.labels, ['sync-md']);
-				if (task.priority) labels.push(task.priority);
+								// Normalize labels and include priority
+								const labels = normalizeLabels(task.labels, ['sync-md']);
+								if (task.priority) labels.push(task.priority);
+
+								// Normalize labels: ensure a `type:` label exists
+				if (!labels.some(l => /^type:/i.test(l))) {
+					const text = (task.text || '').toLowerCase();
+					if (text.includes('bug') || text.includes('error')) labels.push('type:bug');
+					else if (text.includes('feature')) labels.push('type:feature');
+					else labels.push('type:task');
+				}
 
 				let issue = findIssueByStableId(fullRepo, task.stableId);
 				let created = false;
 				if (issue) {
 					console.log('Updating issue', issue.number, 'for', task.stableId.substring(0, 10));
-					const upd = updateIssue(fullRepo, issue.number, title, body, labels);
+					const upd = updateIssue(fullRepo, issue.number, title, body, labels.concat([]));
 					issue = upd;
 				} else {
 					console.log('Creating issue for', task.stableId.substring(0, 10));
-					const createdIssue = createIssue(fullRepo, title, body, labels);
+					// assign to default assignee if available
+					const assignees = defaultAssignee ? [defaultAssignee] : [];
+					const createdIssue = (function(){
+						try {
+							const args = [`repos/${fullRepo}/issues`, '-f', `title=${title}`, '-f', `body=${body}`];
+							for (const l of labels || []) args.push('-f', `labels[]=${l}`);
+							for (const a of assignees) args.push('-f', `assignees[]=${a}`);
+							return ghApi(args);
+						} catch (e) { throw e; }
+					})();
 					if (!createdIssue || !createdIssue.number) {
 						throw new Error('Failed to create issue: no issue number returned');
 					}
@@ -326,9 +468,47 @@ async function main() {
 					try {
 						const projectItemId = ensureProjectItem(projectNodeId, issueNodeId);
 						taskResult.projectItemId = projectItemId;
-						const estimateFieldId = (engine.project && engine.project.fieldIds && engine.project.fieldIds.estimateHoursFieldId) || null;
-						if (estimateFieldId && task.estimateHours != null) {
-							updateProjectEstimate(projectNodeId, projectItemId, estimateFieldId, task.estimateHours);
+						// Resolve configured fields (accept numeric ids or names) and set defaults
+						const cfgFields = (engine.project && engine.project.fieldIds) || {};
+						const estimateFieldCandidate = cfgFields.estimateHoursFieldId || cfgFields.estimateFieldId || null;
+						const startFieldCandidate = cfgFields.startDateFieldId || cfgFields.startFieldId || null;
+						const endFieldCandidate = cfgFields.endDateFieldId || cfgFields.endFieldId || null;
+						const statusFieldCandidate = cfgFields.statusFieldId || null;
+						const priorityFieldCandidate = cfgFields.priorityFieldId || null;
+
+						// Resolve using organization/project number when possible
+						const projectNumber = (engine.project && engine.project.number) || null;
+						const estimateFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, estimateFieldCandidate) : resolveProjectFieldNodeId(projectNodeId, estimateFieldCandidate);
+						if (estimateFieldNodeId && task.estimateHours != null) {
+							updateProjectField(projectNodeId, projectItemId, estimateFieldNodeId, { number: task.estimateHours });
+						}
+
+						// Dates: default start=today, end=+7 days when not provided
+						const today = new Date();
+						const yyyy = today.getUTCFullYear();
+						const mm = String(today.getUTCMonth()+1).padStart(2,'0');
+						const dd = String(today.getUTCDate()).padStart(2,'0');
+						const startDateStr = (task.startDate && task.startDate !== 'TBD') ? task.startDate : `${yyyy}-${mm}-${dd}`;
+						const end = new Date(today.getTime()); end.setUTCDate(end.getUTCDate()+7);
+						const eyyyy = end.getUTCFullYear(); const emm = String(end.getUTCMonth()+1).padStart(2,'0'); const edd = String(end.getUTCDate()).padStart(2,'0');
+						const endDateStr = (task.endDate && task.endDate !== 'TBD') ? task.endDate : `${eyyyy}-${emm}-${edd}`;
+												const startFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, startFieldCandidate) : resolveProjectFieldNodeId(projectNodeId, startFieldCandidate);
+												if (startFieldNodeId) updateProjectField(projectNodeId, projectItemId, startFieldNodeId, { date: startDateStr });
+												const endFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, endFieldCandidate) : resolveProjectFieldNodeId(projectNodeId, endFieldCandidate);
+												if (endFieldNodeId) updateProjectField(projectNodeId, projectItemId, endFieldNodeId, { date: endDateStr });
+
+						// Status / Priority: single-select fields — map by option name
+												const statusFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, statusFieldCandidate || 'Status') : resolveProjectFieldNodeId(projectNodeId, statusFieldCandidate || 'Status');
+												const priorityFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, priorityFieldCandidate || 'Priority') : resolveProjectFieldNodeId(projectNodeId, priorityFieldCandidate || 'Priority');
+						if (statusFieldNodeId) {
+							const desired = (task.status || engine.defaults && engine.defaults.defaultStatus || 'Backlog');
+							const optId = findSingleSelectOptionId(statusFieldNodeId, desired);
+							if (optId) updateProjectField(projectNodeId, projectItemId, statusFieldNodeId, { singleSelectOptionId: optId });
+						}
+						if (priorityFieldNodeId) {
+							const desiredPr = (task.priority || engine.defaults && engine.defaults.defaultPriority || 'low');
+							const optId = findSingleSelectOptionId(priorityFieldNodeId, desiredPr);
+							if (optId) updateProjectField(projectNodeId, projectItemId, priorityFieldNodeId, { singleSelectOptionId: optId });
 						}
 					} catch (e) {
 						console.error('Project attach/update failed for', task.stableId, e.message);
@@ -369,13 +549,29 @@ async function main() {
 				if (parentNumber) body = `Parent: #${parentNumber}\n\n` + body;
 				const labels = normalizeLabels(s.labels, ['subtask', 'sync-md']);
 				if (s.priority) labels.push(s.priority);
+				// Ensure subtask label + default type
+				const subLabels = normalizeLabels(s.labels, ['subtask', 'sync-md']);
+				if (!subLabels.some(l => /^type:/i.test(l))) {
+					const stxt = (s.text || '').toLowerCase();
+					if (stxt.includes('bug') || stxt.includes('error')) subLabels.push('type:bug');
+					else if (stxt.includes('feature')) subLabels.push('type:feature');
+					else subLabels.push('type:task');
+				}
 				let issue = findIssueByStableId(fullRepo, s.stableId);
 				let created = false;
 				if (issue) {
-					const upd = updateIssue(fullRepo, issue.number, title, body, labels);
+					const upd = updateIssue(fullRepo, issue.number, title, body, subLabels.concat([]));
 					issue = upd;
 				} else {
-					const createdIssue = createIssue(fullRepo, title, body, labels);
+					const assignees = defaultAssignee ? [defaultAssignee] : [];
+					const createdIssue = (function(){
+						try {
+							const args = [`repos/${fullRepo}/issues`, '-f', `title=${title}`, '-f', `body=${body}`];
+							for (const l of subLabels || []) args.push('-f', `labels[]=${l}`);
+							for (const a of assignees) args.push('-f', `assignees[]=${a}`);
+							return ghApi(args);
+						} catch (e) { throw e; }
+					})();
 					if (!createdIssue || !createdIssue.number) {
 						throw new Error('Failed to create subtask: no issue number returned');
 					}
