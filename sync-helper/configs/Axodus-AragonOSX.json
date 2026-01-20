@@ -1,7 +1,7 @@
 {
   "owner": "Axodus",
   "repo": "Axodus/AragonOSX",
-  "localPath": "/opt/AragonOSX",
+  "localPath": "../AragonOSX",
   "enableProjectSync": true,
   "project": {
     "url": "https://github.com/orgs/Axodus/projects/23",
@@ -22,9 +22,7 @@
     "defaultStartDate": "TBD",
     "defaultEndDate": "TBD",
     "defaultLabels": [
-      "plan",
-      "core",
-      "governance"
+      "plan"
     ]
   },
   "outputs": {
