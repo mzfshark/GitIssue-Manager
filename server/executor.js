@@ -37,6 +37,39 @@ function normalizeLabels(labels, extra = []) {
 	return Array.from(new Set(combined.map((l) => String(l).trim()).filter(Boolean)));
 }
 
+// --- Title helpers (repo prefix + #TYPE-NNN pattern) ---
+function getRepoName(fullRepo) {
+	if (!fullRepo) return '';
+	const parts = String(fullRepo).split('/');
+	return parts.length === 2 ? parts[1] : String(fullRepo);
+}
+
+function findExplicitId(originalText) {
+	if (!originalText) return null;
+	const t = String(originalText).trim();
+	// Matches TYPE-NNN or TYPE_NNN at the start (2+ digits on the number)
+	const m = t.match(/^([A-Za-z]+)[-_](\d{2,})\b/);
+	if (!m) return null;
+	const type = m[1].toUpperCase();
+	const num = m[2];
+	return `${type}-${num}`;
+}
+
+function stripLeadingId(originalText) {
+	if (!originalText) return '';
+	// Remove the leading TYPE-NNN / TYPE_NNN and trailing separators like ":", "-", or spaces
+	return String(originalText).trim().replace(/^([A-Za-z]+)[-_](\d{2,})\b[:\-\s]*/, '').trim();
+}
+
+function buildIssueTitle(fullRepo, originalText) {
+	const repo = getRepoName(fullRepo);
+	const explicitId = findExplicitId(originalText);
+	const rest = stripLeadingId(originalText);
+	const prefix = explicitId ? `[${repo} | #${explicitId}]` : `[${repo}]`;
+	const combined = rest ? `${prefix} ${rest}` : `${prefix}`;
+	return combined.trim();
+}
+
 function findIssueByStableId(repo, stableId) {
 	const q = `repo:${repo} StableId:${stableId}`;
 	try {
@@ -420,7 +453,8 @@ async function main() {
 
 		for (const task of t.tasks || []) {
 			try {
-				const title = task.text.length > 120 ? task.text.slice(0, 117) + '...' : task.text;
+				let rawTitle = buildIssueTitle(fullRepo, task.text);
+				const title = rawTitle.length > 120 ? rawTitle.slice(0, 117) + '...' : rawTitle;
 				const body = `Source: ${task.file}#L${task.line}\n\nStableId: ${task.stableId}\n\n${task.text}`;
 								// Normalize labels and include priority
 								const labels = normalizeLabels(task.labels, ['sync-md']);
@@ -544,7 +578,8 @@ async function main() {
 			try {
 				const parentIssue = repoResult.tasks.find(x => x.stableId === s.parentStableId);
 				const parentNumber = parentIssue && parentIssue.issueNumber;
-				const title = s.text.length > 120 ? s.text.slice(0, 117) + '...' : s.text;
+				let subRawTitle = buildIssueTitle(fullRepo, s.text);
+				const title = subRawTitle.length > 120 ? subRawTitle.slice(0, 117) + '...' : subRawTitle;
 				let body = `Source: ${s.file}#L${s.line}\n\nStableId: ${s.stableId}\n\n${s.text}`;
 				if (parentNumber) body = `Parent: #${parentNumber}\n\n` + body;
 				const labels = normalizeLabels(s.labels, ['subtask', 'sync-md']);
