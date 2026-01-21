@@ -1,0 +1,22 @@
+[0;36mℹ️  Mode: Single Stage Execution (STAGE 3)[0m
+[0;36mℹ️  Mode: Single Repository Execution (aragon-app)[0m
+[0;34m[2026-01-21 17:15:21][0m ════════════════════════════════════════════════════════════════
+[0;34m[2026-01-21 17:15:21][0m STAGE 3: CREATE (Create parent + child issues with auto-linking)
+[0;34m[2026-01-21 17:15:21][0m ════════════════════════════════════════════════════════════════
+[0;34m[2026-01-21 17:15:21][0m Processing aragon-app PLAN-002...
+[1;33m⚠️  Issue #213 already exists in Axodus/aragon-app[0m
+[0;34m[2026-01-21 17:15:21][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/aragon-app issue #213[0m
+[0;32m✅ aragon-app parent issue: #[1;33m⚠️  Issue #213 already exists in Axodus/aragon-app[0m
+[0;34m[2026-01-21 17:15:21][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/aragon-app issue #213[0m
+213[0m
+[0;34m[2026-01-21 17:15:22][0m Creating child issues for aragon-app #[1;33m⚠️  Issue #213 already exists in Axodus/aragon-app[0m
+[0;34m[2026-01-21 17:15:21][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/aragon-app issue #213[0m
+213...
+[0;36mℹ️  Child issue already exists: #214 (Setup Forms (Validator Address Input))[0m
+[0;36mℹ️  Child issue already exists: #215 (Install Flows)[0m
+[0;36mℹ️  Child issue already exists: #216 (UI Resilience)[0m
+[0;36mℹ️  Child issue already exists: #217 (Uninstall UX)[0m
+[0;32m✅ STAGE 3 COMPLETE: All issues and child issues created[0m

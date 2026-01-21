@@ -1,0 +1,333 @@
+[0;36mℹ️  Mode: Single Stage Execution (STAGE 7)[0m
+[0;34m[2026-01-21 17:53:06][0m ════════════════════════════════════════════════════════════════
+[0;34m[2026-01-21 17:53:06][0m STAGE 7: HIERARCHY (Build issue hierarchy + progress tracking)
+[0;34m[2026-01-21 17:53:06][0m ════════════════════════════════════════════════════════════════
+[0;36mℹ️  Processing hierarchy from .md files...[0m
+[0;36mℹ️  Processing: Axodus/AragonOSX[0m
+[34mℹ️  Processing hierarchy for: Axodus/AragonOSX[0m
+[32m✅ Parsed 56 items from PLAN.md[0m
+[32m✅ Parsed 84 items from SPRINT.md[0m
+[34mℹ️  Generating Progress Tracking section...[0m
+[34mℹ️  Progress Tracking generated:[0m
+## Progress Tracking
+
+**Repository:** Axodus/AragonOSX
+**Last Updated:** 2026-01-21
+
+**Overall Completion:** 50/140 (36%)
+
+- [x] Indexing: All lifecycle states appear in UI/API within SLA after finality
+- [x] Indexing: Reindex/backfill produces identical final state (idempotent)
+- [x] Uninstall: Revokes permissions and removes plugin without stale remnants
+- [ ] Uninstall: Re-install works without manual intervention (in progress)
+- [ ] Metadata: UI/API works even if primary gateway down
+- [ ] Metadata: Invalid metadata rejected or safely degraded (no broken UI)
+- [x] Native-token: Proposal execution supports native token value transfers
+- [x] Native-token: Indexing and UI indicate native-token execution clearly
+- [x] Define golden path E2E scenarios
+- [x] Capture event set for HarmonyVoting
+- [x] Add structured logs/metrics for indexing
+- [x] Confirm chain IDs, RPCs, explorers
+- [x] Ensure backend handlers cover HarmonyVoting events (ProposalCreated, VoteCast) [labels:type:task, area:backend, area:indexing] [status:DONE] [priority:high] [estimate:6h] [start:2025-12-18] [end:2025-12-19]
+- [x] Enable historical indexing for HarmonyVoting events [labels:type:task, area:indexing, area:backend] [status:DONE] [priority:high] [estimate:4h] [start:2025-12-19] [end:2025-12-20]
+- [x] Add reorg-safe handling (confirmations, idempotency keys, retries) [labels:type:task, area:indexing] [status:DONE] [priority:high] [estimate:12h] [start:2026-01-20] [end:2026-01-22] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [x] Implement catch-up strategy (backfill from deployment block; checkpointing) [labels:type:task, area:indexing, area:infra] [status:DONE] [priority:high] [estimate:10h] [start:2026-01-22] [end:2026-01-23] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [x] Validate indexing scenarios [labels:type:qa, area:indexing] [status:DONE] [priority:high] [estimate:16h] [start:2026-01-23] [end:2026-01-26] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+  - [x] Fresh sync from deployment block [labels:type:qa, area:indexing] [status:DONE] [priority:high] [estimate:6h] [start:2026-01-23] [end:2026-01-23] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+  - [ ] Mid-history backfill [labels:type:qa, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-24] [end:2026-01-24]
+  - [ ] Reorg simulation (where feasible) [labels:type:qa, area:indexing] [status:TODO] [priority:medium] [estimate:6h] [start:2026-01-26] [end:2026-01-26]
+- [ ] Monitor and verify proposals appear in UI after creation [labels:type:qa, area:frontend, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-27] [end:2026-01-27]
+- [ ] Define uninstall invariants (no orphan permissions, no stuck executors) [labels:type:task, area:contracts, area:security] [status:TODO] [priority:high] [estimate:6h] [start:2026-01-26] [end:2026-01-26]
+- [x] Verify contracts uninstall revokes permissions and clears references [labels:type:qa, area:contracts] [status:DONE] [priority:high] [estimate:6h] [start:2026-01-26] [end:2026-01-27] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [x] Ensure uninstall emits events for indexers/UI reconciliation [labels:type:task, area:contracts, area:indexing, area:frontend] [status:DONE] [priority:high] [estimate:4h] [start:2026-01-27] [end:2026-01-27] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [x] Implement uninstall UX with warnings + post-uninstall state [labels:type:feature, area:frontend] [status:DONE] [priority:medium] [estimate:8h] [start:2026-01-28] [end:2026-01-28] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [x] Handle "plugin removed" state in backend/subgraph (no stale UI) [labels:type:task, area:backend, area:indexing] [status:DONE] [priority:high] [estimate:8h] [start:2026-01-29] [end:2026-01-29] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [ ] Test uninstall with governance permissions (not just admin) [labels:type:qa, area:contracts, area:frontend] [status:TODO] [priority:high] [estimate:6h] [start:2026-01-30] [end:2026-01-30]
+- [x] Identify metadata sources (on-chain hash, backend placeholder) [labels:type:docs, area:backend] [status:DONE] [priority:medium] [estimate:2h] [start:2025-12-16] [end:2025-12-16]
+- [ ] Define deterministic fallback order (on-chain → cached → placeholder) [labels:type:task, area:backend, area:frontend] [status:TODO] [priority:medium] [estimate:3h] [start:2026-01-20] [end:2026-01-20]
+- [x] Backend validation + TTL strategy (avoid malformed data) [labels:type:task, area:backend] [status:DONE] [priority:medium] [estimate:6h] [start:2026-01-21] [end:2026-01-22] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [ ] App fallback fetching + graceful degradation [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:6h] [start:2026-01-22] [end:2026-01-23]
+- [ ] Add integrity checks (format validation, size limits) [labels:type:task, area:backend, area:security] [status:TODO] [priority:medium] [estimate:4h] [start:2026-01-23] [end:2026-01-23]
+- [ ] "Metadata unavailable" state that still allows core governance [labels:type:feature, area:frontend] [status:TODO] [priority:low] [estimate:3h] [start:2026-01-24] [end:2026-01-24]
+- [x] Define requirements: wallet + staked balance via RPC [labels:type:docs, area:backend, area:infra] [status:DONE] [priority:high] [estimate:4h] [start:2026-01-27] [end:2026-01-27] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [x] Implement RPC-based power provider in backend finalizer [labels:type:feature, area:backend, area:indexing] [status:DONE] [priority:high] [estimate:12h] [start:2026-01-28] [end:2026-01-30] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [x] Validate contracts execution path for native token value transfers [labels:type:qa, area:contracts] [status:DONE] [priority:high] [estimate:6h] [start:2026-01-30] [end:2026-01-30] [matched:https://github.com/mzfshark/CryptoDraw/pull/1]
+- [x] Validate permission model for execution (who/when/conditions) [labels:type:qa, area:contracts, area:security] [status:DONE] [priority:high] [estimate:6h] [start:2026-01-30] [end:2026-01-31] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [x] Ensure indexing distinguishes native-token execution events [labels:type:task, area:indexing, area:backend] [status:DONE] [priority:medium] [estimate:4h] [start:2026-02-02] [end:2026-02-02] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [ ] App shows correct fee/value semantics in review/execution [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:6h] [start:2026-02-03] [end:2026-02-03]
+- [ ] Add automated tests where repo patterns allow [labels:type:test, area:contracts, area:backend] [status:TODO] [priority:medium] [estimate:14h] [start:2026-01-27] [end:2026-01-29]
+  - [ ] Contracts: install/uninstall + value transfer cases [labels:type:test, area:contracts] [status:TODO] [priority:medium] [estimate:8h] [start:2026-01-27] [end:2026-01-28]
+  - [x] Backend: handler unit tests for critical events [labels:type:test, area:backend] [status:DONE] [priority:medium] [estimate:6h] [start:2026-01-28] [end:2026-01-29] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+- [ ] Run manual Harmony E2E checklist [labels:type:qa, area:testing] [status:TODO] [priority:high] [estimate:8h] [start:2026-02-04] [end:2026-02-04]
+  - [ ] Deploy/install plugin [labels:type:qa, area:contracts] [status:TODO] [priority:medium] [estimate:1h] [start:2026-02-04] [end:2026-02-04]
+  - [ ] Create proposal [labels:type:qa, area:frontend] [status:TODO] [priority:medium] [estimate:1h] [start:2026-02-04] [end:2026-02-04]
+  - [ ] Vote + reach outcome [labels:type:qa, area:frontend] [status:TODO] [priority:medium] [estimate:2h] [start:2026-02-04] [end:2026-02-04]
+  - [x] Execute (native-token path if applicable) [labels:type:qa, area:contracts] [status:DONE] [priority:medium] [estimate:2h] [start:2026-02-04] [end:2026-02-04] [matched:https://github.com/ThinkinCoin/Docs/pull/16]
+  - [ ] Verify UI reflects indexed state [labels:type:qa, area:frontend, area:indexing] [status:TODO] [priority:medium] [estimate:1h] [start:2026-02-04] [end:2026-02-04]
+  - [ ] Uninstall and confirm cleanup + UI state [labels:type:qa, area:contracts, area:frontend] [status:TODO] [priority:medium] [estimate:1h] [start:2026-02-04] [end:2026-02-04]
+- [ ] Produce operator runbook: sync start block, reindex, rollback [labels:type:docs, area:ops] [status:TODO] [priority:low] [estimate:4h] [start:2026-02-05] [end:2026-02-05]
+- [ ] Verify .gitissue/metadata.config.json at repo root [labels:type:chore, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [ ] Capture org project schema to tmp/<org>-project-schema.json [labels:type:task, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [ ] Reconcile checklist items with project items captured at tmp/mzfshark-project-15-items.json [labels:type:task, area:planning] [status:TODO] [priority:low] [estimate:1h] [start:2026-01-19] [end:2026-01-19]
+- [ ] Generate .gitissue/metadata.generated.json from PLAN.md [labels:type:task, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [ ] Prepare gh issue create/edit commands for project sync (request approval before running) [labels:type:docs, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [ ] Document workaround for PARENT_ISSUE field limitation in GitHub ProjectV2 (manual UI linking or UI automation) [labels:type:docs, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [x] Add reorg-safe handling (confirmations, idempotency keys, retries) [labels:type:task, area:indexing] [status:DONE] [priority:high] [estimate:12h] [start:2026-01-20] [end:2026-01-22]
+- [x] Implement catch-up strategy (backfill from deployment block; checkpointing) [labels:type:task, area:indexing, area:infra] [status:DONE] [priority:high] [estimate:10h] [start:2026-01-22] [end:2026-01-23]
+- [x] Fresh sync validation from deployment block [labels:type:qa, area:indexing] [status:DONE] [priority:high] [estimate:6h] [start:2026-01-23] [end:2026-01-23]
+- [ ] Mid-history backfill validation + reorg simulation [labels:type:qa, area:indexing] [status:TODO] [priority:high] [estimate:10h] [start:2026-01-24] [end:2026-01-26]
+- [ ] Monitor and verify proposals appear in UI after creation [labels:type:qa, area:frontend, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-27] [end:2026-01-27]
+- [x] Verify contracts uninstall revokes permissions and clears references [labels:type:qa, area:contracts] [status:DONE] [priority:high] [estimate:6h] [start:2026-01-26] [end:2026-01-27]
+- [x] Ensure uninstall emits events for indexers/UI reconciliation [labels:type:task, area:contracts, area:indexing, area:frontend] [status:DONE] [priority:high] [estimate:4h] [start:2026-01-27] [end:2026-01-27]
+- [x] Implement uninstall UX with warnings + post-uninstall state [labels:type:feature, area:frontend] [status:DONE] [priority:medium] [estimate:8h] [start:2026-01-28] [end:2026-01-28]
+- [x] Handle "plugin removed" state in backend/subgraph (no stale UI) [labels:type:task, area:backend, area:indexing] [status:DONE] [priority:high] [estimate:8h] [start:2026-01-29] [end:2026-01-29]
+- [ ] Define uninstall invariants (no orphan permissions, no stuck executors) [labels:type:task, area:contracts, area:security] [status:TODO] [priority:high] [estimate:6h] [start:2026-01-30] [end:2026-01-30]
+- [ ] Test uninstall with governance permissions (not just admin) [labels:type:qa, area:contracts, area:frontend] [status:TODO] [priority:high] [estimate:6h] [start:2026-02-02] [end:2026-02-02]
+- [x] Identify metadata sources (on-chain hash, backend placeholder) [labels:type:docs, area:backend] [status:DONE] [priority:medium] [estimate:2h] [start:2025-12-16] [end:2025-12-16]
+- [x] Backend validation + TTL strategy (avoid malformed data) [labels:type:task, area:backend] [status:DONE] [priority:medium] [estimate:6h] [start:2026-01-21] [end:2026-01-22]
+- [ ] Define deterministic fallback order (on-chain → cached → placeholder) [labels:type:task, area:backend, area:frontend] [status:TODO] [priority:medium] [estimate:3h] [start:2026-01-20] [end:2026-01-20]
+- [ ] App fallback fetching + graceful degradation [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:6h] [start:2026-01-22] [end:2026-01-23]
+- [ ] Add integrity checks (format validation, size limits) [labels:type:task, area:backend, area:security] [status:TODO] [priority:medium] [estimate:4h] [start:2026-01-23] [end:2026-01-23]
+- [ ] "Metadata unavailable" state that still allows core governance [labels:type:feature, area:frontend] [status:TODO] [priority:low] [estimate:3h] [start:2026-01-24] [end:2026-01-24]
+- [x] Define requirements (RPC endpoint, contract path, permission validation) [labels:type:docs, area:contracts] [status:DONE] [priority:high] [estimate:3h] [start:2026-01-20] [end:2026-01-20]
+- [x] Verify contract RPC provider setup for power reading [labels:type:qa, area:contracts] [status:DONE] [priority:high] [estimate:4h] [start:2026-01-21] [end:2026-01-21]
+- [x] Validate plugin contract path resolution [labels:type:qa, area:backend] [status:DONE] [priority:high] [estimate:3h] [start:2026-01-21] [end:2026-01-21]
+- [x] Verify permission validation in indexing [labels:type:qa, area:backend, area:indexing] [status:DONE] [priority:high] [estimate:4h] [start:2026-01-22] [end:2026-01-22]
+- [x] Implement native-token proposal execution marking in indexer [labels:type:task, area:backend, area:indexing] [status:DONE] [priority:high] [estimate:6h] [start:2026-01-23] [end:2026-01-23]
+- [ ] Display fee/value semantics in app UI [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:6h] [start:2026-01-24] [end:2026-01-24]
+- [x] Write unit tests for HarmonyVoting event handlers [labels:type:test, area:backend, area:testing] [status:DONE] [priority:high] [estimate:20h] [start:2026-01-20] [end:2026-01-24]
+- [ ] Validate execution path against on-chain state [labels:type:qa, area:backend, area:testing] [status:TODO] [priority:high] [estimate:20h] [start:2026-01-25] [end:2026-01-30]
+- [ ] Document E2E flow (install → propose → vote → execute → uninstall) [labels:type:docs, area:docs, area:testing] [status:TODO] [priority:medium] [estimate:4h] [start:2026-02-01] [end:2026-02-02]
+- [x] Define requirements: wallet + staked balance via RPC [labels:type:docs, area:backend, area:infra] [status:DONE] [priority:high] [estimate:4h] [start:2026-01-27] [end:2026-01-27]
+- [x] Implement RPC-based power provider in backend finalizer [labels:type:feature, area:backend, area:indexing] [status:DONE] [priority:high] [estimate:12h] [start:2026-01-28] [end:2026-01-30]
+- [x] Validate contracts execution path for native token value transfers [labels:type:qa, area:contracts] [status:DONE] [priority:high] [estimate:6h] [start:2026-01-30] [end:2026-01-30]
+- [x] Validate permission model for execution (who/when/conditions) [labels:type:qa, area:contracts, area:security] [status:DONE] [priority:high] [estimate:6h] [start:2026-01-30] [end:2026-01-31]
+- [x] Ensure indexing distinguishes native-token execution events [labels:type:task, area:indexing, area:backend] [status:DONE] [priority:medium] [estimate:4h] [start:2026-02-02] [end:2026-02-02]
+- [ ] App shows correct fee/value semantics in review/execution [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:6h] [start:2026-02-03] [end:2026-02-03]
+- [ ] Add automated tests where repo patterns allow [labels:type:test, area:contracts, area:backend] [status:TODO] [priority:medium] [estimate:14h] [start:2026-01-27] [end:2026-01-29]
+  - [ ] Contracts: install/uninstall + value transfer cases [labels:type:test, area:contracts] [status:TODO] [priority:medium] [estimate:8h] [start:2026-01-27] [end:2026-01-28]
+  - [x] Backend: handler unit tests for critical events [labels:type:test, area:backend] [status:DONE] [priority:medium] [estimate:6h] [start:2026-01-28] [end:2026-01-29]
+- [ ] Run manual Harmony E2E checklist [labels:type:qa, area:testing] [status:TODO] [priority:high] [estimate:8h] [start:2026-02-04] [end:2026-02-04]
+  - [ ] Deploy/install plugin [labels:type:qa, area:contracts] [status:TODO] [priority:medium] [estimate:1h] [start:2026-02-04] [end:2026-02-04]
+  - [ ] Create proposal [labels:type:qa, area:frontend] [status:TODO] [priority:medium] [estimate:1h] [start:2026-02-04] [end:2026-02-04]
+  - [ ] Vote + reach outcome [labels:type:qa, area:frontend] [status:TODO] [priority:medium] [estimate:2h] [start:2026-02-04] [end:2026-02-04]
+  - [x] Execute (native-token path if applicable) [labels:type:qa, area:contracts] [status:DONE] [priority:medium] [estimate:2h] [start:2026-02-04] [end:2026-02-04]
+  - [ ] Verify UI reflects indexed state [labels:type:qa, area:frontend, area:indexing] [status:TODO] [priority:medium] [estimate:1h] [start:2026-02-04] [end:2026-02-04]
+  - [ ] Uninstall and confirm cleanup + UI state [labels:type:qa, area:contracts, area:frontend] [status:TODO] [priority:medium] [estimate:1h] [start:2026-02-04] [end:2026-02-04]
+- [ ] Produce operator runbook: sync start block, reindex, rollback [labels:type:docs, area:ops] [status:TODO] [priority:low] [estimate:4h] [start:2026-02-05] [end:2026-02-05]
+- [ ] Review and enhance prepareUninstallation
+- [ ] Add comprehensive permission revocation
+- [ ] Test uninstall via governance
+- [ ] Test install → uninstall → reinstall cycle
+- [ ] Document uninstall requirements
+- [ ] Implement uninstall warnings
+- [ ] Handle post-uninstall state cleanup
+- [ ] Prevent stale plugin data
+- [ ] Test re-install flow
+- [ ] Add uninstall error handling
+- [ ] Design native token power provider interface
+- [ ] Implement wallet + staked balance queries
+- [ ] Add DAO action execution support
+- [ ] Test execution flow
+- [ ] Extend finalizer with native token mode
+- [ ] Implement RPC-based power queries
+- [ ] Add caching for power computation
+- [ ] Test with mainnet data
+- [ ] Run full E2E checklist on Harmony mainnet
+- [ ] Deploy/install plugin
+- [ ] Create and index proposal
+- [ ] Vote with various power types
+- [ ] Execute proposal
+- [ ] Uninstall cleanly
+- [ ] Reinstall successfully
+- [ ] Document any issues found
+- [ ] Fix critical issues
+- [ ] Re-test fixed flows
+- [ ] GitHub CLI authentication (immediate)
+- [ ] Archive RPC access (Phase 1)
+- [ ] Harmony mainnet RPC rate limits (Phase 6)
+- [ ] All proposals indexed within 30s
+- [ ] UI works offline with cached data
+- [ ] Uninstall success rate: 100%
+- [ ] Native token voting power accurate
+- [ ] Zero orphan permissions after uninstall
+- [ ] Reindex produces identical state
+- [ ] Update documentation
+- [ ] Create operator runbook
+- [ ] Schedule retrospective
+- [ ] Plan next sprint
+
+[34mℹ️  Hierarchy processing complete![0m
+[34mℹ️  Next: Create/update issues and link them in GitHub[0m
+[0;32m✅ Generated hierarchy for AragonOSX[0m
+[0;36mℹ️  Processing: Axodus/aragon-app[0m
+[34mℹ️  Processing hierarchy for: Axodus/aragon-app[0m
+[32m✅ Parsed 54 items from PLAN.md[0m
+[32m✅ Parsed 35 items from SPRINT.md[0m
+[34mℹ️  Generating Progress Tracking section...[0m
+[34mℹ️  Progress Tracking generated:[0m
+## Progress Tracking
+
+**Repository:** Axodus/aragon-app
+**Last Updated:** 2026-01-21
+
+**Overall Completion:** 22/89 (25%)
+
+- [x] Plugin setup form with validator address input + validation
+- [ ] Proposal creation/voting UI displays correctly (in progress)
+- [ ] Metadata fallback prevents broken proposal cards
+- [ ] Uninstall flow shows warnings + enables re-install
+- [ ] Native-token execution shows fees in review
+- [ ] Network switch reloads plugin configuration correctly
+- [x] Add validator address input to setup form
+- [x] Encode validator address into installation params
+- [x] Normalize addresses to lowercase
+- [x] Add proposal settings (dates, snapshot block)
+- [x] Register proposal/vote builders
+- [x] Implement setup form + validator input
+- [ ] Verify prepare installation with validator address (in progress)
+- [ ] Display prepare errors clearly to user
+- [ ] Test form submission + state recovery
+- [ ] Render proposals without metadata (placeholder fallback)
+- [ ] Handle backend unavailability gracefully
+- [ ] Implement fallback metadata fetching
+- [ ] Add user-friendly error messages
+- [ ] Clear loading states for async operations
+- [ ] Uninstall confirmation dialog with clear warnings
+- [ ] Handle post-uninstall state (plugin removed message)
+- [ ] Enable re-install after uninstall
+- [ ] Show any permission cleanup status
+- [ ] Display native-token value in execution review
+- [ ] Show fee breakdown for transactions
+- [ ] Confirm receipt after execution
+- [ ] Handle native-token rejection gracefully
+- [ ] E2E flow tests (Playwright/Cypress)
+- [ ] Cross-browser testing (Chrome, Firefox, Safari)
+- [ ] Mobile responsiveness testing
+- [ ] Accessibility audit (WCAG 2.1 AA)
+- [ ] Performance benchmarks (UI latency, bundle size)
+- [ ] Load testing (concurrent users)
+- [ ] Review sprint progress vs. baseline
+- [ ] Identify blockers and risks (backend API availability)
+- [ ] Adjust feature priorities if needed
+- [ ] Update SPRINT.md with progress snapshot
+- [x] **Admin grant task completed on AragonOSX repo** [labels:type:maintenance, area:infra, cross-repo] [status:DONE] [priority:high] [estimate:4h] [start:2026-01-20] [end:2026-01-20]
+- [ ] Ensure proposals render even without metadata (placeholder/fallback) [labels:type:feature, area:frontend, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-22] [end:2026-01-22]
+- [ ] Graceful degradation when backend is unavailable (no crashes) [labels:type:feature, area:frontend] [status:TODO] [priority:high] [estimate:6h] [start:2026-01-22] [end:2026-01-23]
+- [ ] User-friendly and actionable error messages [labels:type:task, area:frontend] [status:TODO] [priority:medium] [estimate:3h] [start:2026-01-23] [end:2026-01-23]
+- [ ] Clear loading states for backend-driven operations [labels:type:task, area:frontend] [status:TODO] [priority:medium] [estimate:3h] [start:2026-01-23] [end:2026-01-23]
+- [ ] Network switch reloads plugin configuration correctly [labels:type:task, area:frontend] [status:TODO] [priority:medium] [estimate:3h] [start:2026-01-24] [end:2026-01-24]
+- [ ] Uninstall UX with clear warnings and post-uninstall state [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:8h] [start:2026-01-28] [end:2026-01-28]
+- [ ] Plugin removal cleans UI (no stale entries) [labels:type:task, area:frontend, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-29] [end:2026-01-29]
+- [ ] Show correct fee/value semantics in review and execution [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:6h] [start:2026-02-03] [end:2026-02-03]
+- [ ] Verify proposals appear in UI after creation (monitoring) [labels:type:qa, area:frontend, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-27] [end:2026-01-27]
+- [ ] Harmony E2E checklist (App) [labels:type:qa, area:testing] [status:TODO] [priority:high] [estimate:4h] [start:2026-02-04] [end:2026-02-04]
+- [ ] Verify .gitissue/metadata.config.json at repo root [labels:type:chore, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [ ] Capture org project schema to tmp/<org>-project-schema.json [labels:type:task, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [ ] Generate .gitissue/metadata.generated.json from PLAN.md [labels:type:task, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [ ] Prepare gh issue create/edit commands for project sync (request approval before running) [labels:type:docs, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [ ] Document workaround for PARENT_ISSUE field limitation in GitHub ProjectV2 (manual UI linking or UI automation) [labels:type:docs, area:planning] [status:TODO] [priority:low] [estimate:0.5h] [start:2026-01-19] [end:2026-01-19]
+- [x] Locate Harmony Delegation setup form and install data builder [labels:type:task, area:frontend] [status:DONE] [priority:medium] [estimate:1h] [start:2025-12-15] [end:2025-12-15]
+- [x] Add validator address input for Delegation setup [labels:type:feature, area:frontend] [status:DONE] [priority:high] [estimate:2h] [start:2025-12-15] [end:2025-12-15]
+- [x] Encode validator address into installation params (Delegation) [labels:type:feature, area:frontend] [status:DONE] [priority:high] [estimate:2h] [start:2025-12-16] [end:2025-12-16]
+- [x] Basic validation + helper text for input [labels:type:task, area:frontend] [status:DONE] [priority:medium] [estimate:1h] [start:2025-12-16] [end:2025-12-16]
+- [x] Sync validator address into form state on change [labels:type:task, area:frontend] [status:DONE] [priority:medium] [estimate:1h] [start:2025-12-16] [end:2025-12-16]
+- [x] Surface prepare error details in tx dialog [labels:type:task, area:frontend] [status:DONE] [priority:medium] [estimate:1h] [start:2025-12-17] [end:2025-12-17]
+- [x] Normalize Harmony repo addresses to lowercase [labels:type:task, area:frontend] [status:DONE] [priority:low] [estimate:1h] [start:2025-12-17] [end:2025-12-17]
+- [x] Show Harmony Delegation short code (TDEL) in body info [labels:type:task, area:frontend] [status:DONE] [priority:low] [estimate:1h] [start:2025-12-17] [end:2025-12-17]
+- [x] Add proposal settings (dates + snapshot block) [labels:type:feature, area:frontend] [status:DONE] [priority:medium] [estimate:2h] [start:2025-12-18] [end:2025-12-18]
+- [x] Register Harmony proposal/vote builders [labels:type:task, area:frontend] [status:DONE] [priority:medium] [estimate:1h] [start:2025-12-18] [end:2025-12-18]
+- [x] Use processKey as proposal prefix when defined [labels:type:task, area:frontend] [status:DONE] [priority:low] [estimate:1h] [start:2025-12-19] [end:2025-12-19]
+- [x] Implement setup form with all inputs + validation [labels:type:feature, area:frontend] [status:DONE] [priority:high] [estimate:8h] [start:2026-01-20] [end:2026-01-21]
+- [ ] Verify prepare installation with validator address [labels:type:qa, area:frontend] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-22] [end:2026-01-23]
+- [ ] Display prepare errors clearly to user [labels:type:task, area:frontend] [status:TODO] [priority:high] [estimate:8h] [start:2026-01-24] [end:2026-01-25]
+- [x] Fix: Address normalization (case sensitivity) [labels:type:bug, area:frontend] [status:DONE] [priority:medium] [estimate:2h] [start:2026-01-16] [end:2026-01-17]
+- [ ] Render proposals without metadata (placeholder fallback) [labels:type:feature, area:frontend, area:indexing] [status:TODO] [priority:high] [estimate:6h] [start:2026-01-22] [end:2026-01-24]
+- [ ] Handle backend unavailability gracefully (no crashes) [labels:type:feature, area:frontend] [status:TODO] [priority:high] [estimate:6h] [start:2026-01-25] [end:2026-01-27]
+- [ ] Implement async metadata fetching + timeout [labels:type:task, area:frontend] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-28] [end:2026-01-29]
+- [ ] Clear loading states for backend-driven operations [labels:type:task, area:frontend] [status:TODO] [priority:medium] [estimate:3h] [start:2026-01-30] [end:2026-01-31]
+- [ ] Uninstall confirmation dialog with warnings [labels:type:feature, area:frontend] [status:TODO] [priority:high] [estimate:6h] [start:2026-02-05] [end:2026-02-06]
+- [ ] Handle "plugin removed" state in UI (message + options) [labels:type:feature, area:frontend, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-02-07] [end:2026-02-07]
+- [ ] Enable re-install after uninstall [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:3h] [start:2026-02-08] [end:2026-02-08]
+- [ ] Show permission cleanup status if applicable [labels:type:task, area:frontend] [status:TODO] [priority:low] [estimate:3h] [start:2026-02-09] [end:2026-02-09]
+- [x] Receive native-token execution data from backend/indexing [labels:type:task, area:frontend, area:indexing] [status:DONE] [priority:medium] [estimate:2h] [start:2026-02-02] [end:2026-02-02]
+- [ ] Display native-token value in execution review [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:4h] [start:2026-02-10] [end:2026-02-11]
+- [ ] Show fee breakdown for transactions [labels:type:task, area:frontend] [status:TODO] [priority:medium] [estimate:4h] [start:2026-02-12] [end:2026-02-12]
+- [ ] Handle native-token rejection gracefully [labels:type:feature, area:frontend] [status:TODO] [priority:low] [estimate:4h] [start:2026-02-13] [end:2026-02-13]
+- [ ] Update networkDefinitions.ts with Harmony plugin addresses [labels:type:task, area:frontend, area:infra] [status:TODO] [priority:high] [estimate:2h] [start:2026-01-28] [end:2026-01-28]
+- [ ] Verify network switch reloads plugin configuration [labels:type:qa, area:frontend] [status:TODO] [priority:high] [estimate:6h] [start:2026-01-29] [end:2026-01-30]
+- [ ] Document E2E UI flow with screenshots [labels:type:docs, area:docs, area:testing] [status:TODO] [priority:medium] [estimate:4h] [start:2026-02-20] [end:2026-02-21]
+- [ ] Uninstall UX with clear warnings and post-uninstall state [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:8h] [start:2026-01-28] [end:2026-01-28]
+- [ ] Plugin removal cleans UI (no stale entries) [labels:type:task, area:frontend, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-29] [end:2026-01-29]
+- [ ] Show correct fee/value semantics in review and execution [labels:type:feature, area:frontend] [status:TODO] [priority:medium] [estimate:6h] [start:2026-02-03] [end:2026-02-03]
+- [ ] Verify proposals appear in UI after creation (monitoring) [labels:type:qa, area:frontend, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-27] [end:2026-01-27]
+- [ ] Harmony E2E checklist (App) [labels:type:qa, area:testing] [status:TODO] [priority:high] [estimate:4h] [start:2026-02-04] [end:2026-02-04]
+
+[34mℹ️  Hierarchy processing complete![0m
+[34mℹ️  Next: Create/update issues and link them in GitHub[0m
+[0;32m✅ Generated hierarchy for aragon-app[0m
+[0;36mℹ️  Processing: Axodus/Aragon-app-backend[0m
+[34mℹ️  Processing hierarchy for: Axodus/Aragon-app-backend[0m
+[32m✅ Parsed 19 items from PLAN.md[0m
+[32m✅ Parsed 28 items from SPRINT.md[0m
+[34mℹ️  Generating Progress Tracking section...[0m
+[34mℹ️  Progress Tracking generated:[0m
+## Progress Tracking
+
+**Repository:** Axodus/Aragon-app-backend
+**Last Updated:** 2026-01-21
+
+**Overall Completion:** 2/47 (4%)
+
+- [ ] **Event Handling:** All events (VoteCast, Create, Execute) captured and deduplicated [labels:type:qa] [status:DONE] [priority:CRITICAL]
+- [ ] **Reorg Recovery:** Tested with simulated 1-10 block reorgs; no duplicates [labels:type:qa] [status:TODO] [priority:CRITICAL]
+- [ ] **API Endpoints:** Status, events, proposals, metadata endpoints operational [labels:type:qa] [status:TODO] [priority:CRITICAL]
+- [ ] **Error Handling:** Retry logic + circuit breaker tested; handles RPC outages [labels:type:qa] [status:TODO] [priority:HIGH]
+- [ ] **Logging & Monitoring:** Structured logs + Prometheus metrics active [labels:type:qa] [status:TODO] [priority:HIGH]
+- [ ] **Metadata Fallback:** IPFS timeout + fallback chain verified [labels:type:qa] [status:TODO] [priority:HIGH]
+- [ ] **Database Health:** Connection pooling, indices, query performance acceptable [labels:type:qa] [status:TODO] [priority:HIGH]
+- [ ] **Load Testing:** Peak traffic simulation (1000+ events/block) passed [labels:type:qa] [status:TODO] [priority:MEDIUM]
+- [ ] **Runbook & Escalation:** Documented; team trained [labels:type:docs] [status:TODO] [priority:MEDIUM]
+- [ ] **Production Deployment:** Smoke tests passed on Harmony mainnet [labels:type:ops] [status:TODO] [priority:CRITICAL]
+- [ ] Milestone 1 (Event Handlers): Complete & validated ✅ [2026-01-22]
+- [ ] Milestone 2 (Resilience): In progress; 40% complete 🟡 [target 2026-01-27]
+- [ ] Milestone 3 (Observability): Planned 📋 [target 2026-02-03]
+- [ ] Milestone 4 (Metadata): Planned 📋 [target 2026-02-10]
+- [ ] Milestone 5 (Native-Token): Backlog 📋 [target 2026-02-21]
+- [ ] Milestone 6 (E2E & Deploy): Backlog 📋 [target 2026-02-28]
+- [ ] Backend → Frontend integration handoff [target 2026-01-27]
+- [ ] Production smoke tests & validation [target 2026-02-28]
+- [ ] Admin grant approval (DAO vote) [target 2026-02-17+]
+- [x] Handlers cover ProposalCreated/VoteCast [labels:type:task, area:backend, area:indexing] [status:DONE] [priority:high] [estimate:6h] [start:2025-12-18] [end:2025-12-19]
+- [x] Historical indexing enabled (HarmonyVoting) [labels:type:task, area:indexing, area:backend] [status:DONE] [priority:high] [estimate:4h] [start:2025-12-19] [end:2025-12-20]
+- [ ] Reorg-safe idempotency (unique constraints + upsert) [labels:type:task, area:indexing] [status:TODO] [priority:high] [estimate:8h] [start:2026-01-20] [end:2026-01-22]
+- [ ] Confirmations + block monitoring [labels:type:task, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-20] [end:2026-01-21]
+- [ ] Catch-up strategy (backfill + checkpointing) [labels:type:task, area:indexing, area:infra] [status:TODO] [priority:high] [estimate:10h] [start:2026-01-22] [end:2026-01-24]
+- [ ] Reorg simulation testing [labels:type:qa, area:indexing] [status:TODO] [priority:high] [estimate:8h] [start:2026-01-25] [end:2026-01-26]
+- [ ] Integration validation (fresh sync, mid-history, reorg) [labels:type:qa, area:indexing] [status:TODO] [priority:high] [estimate:12h] [start:2026-01-27] [end:2026-01-29]
+- [ ] Monitor reorg edge cases (>10 blocks) [labels:type:qa, area:indexing] [status:TODO] [priority:medium] [estimate:6h] [start:2026-02-01] [end:2026-02-02]
+- [ ] Define fallback order (on-chain → cache → placeholder) [labels:type:task, area:backend] [status:TODO] [priority:high] [estimate:2h] [start:2026-01-20] [end:2026-01-20]
+- [ ] Implement metadata validation + TTL [labels:type:feature, area:backend, area:security] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-21] [end:2026-01-22]
+- [ ] Add integrity checks (format, size limits) [labels:type:task, area:backend, area:security] [status:TODO] [priority:high] [estimate:3h] [start:2026-01-23] [end:2026-01-23]
+- [ ] Implement cache layer + refresh strategy [labels:type:feature, area:backend] [status:TODO] [priority:medium] [estimate:3h] [start:2026-01-24] [end:2026-01-25]
+- [ ] Test with simulated IPFS timeout [labels:type:qa, area:backend] [status:TODO] [priority:high] [estimate:2h] [start:2026-01-26] [end:2026-01-26]
+- [ ] Structured logs for event gaps + timing [labels:type:task, area:backend, area:indexing] [status:TODO] [priority:medium] [estimate:4h] [start:2026-01-20] [end:2026-01-21]
+- [ ] Metrics collection (events/sec, latency, errors) [labels:type:feature, area:backend] [status:TODO] [priority:medium] [estimate:6h] [start:2026-01-22] [end:2026-01-24]
+- [ ] Proposals visible in UI within SLA (post-finality) [labels:type:qa, area:indexing, area:frontend] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-27] [end:2026-01-28]
+- [ ] Plugin removed state handling (avoid stale data) [labels:type:feature, area:backend, area:indexing] [status:TODO] [priority:high] [estimate:4h] [start:2026-01-29] [end:2026-01-30]
+- [ ] RPC-based power provider (wallet + staked balance) [labels:type:feature, area:backend, area:indexing] [status:TODO] [priority:high] [estimate:12h] [start:2026-01-28] [end:2026-01-30]
+- [ ] Native-token execution marking in events [labels:type:task, area:indexing, area:backend] [status:TODO] [priority:high] [estimate:4h] [start:2026-02-02] [end:2026-02-02]
+- [ ] Cache power computation results [labels:type:optimization, area:backend] [status:TODO] [priority:medium] [estimate:4h] [start:2026-02-03] [end:2026-02-03]
+- [ ] Integration + performance testing [labels:type:qa, area:backend] [status:TODO] [priority:high] [estimate:4h] [start:2026-02-04] [end:2026-02-04]
+- [ ] Unit tests for all event handlers [labels:type:test, area:backend, area:testing] [status:TODO] [priority:high] [estimate:12h] [start:2026-01-28] [end:2026-02-02]
+- [ ] Integration tests with Harmony testnet [labels:type:test, area:backend, area:testing] [status:TODO] [priority:high] [estimate:8h] [start:2026-02-03] [end:2026-02-05]
+- [ ] Operator runbook (sync start block, reindex, rollback) [labels:type:docs, area:ops] [status:TODO] [priority:medium] [estimate:3h] [start:2026-02-20] [end:2026-02-21]
+- [ ] API documentation for metadata fallback endpoint [labels:type:docs, area:docs] [status:TODO] [priority:medium] [estimate:3h] [start:2026-02-22] [end:2026-02-23]
+- [ ] Mark native-token executions in indexed events [labels:type:task, area:indexing, area:backend] [status:TODO] [priority:medium] [estimate:4h] [start:2026-02-02] [end:2026-02-02]
+- [ ] Unit tests for critical handlers [labels:type:test, area:backend] [status:TODO] [priority:medium] [estimate:6h] [start:2026-01-28] [end:2026-01-29]
+- [ ] Runbook: sync start block, reindex, rollback [labels:type:docs, area:ops] [status:TODO] [priority:low] [estimate:4h] [start:2026-02-05] [end:2026-02-05]
+
+[34mℹ️  Hierarchy processing complete![0m
+[34mℹ️  Next: Create/update issues and link them in GitHub[0m
+[0;32m✅ Generated hierarchy for Aragon-app-backend[0m
+[0;32m✅ STAGE 7 COMPLETE: Issue hierarchy processed[0m

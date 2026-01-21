@@ -34,7 +34,7 @@ const out = argv.out || argv.oout || 'project-schema.json';
 if (!owner || !number) usage();
 
 // Precise GraphQL query that lists fields and single-select options
-const query = `query{ organization(login:\"${owner}\"){ projectV2(number:${number}){ id fields(first:100){ nodes{ __typename ... on ProjectV2Field{ id name } ... on ProjectV2SingleSelectField{ id name options{ id name } } } } } } }`;
+const query = `query{ organization(login:\"${owner}\"){ projectV2(number:${number}){ id fields(first:100){ nodes{ __typename ... on ProjectV2Field{ id name dataType } ... on ProjectV2IterationField{ id name dataType } ... on ProjectV2SingleSelectField{ id name dataType options{ id name } } } } } } }`;
 
 try {
   // Use gh api graphql and parse output

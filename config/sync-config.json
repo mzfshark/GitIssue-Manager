@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "repositories": [
+    {
+      "owner": "Axodus",
+      "repo": "AragonOSX",
+      "planFile": "PLAN.md",
+      "parentIssueTitle": "[AragonOSX | #PLAN-001]"
+    },
+    {
+      "owner": "Axodus",
+      "repo": "aragon-app",
+      "planFile": "PLAN.md",
+      "parentIssueTitle": "[aragon-app | #PLAN-002]"
+    },
+    {
+      "owner": "Axodus",
+      "repo": "Aragon-app-backend",
+      "planFile": "PLAN.md",
+      "parentIssueTitle": "[Aragon-app-backend | #PLAN-003]"
+    }
+  ],
+  "projectV2": {
+    "owner": "mzfshark",
+    "projectNumber": 5
+  },
+  "metadata": {
+    "estimateField": "Estimate hours",
+    "statusField": "Status",
+    "priorityField": "Priority",
+    "startDateField": "Start task",
+    "endDateField": "End Task"
+  }
+}

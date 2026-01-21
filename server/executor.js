@@ -291,7 +291,7 @@ const projectFieldsCache = {};
 function loadProjectFields(projectNodeId) {
 	if (projectFieldsCache[projectNodeId]) return projectFieldsCache[projectNodeId];
 	try {
-		const q = `query($id:ID!){ node(id:$id){ __typename ... on ProjectV2{ fields(first:200){ nodes{ id databaseId name __typename } } } } }`;
+		const q = `query($id:ID!){ node(id:$id){ __typename ... on ProjectV2{ fields(first:100){ nodes{ ... on ProjectV2Field { id databaseId name dataType } ... on ProjectV2IterationField { id databaseId name dataType } ... on ProjectV2SingleSelectField { id databaseId name dataType } __typename } } } } }`;
 		const res = graphql(q, { id: projectNodeId });
 		const nodes = res && res.data && res.data.node && res.data.node.fields && res.data.node.fields.nodes ? res.data.node.fields.nodes : [];
 		projectFieldsCache[projectNodeId] = nodes;
@@ -305,7 +305,7 @@ function loadProjectFields(projectNodeId) {
 
 function loadProjectFieldsForOrg(ownerLogin, projectNumber) {
 	try {
-		const q = `query($owner:String!,$number:Int!){ organization(login:$owner){ projectV2(number:$number){ fields(first:200){ nodes{ id name __typename } } } } }`;
+		const q = `query($owner:String!,$number:Int!){ organization(login:$owner){ projectV2(number:$number){ fields(first:100){ nodes{ ... on ProjectV2Field { id name dataType } ... on ProjectV2IterationField { id name dataType } ... on ProjectV2SingleSelectField { id name dataType } __typename } } } } }`;
 		const res = graphql(q, { owner: ownerLogin, number: projectNumber });
 		const nodes = res && res.data && res.data.organization && res.data.organization.projectV2 && res.data.organization.projectV2.fields && res.data.organization.projectV2.fields.nodes ? res.data.organization.projectV2.fields.nodes : [];
 		return nodes;

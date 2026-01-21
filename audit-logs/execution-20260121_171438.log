@@ -1,0 +1,22 @@
+[0;36mℹ️  Mode: Single Stage Execution (STAGE 3)[0m
+[0;36mℹ️  Mode: Single Repository Execution (AragonOSX)[0m
+[0;34m[2026-01-21 17:14:38][0m ════════════════════════════════════════════════════════════════
+[0;34m[2026-01-21 17:14:38][0m STAGE 3: CREATE (Create parent + child issues with auto-linking)
+[0;34m[2026-01-21 17:14:38][0m ════════════════════════════════════════════════════════════════
+[0;34m[2026-01-21 17:14:38][0m Processing AragonOSX PLAN-001...
+[1;33m⚠️  Issue #431 already exists in Axodus/AragonOSX[0m
+[0;34m[2026-01-21 17:14:42][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/AragonOSX issue #431[0m
+[0;32m✅ AragonOSX parent issue: #[1;33m⚠️  Issue #431 already exists in Axodus/AragonOSX[0m
+[0;34m[2026-01-21 17:14:42][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/AragonOSX issue #431[0m
+431[0m
+[0;34m[2026-01-21 17:14:44][0m Creating child issues for AragonOSX #[1;33m⚠️  Issue #431 already exists in Axodus/AragonOSX[0m
+[0;34m[2026-01-21 17:14:42][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/AragonOSX issue #431[0m
+431...
+[0;36mℹ️  Child issue already exists: #456 (Indexing Resilience)[0m
+[0;36mℹ️  Child issue already exists: #457 (Plugin Uninstall (Safety & Cleanup))[0m
+[0;36mℹ️  Child issue already exists: #458 (Metadata Redundancy (Resilient Proposal Metadata))[0m
+[0;36mℹ️  Child issue already exists: #459 (Native-Token Voting Support)[0m
+[0;32m✅ STAGE 3 COMPLETE: All issues and child issues created[0m

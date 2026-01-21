@@ -1,0 +1,55 @@
+[0;36mℹ️  Mode: Single Stage Execution (STAGE 3)[0m
+[0;34m[2026-01-21 17:03:41][0m ════════════════════════════════════════════════════════════════
+[0;34m[2026-01-21 17:03:41][0m STAGE 3: CREATE (Create parent + child issues with auto-linking)
+[0;34m[2026-01-21 17:03:41][0m ════════════════════════════════════════════════════════════════
+[0;34m[2026-01-21 17:03:41][0m Processing AragonOSX PLAN-001...
+[1;33m⚠️  Issue #431 already exists in Axodus/AragonOSX[0m
+[0;34m[2026-01-21 17:03:42][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/AragonOSX issue #431[0m
+[0;32m✅ AragonOSX parent issue: #[1;33m⚠️  Issue #431 already exists in Axodus/AragonOSX[0m
+[0;34m[2026-01-21 17:03:42][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/AragonOSX issue #431[0m
+431[0m
+[0;34m[2026-01-21 17:03:45][0m Creating child issues for AragonOSX #[1;33m⚠️  Issue #431 already exists in Axodus/AragonOSX[0m
+[0;34m[2026-01-21 17:03:42][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/AragonOSX issue #431[0m
+431...
+[0;36mℹ️  Child issue already exists: #456 (Indexing Resilience)[0m
+[0;36mℹ️  Child issue already exists: #457 (Plugin Uninstall (Safety & Cleanup))[0m
+[0;36mℹ️  Child issue already exists: #458 (Metadata Redundancy (Resilient Proposal Metadata))[0m
+[0;36mℹ️  Child issue already exists: #459 (Native-Token Voting Support)[0m
+[0;34m[2026-01-21 17:03:52][0m Processing aragon-app PLAN-002...
+[1;33m⚠️  Issue #213 already exists in Axodus/aragon-app[0m
+[0;34m[2026-01-21 17:03:53][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/aragon-app issue #213[0m
+[0;32m✅ aragon-app parent issue: #[1;33m⚠️  Issue #213 already exists in Axodus/aragon-app[0m
+[0;34m[2026-01-21 17:03:53][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/aragon-app issue #213[0m
+213[0m
+[0;34m[2026-01-21 17:03:53][0m Creating child issues for aragon-app #[1;33m⚠️  Issue #213 already exists in Axodus/aragon-app[0m
+[0;34m[2026-01-21 17:03:53][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/aragon-app issue #213[0m
+213...
+[0;36mℹ️  Child issue already exists: #214 (Setup Forms (Validator Address Input))[0m
+[0;36mℹ️  Child issue already exists: #215 (Install Flows)[0m
+[0;36mℹ️  Child issue already exists: #216 (UI Resilience)[0m
+[0;36mℹ️  Child issue already exists: #217 (Uninstall UX)[0m
+[0;34m[2026-01-21 17:03:56][0m Processing Aragon-app-backend PLAN-003...
+[1;33m⚠️  Issue #46 already exists in Axodus/Aragon-app-backend[0m
+[0;34m[2026-01-21 17:03:57][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/Aragon-app-backend issue #46[0m
+[0;32m✅ Aragon-app-backend parent issue: #[1;33m⚠️  Issue #46 already exists in Axodus/Aragon-app-backend[0m
+[0;34m[2026-01-21 17:03:57][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/Aragon-app-backend issue #46[0m
+46[0m
+[0;34m[2026-01-21 17:03:58][0m Creating child issues for Aragon-app-backend #[1;33m⚠️  Issue #46 already exists in Axodus/Aragon-app-backend[0m
+[0;34m[2026-01-21 17:03:57][0m Updating existing issue with latest content...
+[0;32m✅ Updated Axodus/Aragon-app-backend issue #46[0m
+46...
+[0;36mℹ️  Child issue already exists: #47 (Event Handlers (VoteCast, Proposal, Execute))[0m
+[0;36mℹ️  Child issue already exists: #48 (Indexing Resilience (Retry logic, Circuit Breakers))[0m
+[0;36mℹ️  Child issue already exists: #49 (Observability (Prometheus, Logging, Dashboards))[0m
+[0;36mℹ️  Child issue already exists: #50 (Metadata Indexing (IPFS Fallback))[0m
+[0;36mℹ️  Child issue already exists: #51 (Native-Token Support)[0m
+[0;36mℹ️  Child issue already exists: #52 (E2E Testing & Deploy)[0m
+[0;32m✅ STAGE 3 COMPLETE: All issues and child issues created[0m
