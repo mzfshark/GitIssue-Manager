@@ -1,0 +1,35 @@
+{
+  "owner": "Axodus",
+  "repo": "Axodus/Aragon-app-backend",
+  "localPath": "/opt/Aragon-app-backend",
+  "enableProjectSync": true,
+  "project": {
+    "url": "https://github.com/orgs/Axodus/projects/23",
+    "number": 23,
+    "fieldIds": {
+      "statusFieldId": "",
+      "priorityFieldId": "",
+      "estimateHoursFieldId": "251668000",
+      "startDateFieldId": "",
+      "endDateFieldId": ""
+    },
+    "projectNodeId": "PVT_kwDOBfRHZM4BM-PB"
+  },
+  "defaults": {
+    "defaultEstimateHours": 1,
+    "defaultPriority": "NORMAL",
+    "defaultStatus": "TODO",
+    "defaultStartDate": "TBD",
+    "defaultEndDate": "TBD",
+    "defaultLabels": [
+      "[PLAN]",
+      "[BACKEND]"
+    ]
+  },
+  "outputs": {
+    "tasksPath": "/opt/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/tasks.json",
+    "subtasksPath": "/opt/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/subtasks.json",
+    "engineInputPath": "/opt/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/engine-input.json",
+    "engineOutputPath": "/opt/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/engine-output.json"
+  }
+}
