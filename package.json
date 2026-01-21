@@ -51,7 +51,10 @@
     "pipeline:fetch": "bash scripts/execute-pipeline.sh --stage 4",
     "pipeline:metadata": "bash scripts/execute-pipeline.sh --stage 5",
     "pipeline:reports": "bash scripts/execute-pipeline.sh --stage 6",
-    "pipeline:hierarchy": "bash scripts/execute-pipeline.sh --stage 7"
+    "pipeline:hierarchy": "bash scripts/execute-pipeline.sh --stage 7",
+    "e2e": "bash scripts/e2e-flow.sh",
+    "e2e:setup": "bash scripts/e2e-flow.sh --stage setup",
+    "e2e:interactive": "bash scripts/e2e-flow.sh"
   },
   "keywords": [
     "github",
