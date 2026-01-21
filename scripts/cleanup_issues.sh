@@ -584,7 +584,8 @@ while IFS= read -r REPO; do
         CLOSED_MARKERS=$(mktemp)
         FAILED_MARKERS=$(mktemp)
 
-        # Use xargs for parallel execution
+        # Use xargs for parallel execution. The inline script avoids complex quoting
+        # and prints simple, parseable messages to the log file.
         cat "$ISSUES_TO_CLOSE" | xargs -P "$MAX_PARALLEL" -I {} bash -c '
                 issue_num="$1"
                 repo="$2"
@@ -599,20 +600,20 @@ while IFS= read -r REPO; do
                 title=$(jq -r ".[] | select(.number==${issue_num}) | .title" "$issues_json" 2>/dev/null | head -1 || echo "N/A")
 
                 if [ "$comment_enabled" = "true" ]; then
-                    gh issue comment "$issue_num" --repo "$repo" --body "$close_message" 2>/dev/null || {
+                    if ! gh issue comment "$issue_num" --repo "$repo" --body "$close_message" 2>/dev/null; then
                         echo "$issue_num" >> "$fail_file"
-                        echo -e "'"${RED}[ERROR]${NC}"'   ✗ Failed to comment #${issue_num}" | tee -a "$log_file"
+                        echo "[ERROR] Failed to comment #${issue_num}" | tee -a "$log_file"
                         sleep "$sleep_seconds"
                         exit 0
-                    }
+                    fi
                 fi
 
                 if gh issue close "$issue_num" --repo "$repo" 2>/dev/null; then
                     echo "$issue_num" >> "$ok_file"
-                    echo -e "'"${GREEN}[SUCCESS]${NC}"'   ✓ Closed #${issue_num}: ${title}" | tee -a "$log_file"
+                    echo "[SUCCESS] Closed #${issue_num}: ${title}" | tee -a "$log_file"
                 else
                     echo "$issue_num" >> "$fail_file"
-                    echo -e "'"${RED}[ERROR]${NC}"'   ✗ Failed to close #${issue_num}" | tee -a "$log_file"
+                    echo "[ERROR] Failed to close #${issue_num}" | tee -a "$log_file"
                 fi
 
                 sleep "$sleep_seconds"

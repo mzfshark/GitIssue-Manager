@@ -2,7 +2,8 @@
   "repos": [
     "mzfshark/AragonOSX",
     "Axodus/aragon-app",
-    "Axodus/Aragon-app-backend"
+    "Axodus/Aragon-app-backend",
+    "mzfshark/osx-plugin-foundry"
   ],
   "plan_files": {
     "mzfshark/AragonOSX": [
@@ -35,7 +36,7 @@
   },
   "logging": {
     "log_directory": "./logs",
-    "timestamp_format": "%Y%m%d_%H%M%S",
+    "timestamp_format": "%Y%m%d",
     "verbose": false
   }
 }
