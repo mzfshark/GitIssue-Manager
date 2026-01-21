@@ -1,0 +1,35 @@
+{
+  "owner": "Axodus",
+  "repo": "Axodus/osx-plugin-foundry",
+  "localPath": "../osx-plugin-foundry",
+  "enableProjectSync": true,
+  "project": {
+    "url": "https://github.com/orgs/Axodus/projects/23",
+    "number": 23,
+    "fieldIds": {
+      "statusFieldId": "",
+      "priorityFieldId": "",
+      "estimateHoursFieldId": "251668000",
+      "startDateFieldId": "",
+      "endDateFieldId": ""
+    },
+    "projectNodeId": "PVT_kwDOBfRHZM4BM-PB"
+  },
+  "defaults": {
+    "defaultEstimateHours": 1,
+    "defaultPriority": "NORMAL",
+    "defaultStatus": "TODO",
+    "defaultStartDate": "TBD",
+    "defaultEndDate": "TBD",
+    "defaultLabels": [
+      "plugins",
+      "harmony"
+    ]
+  },
+  "outputs": {
+    "tasksPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-osx-plugin-foundry/tasks.json",
+    "subtasksPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-osx-plugin-foundry/subtasks.json",
+    "engineInputPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-osx-plugin-foundry/engine-input.json",
+    "engineOutputPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-osx-plugin-foundry/engine-output.json"
+  }
+}

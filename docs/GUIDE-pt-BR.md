@@ -1,3 +1,4 @@
+````markdown
 # GitIssue-Manager — Guia Didático para Leigos (Português)
 
 **Bem-vindo!** Esse guia explica de forma simples e visual como funciona a ferramenta, mesmo que você não seja desenvolvedor.
@@ -8,7 +9,7 @@
 
 Imagine que você está planejando um novo sprint com 20 tarefas:
 
-### ❌ Forma antiga (manual)
+### [X] Forma antiga (manual)
 ```
 1. Você escreve em um documento Markdown: "FEATURE-001: Login do usuário"
 2. Abre o GitHub
@@ -19,16 +20,16 @@ Imagine que você está planejando um novo sprint com 20 tarefas:
 7. Adiciona labels manualmente
 8. Anexa à board ProjectV2
 9. Repete isso 20 vezes...
-⏱️ Resultado: 30–60 minutos gastos apenas criando issues
+[TIME] Resultado: 30–60 minutos gastos apenas criando issues
 ```
 
-### ✅ Forma inteligente (GitIssue-Manager)
+### [OK] Forma inteligente (GitIssue-Manager)
 ```
 1. Você escreve em um documento Markdown: "FEATURE-001: Login do usuário"
 2. Executa: node client/prepare.js
 3. Executa: node server/executor.js --execute
 4. PRONTO! Todas as 20 issues foram criadas automaticamente no GitHub
-⏱️ Resultado: 2 minutos (ou menos!)
+[TIME] Resultado: 2 minutos (ou menos!)
 ```
 
 ---
@@ -113,16 +114,16 @@ GitIssue-Manager é um **assistente automático** que:
 │  • Adiciona labels                                        │
 │  • Registra tudo em logs/audit.jsonl                     │
 │                                                             │
-└────────────────┬────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
 │  GitHub Issues + ProjectV2 + Audit Log                   │
 │                                                             │
-│  Tudo criado automaticamente! ✓                           │
+│  Tudo criado automaticamente! [OK]                       │
 │                                                             │
-└─────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -136,8 +137,8 @@ Um dos poderes dessa ferramenta é a **prévia (dry-run)**:
 3. **Segunda execução:** Agora sim, cria no GitHub
 
 É como:
-- ✅ Draftar um email, reler, depois enviar
-- ❌ Enviar um email sem ler (erro não pode ser desfeito)
+- [OK] Draftar um email, reler, depois enviar
+- [X] Enviar um email sem ler (erro não pode ser desfeito)
 
 ---
 
@@ -187,8 +188,8 @@ O `TYPE-NNN` é um **identificador único e estável** para cada tarefa.
 - Sem ID explícito, a ferramenta cria issues duplicadas (ruim!)
 
 **Analógia:**
-- ✅ Seu CPF (ID) permanece o mesmo mesmo se você mudar de endereço
-- ❌ Sem ID, você seria uma "nova pessoa" a cada vez que se muda
+- [OK] Seu CPF (ID) permanece o mesmo mesmo se você mudar de endereço
+- [X] Sem ID, você seria uma "nova pessoa" a cada vez que se muda
 
 ---
 
@@ -299,4 +300,6 @@ Pense nela como um **assistente pessoal automático** que cuida de tarefas chata
 
 ---
 
-**Dúvidas?** Fale com o time técnico! 😊
+**Dúvidas?** Chama no zap! :)
+
+````

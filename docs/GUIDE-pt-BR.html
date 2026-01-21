@@ -1,0 +1,345 @@
+<h1
+id="gitissue-manager-guia-didático-para-leigos-português">GitIssue-Manager
+— Guia Didático para Leigos (Português)</h1>
+<p><strong>Bem-vindo!</strong> Esse guia explica de forma simples e
+visual como funciona a ferramenta, mesmo que você não seja
+desenvolvedor.</p>
+<hr />
+<h2 id="o-problema-por-que-essa-ferramenta-existe">O Problema: Por que
+essa ferramenta existe?</h2>
+<p>Imagine que você está planejando um novo sprint com 20 tarefas:</p>
+<h3 id="forma-antiga-manual">❌ Forma antiga (manual)</h3>
+<pre><code>1. Você escreve em um documento Markdown: &quot;FEATURE-001: Login do usuário&quot;
+2. Abre o GitHub
+3. Vai para o tab Issues
+4. Clica em &quot;New Issue&quot;
+5. Copia o título do documento para a issue
+6. Copia a descrição manualmente
+7. Adiciona labels manualmente
+8. Anexa à board ProjectV2
+9. Repete isso 20 vezes...
+⏱️ Resultado: 30–60 minutos gastos apenas criando issues</code></pre>
+<h3 id="forma-inteligente-gitissue-manager">✅ Forma inteligente
+(GitIssue-Manager)</h3>
+<pre><code>1. Você escreve em um documento Markdown: &quot;FEATURE-001: Login do usuário&quot;
+2. Executa: node client/prepare.js
+3. Executa: node server/executor.js --execute
+4. PRONTO! Todas as 20 issues foram criadas automaticamente no GitHub
+⏱️ Resultado: 2 minutos (ou menos!)</code></pre>
+<hr />
+<h2 id="o-que-a-ferramenta-faz-em-termos-simples">O que a ferramenta faz
+(em termos simples)</h2>
+<p>GitIssue-Manager é um <strong>assistente automático</strong> que:</p>
+<ol type="1">
+<li><strong>Lê</strong> seu arquivo de planejamento (SPRINT.md)</li>
+<li><strong>Entende</strong> a estrutura (tarefas, subtarefas,
+prioridades)</li>
+<li><strong>Cria</strong> issues no GitHub automaticamente</li>
+<li><strong>Registra</strong> tudo o que faz (para auditoria)</li>
+</ol>
+<p>É como se você tivesse um estagiário que: - Copia textos com precisão
+(sem erros de digitação) - Nunca esquece de adicionar labels - Registra
+exatamente o que fez e quando - Pode desfazer tudo se errado</p>
+<hr />
+<h2 id="por-que-é-útil">Por que é útil?</h2>
+<table>
+<colgroup>
+<col style="width: 37%" />
+<col style="width: 29%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Cenário</th>
+<th>Antes</th>
+<th>Depois</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Sprint com 20 tarefas</strong></td>
+<td>1 hora (manual)</td>
+<td>5 minutos (automático)</td>
+</tr>
+<tr class="even">
+<td><strong>Atualizar prioridades</strong></td>
+<td>Editar cada issue no GitHub</td>
+<td>Editar SPRINT.md, sincronizar</td>
+</tr>
+<tr class="odd">
+<td><strong>Auditoria</strong></td>
+<td>“Quem criou essa issue?” → sem registro</td>
+<td><code>logs/audit.jsonl</code> mostra tudo</td>
+</tr>
+<tr class="even">
+<td><strong>Erros</strong></td>
+<td>“Esqueci de adicionar o label”</td>
+<td>Automático, sem erros</td>
+</tr>
+<tr class="odd">
+<td><strong>Múltiplos repos</strong></td>
+<td>Copiar config de um repo para outro</td>
+<td>Reutilizar arquivos SPRINT.md</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="como-funciona-explicado-visualmente">Como funciona (explicado
+visualmente)</h2>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  Você escreve aqui (Markdown):                            │
+│                                                             │
+│  SPRINT.md                                                │
+│  ├─ FEATURE-001: Login                                   │
+│  ├─ FEATURE-002: Dashboard                               │
+│  └─ BUG-001: Validator fix                               │
+│                                                             │
+└────────────────┬────────────────────────────────────────────┘
+                 │ (GitIssue-Manager lê isto)
+                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  O computador processa (Parser):                          │
+│                                                             │
+│  • Extrai tarefas                                         │
+│  • Detecta prioridades/labels                             │
+│  • Gera identificadores únicos (TYPE-NNN)               │
+│  • Cria um arquivo JSON estruturado                       │
+│                                                             │
+│  Resultado: engine-input.json (máquina entende)          │
+│                                                             │
+└────────────────┬────────────────────────────────────────────┘
+                 │ (Você revisa: &quot;Está certo?&quot;)
+                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  PRÉVIA (Dry-Run):                                         │
+│  O computador simula criar as issues, mas não as cria    │
+│  no GitHub ainda                                           │
+│                                                             │
+│  Resultado: logs/dryrun_summary_*.json                    │
+│  (Você lê: &quot;Sim, está perfeito!&quot;)                         │
+│                                                             │
+└────────────────┬────────────────────────────────────────────┘
+                 │ (Você aprova)
+                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  EXECUÇÃO (Real Write):                                   │
+│  Agora sim, o computador cria as issues no GitHub        │
+│                                                             │
+│  • Cria issues                                            │
+│  • Anexa à board ProjectV2                                │
+│  • Adiciona labels                                        │
+│  • Registra tudo em logs/audit.jsonl                     │
+│                                                             │
+└────────────────┬────────────────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  GitHub Issues + ProjectV2 + Audit Log                   │
+│                                                             │
+│  Tudo criado automaticamente! ✓                           │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+<hr />
+<h2 id="a-segurança-de-prévia-primeiro">A Segurança de “Prévia
+Primeiro”</h2>
+<p>Um dos poderes dessa ferramenta é a <strong>prévia
+(dry-run)</strong>:</p>
+<ol type="1">
+<li><strong>Primeira execução:</strong> Calcula tudo, mas NÃO toca no
+GitHub</li>
+<li><strong>Você revisa:</strong> “As tarefas estão certas?”</li>
+<li><strong>Segunda execução:</strong> Agora sim, cria no GitHub</li>
+</ol>
+<p>É como: - ✅ Draftar um email, reler, depois enviar - ❌ Enviar um
+email sem ler (erro não pode ser desfeito)</p>
+<hr />
+<h2 id="estrutura-do-documento-sprint.md">Estrutura do documento
+(SPRINT.md)</h2>
+<p>Para a ferramenta funcionar bem, seu arquivo precisa ter esta
+estrutura:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu"># Sprint 1: Validação de Endereços</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">## FEATURE-001: Normalizar endereços de validadores</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="va">[ ]</span> Criar função de normalização</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span><span class="va">[ ]</span> Converter para checksummed format</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="ss">  - </span><span class="va">[ ]</span> Testar com dados reais</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="va">[ ]</span> Integrar nos endpoints da API</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="va">[ ]</span> Adicionar testes de integração</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="fu">## BUG-001: Bug no validador [priority:high]</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="va">[ ]</span> Reproduzir o erro</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="va">[ ]</span> Encontrar a causa</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="va">[ ]</span> Corrigir</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="va">[ ]</span> Testar</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="fu">## TASK-001: Documentação</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="va">[ ]</span> Atualizar README</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="va">[ ]</span> Escrever guia de uso</span></code></pre></div>
+<p><strong>Regras simples:</strong> - <code>## FEATURE-001:</code> —
+início de uma tarefa principal - <code>- [ ]</code> — subtarefas dentro
+da tarefa - <code>[priority:high]</code> — opcional, adiciona prioridade
+- <code>[labels:backend]</code> — opcional, adiciona labels</p>
+<hr />
+<h2 id="o-que-significa-type-nnn">O que significa “TYPE-NNN”?</h2>
+<p>O <code>TYPE-NNN</code> é um <strong>identificador único e
+estável</strong> para cada tarefa.</p>
+<ul>
+<li><code>FEATURE-001</code> = tipo é “FEATURE”, número é “001”</li>
+<li><code>BUG-042</code> = tipo é “BUG”, número é “042”</li>
+<li><code>TASK-005</code> = tipo é “TASK”, número é “005”</li>
+</ul>
+<p><strong>Por que é importante?</strong> - Se você mover a tarefa de
+<code>SPRINT.md</code> para <code>PLAN.md</code>, a ferramenta ainda
+reconhece como a mesma tarefa - Sem ID explícito, a ferramenta cria
+issues duplicadas (ruim!)</p>
+<p><strong>Analógia:</strong> - ✅ Seu CPF (ID) permanece o mesmo mesmo
+se você mudar de endereço - ❌ Sem ID, você seria uma “nova pessoa” a
+cada vez que se muda</p>
+<hr />
+<h2 id="passo-a-passo-para-o-usuário-final">Passo-a-Passo para o Usuário
+Final</h2>
+<h3 id="pré-requisito">Pré-requisito</h3>
+<ul>
+<li>Arquivo <code>SPRINT.md</code> com suas tarefas (já pronto)</li>
+<li>Conversa com alguém técnico para: “rodar a ferramenta”</li>
+</ul>
+<h3 id="o-que-você-faz">O que você faz</h3>
+<ol type="1">
+<li>Edita <code>SPRINT.md</code> e marca tarefas como <code>[x]</code>
+(feito) ou <code>[ ]</code> (a fazer)</li>
+<li>Avisa ao time: “Atualizei SPRINT.md”</li>
+</ol>
+<h3 id="o-que-o-time-técnico-faz">O que o time técnico faz</h3>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Lê o SPRINT.md</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">node</span> client/prepare.js ...</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Mostra a prévia para você revisar</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="ex">node</span> server/executor.js <span class="at">--dry-run</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># → Você vê: &quot;Serão criadas 20 issues&quot;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co"># → Você aprova: &quot;Está certo!&quot;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Cria no GitHub</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="ex">node</span> server/executor.js <span class="at">--execute</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co"># → Pronto! Issues no GitHub</span></span></code></pre></div>
+<h3 id="você-verifica">Você verifica</h3>
+<ul>
+<li>Vai para GitHub → Issues tab</li>
+<li>Vê as novas issues com título
+<code>[repo-name | #FEATURE-001]</code></li>
+<li>Vai para ProjectV2 → vê as issues na board</li>
+</ul>
+<hr />
+<h2 id="o-arquivo-de-auditoria-logsaudit.jsonl">O Arquivo de Auditoria
+(<code>logs/audit.jsonl</code>)</h2>
+<p>Toda vez que a ferramenta cria/atualiza uma issue, ela registra:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span> <span class="st">&quot;2026-01-21T12:34:56Z&quot;</span><span class="fu">,</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;action&quot;</span><span class="fu">:</span> <span class="st">&quot;create_issue&quot;</span><span class="fu">,</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;repo&quot;</span><span class="fu">:</span> <span class="st">&quot;mzfshark/my-repo&quot;</span><span class="fu">,</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;issueId&quot;</span><span class="fu">:</span> <span class="st">&quot;FEATURE-001&quot;</span><span class="fu">,</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;title&quot;</span><span class="fu">:</span> <span class="st">&quot;[my-repo | #FEATURE-001] Normalize validator addresses&quot;</span><span class="fu">,</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;success&quot;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><strong>Por quê?</strong> - <strong>Compliance:</strong> “Quem fez o
+quê e quando?” - <strong>Debugging:</strong> Se algo deu errado, você vê
+o registro - <strong>Auditoria:</strong> Registro imutável de todas as
+ações</p>
+<hr />
+<h2 id="comparação-ferramenta-vs.-manual">Comparação: Ferramenta
+vs. Manual</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Aspecto</th>
+<th>Manual</th>
+<th>GitIssue-Manager</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Tempo (20 issues)</td>
+<td>1 hora</td>
+<td>5 minutos</td>
+</tr>
+<tr class="even">
+<td>Risco de erro</td>
+<td>Alto (digitação, labels)</td>
+<td>Baixo (automático)</td>
+</tr>
+<tr class="odd">
+<td>Atualizar tudo</td>
+<td>Muito tempo</td>
+<td>Rápido (refaz tudo)</td>
+</tr>
+<tr class="even">
+<td>Auditoria</td>
+<td>Nenhuma (“quem fez?”)</td>
+<td>Completa (logs)</td>
+</tr>
+<tr class="odd">
+<td>Aprender curva</td>
+<td>0 (UI do GitHub)</td>
+<td>Baixa (Markdown = fácil)</td>
+</tr>
+<tr class="even">
+<td>Custo</td>
+<td>Trabalho manual</td>
+<td>0 (ferramenta reutilizável)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="próximos-passos-recomendados">Próximos Passos
+(Recomendados)</h2>
+<ol type="1">
+<li><strong>Fase 1 - Demo:</strong> Time técnico roda a ferramenta em um
+pequeno exemplo (~5 issues) para você ver funcionando</li>
+<li><strong>Fase 2 - Piloto:</strong> Use para um sprint real (20–30
+issues); validar fluxo</li>
+<li><strong>Fase 3 - Produção:</strong> Integre ao processo; documente
+convenções de nomes (<code>TYPE-NNN</code>)</li>
+<li><strong>Fase 4 - Automação:</strong> GitHub Actions roda
+automaticamente quando você faz commit em SPRINT.md</li>
+</ol>
+<hr />
+<h2 id="perguntas-frequentes">Perguntas Frequentes</h2>
+<h3
+id="p-posso-editar-um-sprint.md-existente-e-sincronizar-novamente">P:
+Posso editar um SPRINT.md existente e sincronizar novamente?</h3>
+<p><strong>R:</strong> Sim! A ferramenta detecta que
+<code>FEATURE-001</code> já existe e atualiza a issue em vez de criar
+uma nova.</p>
+<h3 id="p-e-se-eu-estragar-algo">P: E se eu estragar algo?</h3>
+<p><strong>R:</strong> Use dry-run primeiro (sem risco). Se executar
+algo errado, é fácil desfazer (deletar issues, etc.).</p>
+<h3 id="p-funciona-com-múltiplos-repositórios">P: Funciona com múltiplos
+repositórios?</h3>
+<p><strong>R:</strong> Sim! Você pode ter diferentes
+<code>SPRINT.md</code> em diferentes repos. A ferramenta processa cada
+um com segurança.</p>
+<h3 id="p-preciso-aprender-programação">P: Preciso aprender
+programação?</h3>
+<p><strong>R:</strong> Não! Você só escreve Markdown (como uma lista com
+checkboxes). O resto é automático.</p>
+<h3 id="p-quem-pode-usar">P: Quem pode usar?</h3>
+<p><strong>R:</strong> Qualquer um que trabalhe com planejamento
+(product managers, scrum masters, team leads, etc.).</p>
+<hr />
+<h2 id="conclusão">Conclusão</h2>
+<p>GitIssue-Manager é uma ferramenta que: - <strong>Economiza
+tempo:</strong> 1 hora → 5 minutos - <strong>Reduz erros:</strong>
+Automático, consistente - <strong>Melhora rastreabilidade:</strong> Cada
+mudança registrada - <strong>É fácil:</strong> Apenas Markdown + dois
+comandos</p>
+<p>Pense nela como um <strong>assistente pessoal automático</strong> que
+cuida de tarefas chatas para que você possa focar no que importa.</p>
+<hr />
+<p><strong>Dúvidas?</strong> Fale com o time técnico! 😊</p>
