@@ -64,6 +64,51 @@ strip_shortcodes() {
     printf '%s' "$out"
 }
 
+# Resolve the sync-helper config that corresponds to a given repo.
+# This makes sync-helper the single source of truth for outputs paths and parsing behavior.
+resolve_sync_config_for_repo() {
+    local repo_full="$1"
+    local cfg
+    for cfg in "$PROJECT_ROOT/sync-helper/configs"/*.json; do
+        [[ -f "$cfg" ]] || continue
+        local r
+        r=$(jq -r '.repo // empty' "$cfg" 2>/dev/null || true)
+        if [[ -n "$r" && "$r" == "$repo_full" ]]; then
+            printf '%s' "$cfg"
+            return 0
+        fi
+    done
+    return 1
+}
+
+merge_managed_section() {
+    local existing_body="$1"
+    local begin_marker="$2"
+    local end_marker="$3"
+    local new_section="$4"
+
+    node - <<'NODE'
+const fs = require('fs');
+
+const existing = fs.readFileSync(0, 'utf8');
+const begin = process.argv[2];
+const end = process.argv[3];
+const replacement = process.argv[4];
+
+function ensureMarkers(text) {
+  if (!text.includes(begin)) text += `\n\n${begin}\n${end}\n`;
+  if (!text.includes(end)) text += `\n${end}\n`;
+  return text;
+}
+
+const withMarkers = ensureMarkers(existing);
+const re = new RegExp(`${begin}[\\s\\S]*?${end}`, 'm');
+const next = withMarkers.replace(re, `${begin}\n${replacement}\n${end}`);
+process.stdout.write(next);
+NODE
+    "$begin_marker" "$end_marker" "$new_section" <<<"$existing_body"
+}
+
 # Audit logging (JSONL)
 audit_log() {
     local action="$1"
@@ -228,33 +273,30 @@ compute_plan_hash() {
 }
 
 validate_labels_allowlist() {
-    local hierarchy_file="$1"
+        local metadata_file="$1"
     if [[ "$ENFORCE_LABEL_ALLOWLIST" != "true" ]]; then
         return 0
     fi
 
-    node -e "
-    const fs = require('fs');
-    const items = JSON.parse(fs.readFileSync('$hierarchy_file', 'utf8')).items || [];
-    const metadata = JSON.parse(fs.readFileSync('$METADATA_FILE', 'utf8'));
-    const allowed = new Set((metadata.labels && metadata.labels.allowed || []).map(l => l.toLowerCase()));
-    const tagRe = /\[(label|labels):([^\]]+)\]/gi;
-    const invalid = new Set();
-    for (const item of items) {
-      const text = item.title || '';
-      let m;
-      while ((m = tagRe.exec(text)) !== null) {
-        const labels = m[2].split(',').map(v => v.trim()).filter(Boolean);
-        for (const label of labels) {
-          if (!allowed.has(label.toLowerCase())) invalid.add(label);
+        node -e "
+        const fs = require('fs');
+        const metadata = JSON.parse(fs.readFileSync('$metadata_file', 'utf8'));
+        const allowed = new Set((metadata.labels && metadata.labels.allowed || []).map(l => String(l).toLowerCase()));
+        const invalid = new Set();
+        const items = [...(metadata.tasks || []), ...(metadata.subtasks || [])];
+        for (const item of items) {
+            const labels = Array.isArray(item.labels) ? item.labels : [];
+            for (const label of labels) {
+                const l = String(label).trim();
+                if (!l) continue;
+                if (!allowed.has(l.toLowerCase())) invalid.add(l);
+            }
         }
-      }
-    }
-    if (invalid.size) {
-      console.error('Invalid labels found:', Array.from(invalid).join(', '));
-      process.exit(2);
-    }
-    "
+        if (invalid.size) {
+            console.error('Invalid labels found:', Array.from(invalid).join(', '));
+            process.exit(2);
+        }
+        "
     if [[ $? -ne 0 ]]; then
         log_error "Label allowlist validation failed."
         return 1
@@ -417,53 +459,40 @@ stage_prepare() {
     [[ ! -f "$plan_file" ]] && { log_error "Plan not found: $plan_file"; return 1; }
     log_success "Plan found"
 
-    resolve_metadata_file || return 1
+    # Use sync-helper artifacts as the single source of truth.
+    local sync_config
+    sync_config=$(resolve_sync_config_for_repo "$repo_full_name" 2>/dev/null || true)
+    [[ -z "$sync_config" ]] && { log_error "No sync-helper config found for repo: $repo_full_name"; return 1; }
+
+    log_info "Using sync-helper config: $sync_config"
+    log_info "Running prepare (client/prepare.js)..."
+    node "$PROJECT_ROOT/client/prepare.js" --config "$sync_config" --plans "$plan_file" >/dev/null
+
+    local tasks_path
+    local subtasks_path
+    local engine_input_path
+    local engine_output_path
+    tasks_path=$(jq -r '.outputs.tasksPath // empty' "$sync_config" 2>/dev/null || true)
+    subtasks_path=$(jq -r '.outputs.subtasksPath // empty' "$sync_config" 2>/dev/null || true)
+    engine_input_path=$(jq -r '.outputs.engineInputPath // empty' "$sync_config" 2>/dev/null || true)
+    engine_output_path=$(jq -r '.outputs.engineOutputPath // empty' "$sync_config" 2>/dev/null || true)
+    [[ -z "$tasks_path" || -z "$engine_input_path" || -z "$engine_output_path" ]] && { log_error "Missing outputs paths in sync-helper config: $sync_config"; return 1; }
+
+    local metadata_file
+    metadata_file="$(dirname "$tasks_path")/metadata.json"
+    [[ ! -f "$metadata_file" ]] && { log_error "metadata.json not found after prepare: $metadata_file"; return 1; }
+
+    METADATA_FILE="$metadata_file"
     load_metadata || return 1
     compute_plan_hash "$plan_file" || return 1
-    
-    local hierarchy_file="$OUTPUT_DIR/hierarchy.json"
-    log_info "Parsing..."
-    
-    node -e "
-    const fs = require('fs');
-    const content = fs.readFileSync('$plan_file', 'utf-8');
-    const lines = content.split('\\n');
-    const items = [];
-    let idCounter = 1;
-    
-    lines.forEach((line, idx) => {
-        const match = line.match(/^(\s*)- \[ \] (.+)/);
-        if (match) {
-            const indent = match[1].length;
-            const title = match[2].trim();
-            const level = Math.floor(indent / 2);
-            items.push({
-                id: idCounter++,
-                title: title,
-                level: level,
-                line: idx + 1
-            });
-        }
-    });
-    
-    const output = {
-        source: '$SELECTED_PLAN',
-        repository: '$repo_full_name',
-        totalItems: items.length,
-        items: items,
-        metadata: { parsedAt: new Date().toISOString() }
-    };
-    
-    fs.writeFileSync('$hierarchy_file', JSON.stringify(output, null, 2));
-    console.log(JSON.stringify({success: true, itemCount: items.length}));
-    " || return 1
-    
-    local item_count=$(jq -r '.totalItems' "$hierarchy_file")
-    log_success "Parsed $item_count items"
 
-    validate_labels_allowlist "$hierarchy_file" || return 1
-    
-    save_state "2" '{"completed": true, "hierarchyFile": "'$hierarchy_file'", "itemCount": '$item_count', "repository": "'$repo_full_name'", "planFile": "'$plan_file'", "planHash": "'$PLAN_HASH'", "metadataFile": "'$METADATA_FILE'"}'
+    local item_count
+    item_count=$(jq -r '((.tasks|length) + (.subtasks|length)) // 0' "$metadata_file" 2>/dev/null || echo 0)
+    log_success "Prepared artifacts (items=$item_count)"
+
+    validate_labels_allowlist "$metadata_file" || return 1
+
+    save_state "2" '{"completed": true, "repository": "'$repo_full_name'", "planFile": "'$plan_file'", "planHash": "'$PLAN_HASH'", "syncConfig": "'$sync_config'", "metadataFile": "'$metadata_file'", "tasksPath": "'$tasks_path'", "subtasksPath": "'$subtasks_path'", "engineInputPath": "'$engine_input_path'", "engineOutputPath": "'$engine_output_path'", "itemCount": '$item_count'}'
     log_success "STAGE 2 complete"
     return 0
 }
@@ -583,7 +612,7 @@ _Generated by E2E Flow v2.0_"
 
 # STAGE 4
 stage_create_children() {
-    log_stage "4" "CREATE CHILDREN - Generate Sub-Issues"
+    log_stage "4" "EXECUTE - Upsert Issues from sync-helper artifacts"
     
     local pai_data=$(get_stage_data "3")
     [[ $(echo "$pai_data" | jq -r '.completed // false') != "true" ]] && { log_error "STAGE 3 not completed"; return 1; }
@@ -593,95 +622,41 @@ stage_create_children() {
     local repo_full=$(echo "$pai_data" | jq -r '.repository')
     
     local prep_data=$(get_stage_data "2")
-    local hierarchy_file=$(echo "$prep_data" | jq -r '.hierarchyFile')
-    local item_count=$(echo "$prep_data" | jq -r '.itemCount')
+    local sync_config
+    sync_config=$(echo "$prep_data" | jq -r '.syncConfig // empty')
+    local engine_output_path
+    engine_output_path=$(echo "$prep_data" | jq -r '.engineOutputPath // empty')
+    local metadata_file
+    metadata_file=$(echo "$prep_data" | jq -r '.metadataFile // empty')
+    local item_count
+    item_count=$(echo "$prep_data" | jq -r '.itemCount // 0')
     
-    [[ -z "$pai_number" && "$DRY_RUN" != "true" ]] && { log_error "PAI number missing. Run STAGE 3 or provide --parent-number."; return 1; }
-    log_info "PAI: #${pai_number:-N/A}"
-    log_info "Creating $item_count sub-issues..."
-    
-    local items=$(jq -c '.items[]' "$hierarchy_file")
-    local counter=1
-    
-    echo "$items" | while IFS= read -r item; do
-        local item_id=$(echo "$item" | jq -r '.id')
-        local item_title_raw
-        item_title_raw=$(echo "$item" | jq -r '.title')
-        local item_title
-        item_title=$(strip_shortcodes "$item_title_raw")
-        
-        log_info "[$counter/$item_count] $item_title"
-        
-        local issue_body=""
-        if [[ "$INCLUDE_PARENT_IN_BODY" == "true" && -n "$pai_number" ]]; then
-            issue_body="**Parent:** #$pai_number
+    [[ -z "$sync_config" ]] && { log_error "syncConfig missing. Run STAGE 2."; return 1; }
+    [[ -z "$engine_output_path" ]] && { log_error "engineOutputPath missing. Run STAGE 2."; return 1; }
+    [[ ! -f "$metadata_file" ]] && { log_error "metadataFile missing. Run STAGE 2."; return 1; }
 
----
+    log_info "Repo: $repo_full"
+    log_info "Items: $item_count"
+    log_info "Running executor (server/executor.js)..."
 
-$item_title
+    if [[ "$DRY_RUN" == "true" ]]; then
+        node "$PROJECT_ROOT/server/executor.js" --config "$sync_config" --dry-run >/dev/null
+    else
+        node "$PROJECT_ROOT/server/executor.js" --config "$sync_config" >/dev/null
+    fi
 
----
+    [[ ! -f "$engine_output_path" ]] && { log_error "engine-output not found: $engine_output_path"; return 1; }
 
-_Item #$item_id - Generated by E2E Flow v2.0_"
-        else
-            issue_body="$item_title
-
----
-
-_Item #$item_id - Generated by E2E Flow v2.0_"
-        fi
-        
-        local issue_number
-        if [[ "$DRY_RUN" == "true" ]]; then
-            issue_number=""
-        else
-            # CRITICAL: Check for existing issue before creating
-            local existing_number
-            existing_number=$(check_existing_issue "$repo_full" "$item_title")
-
-            if [[ -n "$existing_number" ]]; then
-                issue_number="$existing_number"
-                log_info "Reusing existing issue #$issue_number"
-                audit_log "issue_reuse" '{"kind":"child","number":'$issue_number',"title":'"$(echo "$item_title" | jq -Rs '.')"'}'
-            else
-                local create_output=$(gh issue create \
-                    --repo "$repo_full" \
-                    --title "$item_title" \
-                    --body "$issue_body" \
-                    2>&1)
-                
-                # Extract issue number - more robust
-                issue_number=$(echo "$create_output" | grep -oP 'issues/\K\d+' | head -n1)
-                
-                if [[ -z "$issue_number" ]]; then
-                    log_warning "Failed to extract issue number for: $item_title"
-                    continue
-                fi
-                
-                log_success "Created #$issue_number"
-
-                audit_log "issue_create" '{"kind":"child","number":'$issue_number',"title":'"$(echo "$item_title" | jq -Rs '.')"',"url":"'$(echo "$create_output" | grep -oP 'https://[^\s]+' | head -n1)'"}'
-            fi
-        fi
-        
-        echo "{\"id\": $item_id, \"number\": ${issue_number:-null}, \"title\": \"$(echo "$item_title" | sed 's/"/\\"/g')\"}" >> "$OUTPUT_DIR/created-issues.jsonl"
-        
-        counter=$((counter + 1))
-        sleep 0.5
-    done
-    
-    jq -s '.' "$OUTPUT_DIR/created-issues.jsonl" > "$OUTPUT_DIR/created-issues.json"
-    rm -f "$OUTPUT_DIR/created-issues.jsonl"
-    
-    local created_count=$(jq 'length' "$OUTPUT_DIR/created-issues.json")
-    log_success "Created $created_count sub-issues"
+    local created_count
+    created_count=$(jq -r '[.results[0].tasks[]? | select(.created == true)] | length' "$engine_output_path" 2>/dev/null || echo 0)
+    log_success "Executor complete (created=$created_count)"
 
     if [[ "$DRY_RUN" != "true" && "$TIMING_AFTER_CHILDREN" -gt 0 ]]; then
         log_info "Waiting ${TIMING_AFTER_CHILDREN}s for indexing..."
         sleep "$TIMING_AFTER_CHILDREN"
     fi
     
-    save_state "4" '{"completed": true, "createdCount": '$created_count', "issuesFile": "'$OUTPUT_DIR'/created-issues.json"}'
+    save_state "4" '{"completed": true, "createdCount": '$created_count', "engineOutputPath": "'$engine_output_path'", "metadataFile": "'$metadata_file'"}'
     log_success "STAGE 4 complete"
     return 0
 }

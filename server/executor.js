@@ -451,6 +451,7 @@ function resolveProjectFieldNodeId(projectNodeId, candidate) {
 
 async function main() {
 	const args = process.argv.slice(2);
+	const dryRun = args.includes('--dry-run') || args.includes('--dryrun');
 	const configIndex = args.indexOf('--config');
 	const inputIndex = args.indexOf('--input');
 	
@@ -613,11 +614,25 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 
 				let issue = findIssueByStableId(fullRepo, task.stableId);
 				let created = false;
+				let wouldCreate = false;
+				let wouldUpdate = false;
 				if (issue) {
-					console.log('Updating issue', issue.number, 'for', task.stableId.substring(0, 10));
-					const upd = updateIssue(fullRepo, issue.number, title, body, labels.concat([]));
-					issue = upd;
+					if (dryRun) {
+						console.log('[DRY-RUN] Would update issue', issue.number, 'for', task.stableId.substring(0, 10));
+						wouldUpdate = true;
+					} else {
+						console.log('Updating issue', issue.number, 'for', task.stableId.substring(0, 10));
+						const upd = updateIssue(fullRepo, issue.number, title, body, labels.concat([]));
+						issue = upd;
+					}
 				} else {
+					if (dryRun) {
+						console.log('[DRY-RUN] Would create issue for', task.stableId.substring(0, 10));
+						wouldCreate = true;
+						const taskResult = { stableId: task.stableId, issueNumber: null, issueNodeId: null, created: false, wouldCreate: true };
+						repoResult.tasks.push(taskResult);
+						continue;
+					}
 					console.log('Creating issue for', task.stableId.substring(0, 10));
 					// assign to default assignee if available
 					const assignees = defaultAssignee ? [defaultAssignee] : [];
@@ -639,9 +654,9 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 				const issueNumber = issue.number;
 				const issueNodeId = issue.node_id || issue.nodeId || null;
 
-				const taskResult = { stableId: task.stableId, issueNumber, issueNodeId, created };
+				const taskResult = { stableId: task.stableId, issueNumber, issueNodeId, created, wouldCreate, wouldUpdate };
 
-				if (t.enableProjectSync && projectNodeId && issueNodeId) {
+				if (!dryRun && t.enableProjectSync && projectNodeId && issueNodeId) {
 					try {
 						const projectItemId = ensureProjectItem(projectNodeId, issueNodeId);
 						taskResult.projectItemId = projectItemId;
@@ -693,7 +708,7 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 				}
 
 				// Mirror into secondary project if configured
-				if (issueNodeId && mirrorProjectNodeId) {
+				if (!dryRun && issueNodeId && mirrorProjectNodeId) {
 					try {
 						const mirrorItemId = ensureProjectItem(mirrorProjectNodeId, issueNodeId);
 						taskResult.mirrorProjectItemId = mirrorItemId;
@@ -737,10 +752,24 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 				}
 				let issue = findIssueByStableId(fullRepo, s.stableId);
 				let created = false;
+				let wouldCreate = false;
+				let wouldUpdate = false;
 				if (issue) {
-					const upd = updateIssue(fullRepo, issue.number, title, body, subLabels.concat([]));
-					issue = upd;
+					if (dryRun) {
+						console.log('[DRY-RUN] Would update subtask', issue.number, 'for', s.stableId.substring(0, 10));
+						wouldUpdate = true;
+					} else {
+						const upd = updateIssue(fullRepo, issue.number, title, body, subLabels.concat([]));
+						issue = upd;
+					}
 				} else {
+					if (dryRun) {
+						console.log('[DRY-RUN] Would create subtask for', s.stableId.substring(0, 10));
+						wouldCreate = true;
+						const subResult = { stableId: s.stableId, issueNumber: null, issueNodeId: null, created: false, wouldCreate: true, parentStableId: s.parentStableId };
+						repoResult.tasks.push(subResult);
+						continue;
+					}
 					const assignees = defaultAssignee ? [defaultAssignee] : [];
 					const createdIssue = (function(){
 						try {
@@ -758,10 +787,10 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 				}
 				const subIssueNodeId = issue.node_id || null;
 
-				const subResult = { stableId: s.stableId, issueNumber: issue.number, issueNodeId: subIssueNodeId, created, parentStableId: s.parentStableId };
+				const subResult = { stableId: s.stableId, issueNumber: issue.number, issueNodeId: subIssueNodeId, created, wouldCreate, wouldUpdate, parentStableId: s.parentStableId };
 
 				// Attach subtasks to the main project as well (not only top-level tasks).
-				if (t.enableProjectSync && projectNodeId && subIssueNodeId) {
+				if (!dryRun && t.enableProjectSync && projectNodeId && subIssueNodeId) {
 					try {
 						const projectItemId = ensureProjectItem(projectNodeId, subIssueNodeId);
 						subResult.projectItemId = projectItemId;
@@ -824,7 +853,7 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 				}
 
 				// Mirror subtasks as well
-				if (subIssueNodeId && mirrorProjectNodeId) {
+				if (!dryRun && subIssueNodeId && mirrorProjectNodeId) {
 					try {
 						const mirrorItemId = ensureProjectItem(mirrorProjectNodeId, subIssueNodeId);
 						subResult.mirrorProjectItemId = mirrorItemId;
