@@ -1,0 +1,13 @@
+[Unit]
+Description=GitIssuer Daily Automation Timer
+Documentation=file:///opt/GitIssue-Manager/docs/SYSTEMD_GUIDE.md
+Requires=gitissuer.service
+
+[Timer]
+OnCalendar=*-*-* 09:00:00
+Timezone=America/Sao_Paulo
+Persistent=true
+Unit=gitissuer.service
+
+[Install]
+WantedBy=timers.target

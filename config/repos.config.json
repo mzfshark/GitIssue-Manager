@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "repositories": [
+    {
+      "name": "AragonOSX",
+      "path": "/opt/AragonOSX",
+      "owner": "Axodus",
+      "repo": "AragonOSX",
+      "enabled": true,
+      "auto_deploy": true
+    },
+    {
+      "name": "aragon-app",
+      "path": "/opt/aragon-app",
+      "owner": "Axodus",
+      "repo": "aragon-app",
+      "enabled": true,
+      "auto_deploy": true
+    },
+    {
+      "name": "Aragon-app-backend",
+      "path": "/opt/Aragon-app-backend",
+      "owner": "Axodus",
+      "repo": "Aragon-app-backend",
+      "enabled": true,
+      "auto_deploy": true
+    }
+  ],
+  "global_settings": {
+    "timeout_per_repo_seconds": 300,
+    "retry_on_failure": true,
+    "max_retries": 3,
+    "retry_delay_seconds": 60
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "email": {
+    "enabled": false,
+    "recipient": "team@example.com",
+    "on_success": false,
+    "on_failure": true
+  },
+  "slack": {
+    "enabled": false,
+    "webhook": "",
+    "channel": "#gitissuer",
+    "on_success": true,
+    "on_failure": true
+  }
+}

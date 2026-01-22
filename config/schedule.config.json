@@ -1,0 +1,17 @@
+{
+  "timezone": "America/Sao_Paulo",
+  "schedules": [
+    {
+      "name": "daily-morning",
+      "time": "09:00",
+      "day": "*",
+      "enabled": true
+    },
+    {
+      "name": "daily-evening",
+      "time": "18:00",
+      "day": "*",
+      "enabled": false
+    }
+  ]
+}

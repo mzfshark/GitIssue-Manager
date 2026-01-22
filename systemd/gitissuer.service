@@ -1,0 +1,26 @@
+[Unit]
+Description=GitIssuer - GitHub Issue Manager Automation Service
+Documentation=file:///opt/GitIssue-Manager/docs/SYSTEMD_GUIDE.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=gitissuer
+Group=gitissuer
+WorkingDirectory=/opt/GitIssue-Manager
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="HOME=/var/lib/gitissuer"
+ExecStart=/bin/bash /opt/GitIssue-Manager/daemon/gitissuer-daemon.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gitissuer
+TimeoutStartSec=600
+TimeoutStopSec=60
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,27 @@
+[Unit]
+Description=GitIssuer File Watch - Real-time Monitoring
+Documentation=file:///opt/GitIssue-Manager/docs/SYSTEMD_GUIDE.md
+PartOf=gitissuer.service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gitissuer
+Group=gitissuer
+WorkingDirectory=/opt/GitIssue-Manager
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="HOME=/var/lib/gitissuer"
+ExecStart=/bin/bash /opt/GitIssue-Manager/daemon/gitissuer-watch.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gitissuer-watch
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
