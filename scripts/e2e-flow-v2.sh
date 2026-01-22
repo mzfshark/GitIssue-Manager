@@ -88,27 +88,28 @@ merge_managed_section() {
     local new_section="$4"
 
     # Pass large payloads via stdin to avoid OS argv size limits.
-    jq -n --arg existing "$existing_body" --arg replacement "$new_section" '{existing:$existing,replacement:$replacement}' | node - <<'NODE'
-const fs = require('fs');
+        jq -n --arg existing "$existing_body" --arg replacement "$new_section" '{existing:$existing,replacement:$replacement}' \
+                | node -e '
+const fs = require("fs");
 
-const payload = JSON.parse(fs.readFileSync(0, 'utf8') || '{}');
-const existing = String(payload.existing || '');
-const replacement = String(payload.replacement || '');
-const begin = process.argv[2];
-const end = process.argv[3];
+const begin = process.argv[1];
+const end = process.argv[2];
+const payload = JSON.parse(fs.readFileSync(0, "utf8") || "{}");
+const existing = String(payload.existing || "");
+const replacement = String(payload.replacement || "");
 
 function ensureMarkers(text) {
-  if (!text.includes(begin)) text += `\n\n${begin}\n${end}\n`;
-  if (!text.includes(end)) text += `\n${end}\n`;
-  return text;
+    let out = String(text || "");
+    if (!out.includes(begin)) out += `\n\n${begin}\n${end}\n`;
+    if (!out.includes(end)) out += `\n${end}\n`;
+    return out;
 }
 
 const withMarkers = ensureMarkers(existing);
-const re = new RegExp(`${begin}[\\s\\S]*?${end}`, 'm');
+const re = new RegExp(`${begin}[\\s\\S]*?${end}`, "m");
 const next = withMarkers.replace(re, `${begin}\n${replacement}\n${end}`);
 process.stdout.write(next);
-NODE
-    "$begin_marker" "$end_marker"
+' "$begin_marker" "$end_marker"
 }
 
 # Audit logging (JSONL)
@@ -655,9 +656,10 @@ NODE
         log_success "Using existing PAI: #$pai_number"
     else
         local existing_list
-        existing_list=$(gh issue list --repo "$repo_full" --label "sync-plan" --state all --limit 200 --json number,body,title 2>/dev/null || echo '[]')
+        existing_list=$(gh issue list --repo "$repo_full" --label "sync-md" --state all --limit 200 --json number,body,title 2>/dev/null || echo '[]')
         local existing_pai
-        existing_pai=$(echo "$existing_list" | jq -r --arg sid "$pai_stable_id" '.[] | select(((.body // "") | contains("StableId: " + $sid))) | .number' 2>/dev/null | head -n1)
+        # Accept both formats (e.g. "StableId: <id>" and "**StableId:** <id>")
+        existing_pai=$(echo "$existing_list" | jq -r --arg sid "$pai_stable_id" '.[] | select(((.body // "") | contains($sid))) | .number' 2>/dev/null | head -n1)
 
         if [[ -n "$existing_pai" && "$existing_pai" != "null" ]]; then
             pai_number="$existing_pai"
@@ -665,9 +667,9 @@ NODE
         else
             local pai_labels
             if [[ -n "$labels" ]]; then
-                pai_labels="$labels,sync-plan"
+                pai_labels="$labels,sync-md"
             else
-                pai_labels="sync-plan"
+                pai_labels="sync-md"
             fi
 
             local create_output
@@ -1288,8 +1290,12 @@ EOF
             fi
             local updated_body
             updated_body=$(gh issue view "$pai_number" --repo "$repo_full" --json body --jq '.body')
-            echo "$updated_body" | grep -Fq "$plan_hash" || {
-                log_error "PAI content validation failed (plan hash not found)."
+            # Back-compat: older PAIs might not include the raw plan hash string.
+            # Accept either the plan hash or the stable id (plan-<hash>) in the body.
+            local expected_sid
+            expected_sid="plan-${plan_hash}"
+            echo "$updated_body" | grep -Fq "$plan_hash" || echo "$updated_body" | grep -Fq "$expected_sid" || {
+                log_error "PAI content validation failed (plan hash/stableId not found)."
                 return 1
             }
             log_success "PAI content validation passed"
@@ -1470,6 +1476,15 @@ EOF
     }
 
     resolve_repo_full || exit 1
+
+    # Non-interactive / stage re-runs: reuse previously selected plan file from state when available.
+    if [[ -z "$SELECTED_PLAN" && -z "$SELECTED_PLAN_FILE" && -f "$STATE_FILE" ]]; then
+        local saved_plan_file
+        saved_plan_file=$(jq -r '.stages["2"].planFile // empty' "$STATE_FILE" 2>/dev/null || true)
+        if [[ -n "$saved_plan_file" && "$saved_plan_file" != "null" ]]; then
+            SELECTED_PLAN_FILE="$saved_plan_file"
+        fi
+    fi
     
     [[ -z "$SELECTED_PLAN" && -z "$SELECTED_PLAN_FILE" ]] && {
         log_prompt "Plan:"
