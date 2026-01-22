@@ -635,7 +635,11 @@ NODE
     log_info "Creating/reusing PAI (StableId: $pai_stable_id)..."
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        save_state "3" '{"completed": true, "paiNumber": null, "repository": "'$repo_full'", "simulated": true, "stableId": "'$pai_stable_id'"}'
+        local dry_pai_number=null
+        if [[ -n "$PARENT_ISSUE_NUMBER" ]]; then
+            dry_pai_number="$PARENT_ISSUE_NUMBER"
+        fi
+        save_state "3" '{"completed": true, "paiNumber": '$dry_pai_number', "repository": "'$repo_full'", "simulated": true, "stableId": "'$pai_stable_id'"}'
         log_success "STAGE 3 complete (DRY-RUN simulated)"
         return 0
     fi
