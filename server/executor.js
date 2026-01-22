@@ -70,10 +70,20 @@ function stripLeadingId(originalText) {
 	return String(originalText).trim().replace(/^([A-Za-z]+)[-_](\d{2,})\b[:\-\s]*/, '').trim();
 }
 
+function stripInlineShortcodes(originalText) {
+	if (!originalText) return '';
+	// Remove inline metadata shortcodes like: [priority:high] [estimate:2h] [labels:foo,bar]
+	// Keep bracketed human prefixes like "[Backend]" intact by only stripping tags that contain ":".
+	return String(originalText)
+		.replace(/\[[A-Za-z][A-Za-z0-9_-]*:[^\]]+\]/g, '')
+		.replace(/\s{2,}/g, ' ')
+		.trim();
+}
+
 function buildIssueTitle(fullRepo, originalText) {
 	const repo = getRepoName(fullRepo);
 	const explicitId = findExplicitId(originalText);
-	const rest = stripLeadingId(originalText);
+	const rest = stripInlineShortcodes(stripLeadingId(originalText));
 	const prefix = explicitId ? `[${repo} | #${explicitId}]` : `[${repo}]`;
 	const combined = rest ? `${prefix} ${rest}` : `${prefix}`;
 	return combined.trim();
@@ -465,26 +475,60 @@ async function main() {
 			mirrorProjectPath = cfg.projectMirror.path;
 		}
 		if (cfg.projectMirror && cfg.projectMirror.estimateFieldId) {
-			mirrorEstimateFieldId = cfg.projectMirror.estimateFieldId;
+		mirrorEstimateFieldId = cfg.projectMirror.estimateFieldId;
 		}
-	} else {
-		// Old format: explicit --input or default
-		inputPath = (inputIndex >= 0 && args[inputIndex + 1]) ? args[inputIndex + 1] : './tmp/engine-input.json';
-		outputPath = inputPath.replace('engine-input.json', 'engine-output.json');
 	}
 
+	// Load engine input JSON (support --input flag)
+	if (inputIndex >= 0 && args[inputIndex + 1]) {
+		inputPath = args[inputIndex + 1];
+	}
+	if (!inputPath) inputPath = './tmp/engine-input.json';
 	if (!fs.existsSync(inputPath)) { // nosemgrep
-		console.error('Engine input not found:', inputPath);
-		console.error('Run: npm run prepare');
+		console.error('Engine input file not found:', inputPath);
+		process.exit(2);
+	}
+	let engine;
+	try {
+		engine = readJson(inputPath);
+	} catch (e) {
+		console.error('Failed to read engine input:', e.message);
 		process.exit(2);
 	}
 
-	console.log('\nReading engine input:', inputPath);
-	const engine = readJson(inputPath);
-	const output = { ...engine, executedAt: new Date().toISOString(), results: [] };
-	const owner = engine.owner || 'mzfshark';
-	const defaultAssignee = getViewerLogin() || process.env.GITISSUE_DEFAULT_ASSIGNEE || 'mzfshark';
+	// Derived runtime variables
+	const owner = engine.owner || engine.org || getViewerLogin() || 'mzfshark';
+	const defaultAssignee = engine.defaults && engine.defaults.assignee ? engine.defaults.assignee : null;
+	if (!outputPath) outputPath = './tmp/engine-output.json';
+	const output = { generatedAt: new Date().toISOString(), results: [] };
 
+
+function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
+	if (!projectNodeId || !issueNodeId) return null;
+	try {
+		// Initial page
+		const q0 = `query($projectId:ID!){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } } pageInfo{ hasNextPage endCursor } } } } }`;
+		let res = graphql(q0, { projectId: projectNodeId });
+		let nodes = res && res.data && res.data.node && res.data.node.items && res.data.node.items.nodes ? res.data.node.items.nodes : [];
+		for (const n of nodes) {
+			if (n && n.content && n.content.id === issueNodeId) return n.id;
+		}
+		let pageInfo = res && res.data && res.data.node && res.data.node.items && res.data.node.items.pageInfo ? res.data.node.items.pageInfo : null;
+		while (pageInfo && pageInfo.hasNextPage) {
+			const qn = `query($projectId:ID!,$after:String){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100, after:$after){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } } pageInfo{ hasNextPage endCursor } } } } }`;
+			res = graphql(qn, { projectId: projectNodeId, after: pageInfo.endCursor });
+			nodes = res && res.data && res.data.node && res.data.node.items && res.data.node.items.nodes ? res.data.node.items.nodes : [];
+			for (const n of nodes) {
+				if (n && n.content && n.content.id === issueNodeId) return n.id;
+			}
+			pageInfo = res && res.data && res.data.node && res.data.node.items && res.data.node.items.pageInfo ? res.data.node.items.pageInfo : null;
+		}
+		return null;
+	} catch (e) {
+		console.warn('findProjectItemIdForIssue failed:', e.message);
+		return null;
+	}
+}
 	// Resolve main project node id when possible.
 	// Prefer a pre-resolved node id from engine-input.json to avoid extra API calls and failures.
 	let viewerProjectNodeId = null;

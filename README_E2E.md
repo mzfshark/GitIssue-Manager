@@ -121,7 +121,7 @@ Generates audit trail and validation report
         "name": "Aragon OSx Sprint 1"
       },
       "metadata": {
-        "defaultLabels": ["plan", "sprint1"],
+        "defaultLabels": ["plan", "harmony"],
         "defaultAssignee": "mzfshark",
         "defaultType": "EPIC",
         "defaultPriority": "HIGH",

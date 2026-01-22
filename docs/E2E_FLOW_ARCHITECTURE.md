@@ -63,7 +63,7 @@ O E2E Flow é um **pipeline interativo completo** que:
 │  └─ [3] epic
 │
 └─ Input: Assignee (padrão: mzfshark)
-└─ Input: Labels (padrão: ["plan", "sprint1"])
+└─ Input: Labels (padrão: ["plan", "harmony"])
 ```
 
 **Responsabilidades:**
@@ -88,7 +88,7 @@ O E2E Flow é um **pipeline interativo completo** que:
 │  ├─ Descrição: primeiros 200-500 chars
 │  ├─ Assignee: do prompt ou config
 │  ├─ Type: do menu (feature/task/epic)
-│  ├─ Labels: ["plan", "sprint1", ...] 
+│  ├─ Labels: ["plan", "harmony", ...] 
 │  ├─ ProjectId: do config
 │  └─ Metadata básico (status, priority, etc)
 │
@@ -96,7 +96,7 @@ O E2E Flow é um **pipeline interativo completo** que:
 │                     --title "..." \
 │                     --body "..." \
 │                     --assignee "..." \
-│                     --label "plan,sprint1"
+│                     --label "plan,harmony"
 │
 ├─ Gravar resultado:
 │  ├─ PAI_NUMBER (ex: 373)
@@ -128,7 +128,7 @@ O E2E Flow é um **pipeline interativo completo** que:
     "planFile": "PLAN.md",
     "type": "feature",
     "assignee": "mzfshark",
-    "labels": ["plan", "sprint1", "harmony"],
+    "labels": ["plan", "harmony"],
     "projectId": 23,
     "createdAt": "2026-01-21T18:00:00Z"
   }
@@ -380,7 +380,7 @@ GitIssue-Manager/
   "issueDefaults": {
     "assignee": "mzfshark",
     "type": "feature",
-    "labels": ["plan", "sprint1"],
+    "labels": ["plan", "harmony"],
     "metadata": {
       "status": "TODO",
       "priority": "HIGH",
@@ -480,15 +480,15 @@ GitIssue-Manager/
   ? Assignee (default: mzfshark): 
   > mzfshark
 
-  ? Labels (comma-separated, default: plan,sprint1):
-  > plan,sprint1,harmony
+  ? Labels (comma-separated, default: plan,harmony):
+  > plan,harmony
 
   Configuration saved to: tmp/e2e-runs/run-2026-01-21-180345/config.json
 
 [PHASE 3] Creating Parent Issue (PAI)
   📝 Title: PLAN: AragonOSX — HarmonyVoting E2E Production Rollout
   📄 Description: Complete HarmonyVoting E2E flow across contracts, indexing...
-  🏷️  Labels: plan, sprint1, harmony
+  🏷️  Labels: plan, harmony
   👤 Assignee: mzfshark
   🎯 Type: feature
   📊 Estimate: 160h | Start: 2026-01-21 | Due: 2026-02-28

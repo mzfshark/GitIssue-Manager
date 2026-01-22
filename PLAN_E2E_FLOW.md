@@ -169,7 +169,7 @@ Implement a complete **E2E (End-to-End) flow** for generating issue hierarchies 
         "number": 23,
         "name": "Aragon OSx Sprint 1"
       },
-      "defaultLabels": ["plan", "sprint1"],
+      "defaultLabels": ["plan", "harmony"],
       "defaultType": "EPIC",
       "defaultPriority": "HIGH",
       "enabled": true
@@ -185,7 +185,7 @@ Implement a complete **E2E (End-to-End) flow** for generating issue hierarchies 
         "number": 24,
         "name": "Frontend Sprint 1"
       },
-      "defaultLabels": ["plan", "sprint1"],
+      "defaultLabels": ["plan", "harmony"],
       "defaultType": "EPIC",
       "defaultPriority": "HIGH",
       "enabled": true

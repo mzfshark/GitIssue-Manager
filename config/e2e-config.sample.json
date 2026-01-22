@@ -23,7 +23,7 @@
         "name": "Aragon OSx Sprint 1"
       },
       "metadata": {
-        "defaultLabels": ["plan", "sprint1"],
+        "defaultLabels": ["plan", "harmony"],
         "defaultAssignee": "mzfshark",
         "defaultType": "EPIC",
         "defaultPriority": "HIGH",
@@ -45,7 +45,7 @@
         "name": "Frontend Sprint 1"
       },
       "metadata": {
-        "defaultLabels": ["plan", "sprint1"],
+        "defaultLabels": ["plan", "harmony"],
         "defaultAssignee": "mzfshark",
         "defaultType": "EPIC",
         "defaultPriority": "HIGH",
@@ -67,7 +67,7 @@
         "name": "Backend Sprint 1"
       },
       "metadata": {
-        "defaultLabels": ["plan", "sprint1"],
+        "defaultLabels": ["plan", "harmony"],
         "defaultAssignee": "mzfshark",
         "defaultType": "EPIC",
         "defaultPriority": "HIGH",

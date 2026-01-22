@@ -54,6 +54,16 @@ log_error() { echo -e "${RED}✗${NC} $1" >&2; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_prompt() { echo -e "${CYAN}❯${NC} $1"; }
 
+# Strip inline metadata shortcodes (e.g. [priority:high], [estimate:2h]) from titles.
+# Note: we intentionally only strip bracket tags containing ':' to avoid removing
+# human prefixes like "[Backend]".
+strip_shortcodes() {
+    local input="$1"
+    local out
+    out=$(printf '%s' "$input" | sed -E 's/\[[A-Za-z][A-Za-z0-9_-]*:[^]]+\]//g' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')
+    printf '%s' "$out"
+}
+
 # Audit logging (JSONL)
 audit_log() {
     local action="$1"
@@ -150,6 +160,8 @@ resolve_repo_full() {
         log_error "Unable to resolve target repo. Provide --repo owner/name or run inside a git repo with a GitHub remote."
         return 1
     }
+
+    return 0
 }
 
 resolve_metadata_file() {
@@ -593,7 +605,10 @@ stage_create_children() {
     
     echo "$items" | while IFS= read -r item; do
         local item_id=$(echo "$item" | jq -r '.id')
-        local item_title=$(echo "$item" | jq -r '.title')
+        local item_title_raw
+        item_title_raw=$(echo "$item" | jq -r '.title')
+        local item_title
+        item_title=$(strip_shortcodes "$item_title_raw")
         
         log_info "[$counter/$item_count] $item_title"
         
