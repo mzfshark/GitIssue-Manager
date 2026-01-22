@@ -781,103 +781,242 @@ stage_link_hierarchy() {
     [[ -n "$PARENT_ISSUE_NUMBER" ]] && pai_number="$PARENT_ISSUE_NUMBER"
     [[ -z "$pai_number" ]] && { log_error "PAI number missing. Provide --parent-number or complete STAGE 3."; return 1; }
 
-    local issues_file=""
-    if [[ -n "$CHILDREN_FILE" ]]; then
-        issues_file="$CHILDREN_FILE"
-    else
-        local children_data
-        children_data=$(get_stage_data "4")
-        [[ $(echo "$children_data" | jq -r '.completed // false') != "true" ]] && { log_error "STAGE 4 not completed. Provide --children-file to run Stage 5 standalone."; return 1; }
-        issues_file=$(echo "$children_data" | jq -r '.issuesFile')
+    local children_data
+    children_data=$(get_stage_data "4")
+    [[ $(echo "$children_data" | jq -r '.completed // false') != "true" ]] && {
+        log_error "STAGE 4 not completed. Stage 5 requires executor output (engine-output.json)."
+        return 1
+    }
+
+    local engine_output_path
+    engine_output_path=$(echo "$children_data" | jq -r '.engineOutputPath // empty')
+    local metadata_file
+    metadata_file=$(echo "$children_data" | jq -r '.metadataFile // empty')
+
+    # Allow explicit override via --metadata-file
+    if [[ -n "$METADATA_FILE" ]]; then
+        metadata_file="$METADATA_FILE"
     fi
-    
-    log_info "Linking sub-issues to PAI #$pai_number via GraphQL addSubIssue..."
+
+    if [[ -z "$metadata_file" || ! -f "$metadata_file" ]]; then
+        log_error "metadata.json not found. Run STAGE 2 (prepare) or provide --metadata-file."
+        return 1
+    fi
+    if [[ -z "$engine_output_path" || ! -f "$engine_output_path" ]]; then
+        log_error "engine-output.json not found. Run STAGE 4 (executor)."
+        return 1
+    fi
+
+    log_info "Building link plan from metadata.json + engine-output.json (stableId-based)..."
 
     local owner="${repo_full%/*}"
     local repo="${repo_full#*/}"
 
-    local link_count=0
-    local skip_count=0
-    local fail_count=0
+        local link_count=0
+        local skip_count=0
+        local fail_count=0
 
+        # Create a deterministic link plan:
+        # - All top-level tasks become sub-issues of the PAI
+        # - All subtasks become sub-issues of their parentStableId
+        local link_plan
+        link_plan=$(REPO_FULL="$repo_full" PAI_NUMBER="$pai_number" METADATA_FILE="$metadata_file" ENGINE_OUTPUT_FILE="$engine_output_path" node - <<'NODE'
+const fs = require('fs');
+
+const repoFull = process.env.REPO_FULL;
+const paiNumber = parseInt(process.env.PAI_NUMBER, 10);
+const metadataFile = process.env.METADATA_FILE;
+const engineOutputFile = process.env.ENGINE_OUTPUT_FILE;
+
+const metadata = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
+const engineOut = JSON.parse(fs.readFileSync(engineOutputFile, 'utf8'));
+
+function buildStableMap(out) {
+    const map = new Map();
+    const results = Array.isArray(out && out.results) ? out.results : [];
+    for (const r of results) {
+        const tasks = Array.isArray(r && r.tasks) ? r.tasks : [];
+        for (const t of tasks) {
+            if (!t || !t.stableId) continue;
+            // Prefer entries that have issueNumber (dry-run will have null)
+            const prev = map.get(t.stableId);
+            if (!prev || (!prev.issueNumber && t.issueNumber)) {
+                map.set(t.stableId, {
+                    stableId: t.stableId,
+                    issueNumber: t.issueNumber ?? null,
+                    issueNodeId: t.issueNodeId ?? null,
+                    parentStableId: t.parentStableId ?? null,
+                });
+            }
+        }
+    }
+    return map;
+}
+
+const stableMap = buildStableMap(engineOut);
+const tasks = Array.isArray(metadata.tasks) ? metadata.tasks : [];
+const subtasks = Array.isArray(metadata.subtasks) ? metadata.subtasks : [];
+
+const plan = [];
+
+for (const t of tasks) {
+    if (!t || !t.stableId) continue;
+    const hit = stableMap.get(t.stableId) || {};
+    plan.push({
+        kind: 'task->pai',
+        repoFull,
+        parentType: 'pai',
+        parentIssueNumber: paiNumber,
+        parentStableId: null,
+        childStableId: t.stableId,
+        childIssueNumber: hit.issueNumber ?? null,
+        childNodeId: hit.issueNodeId ?? null,
+    });
+}
+
+for (const s of subtasks) {
+    if (!s || !s.stableId || !s.parentStableId) continue;
+    const child = stableMap.get(s.stableId) || {};
+    const parent = stableMap.get(s.parentStableId) || {};
+    plan.push({
+        kind: 'subtask->parent',
+        repoFull,
+        parentType: 'stable',
+        parentStableId: s.parentStableId,
+        parentIssueNumber: parent.issueNumber ?? null,
+        parentNodeId: parent.issueNodeId ?? null,
+        childStableId: s.stableId,
+        childIssueNumber: child.issueNumber ?? null,
+        childNodeId: child.issueNodeId ?? null,
+    });
+}
+
+process.stdout.write(JSON.stringify(plan));
+NODE
+        )
+
+        local link_total
+        link_total=$(echo "$link_plan" | jq -r 'length' 2>/dev/null || echo 0)
+        log_info "Planned links: $link_total"
+
+        log_info "Linking sub-issues via GraphQL addSubIssue..."
+
+    local replace_parent_value
+    replace_parent_value=$([[ "$REPLACE_PARENT" == "true" ]] && echo true || echo false)
+
+    local pai_id=""
     if [[ "$DRY_RUN" != "true" ]]; then
-        local pai_id
         pai_id=$(gh api graphql -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){id}}}' \
             -f owner="$owner" -f repo="$repo" -F number="$pai_number" --jq '.data.repository.issue.id' 2>/dev/null)
-
         [[ -z "$pai_id" || "$pai_id" == "null" ]] && { log_error "Failed to resolve PAI node id for #$pai_number"; return 1; }
+    fi
 
-        while IFS= read -r issue; do
-            local issue_number
-            issue_number=$(echo "$issue" | jq -r '.number')
+    while IFS= read -r link; do
+        local kind
+        kind=$(echo "$link" | jq -r '.kind')
+        local parent_type
+        parent_type=$(echo "$link" | jq -r '.parentType')
+        local parent_stable
+        parent_stable=$(echo "$link" | jq -r '.parentStableId // empty')
 
-            log_info "Linking #$issue_number as sub-issue..."
+        local parent_number
+        parent_number=$(echo "$link" | jq -r '.parentIssueNumber // empty')
+        local parent_node
+        parent_node=$(echo "$link" | jq -r '.parentNodeId // empty')
 
-            local child_json
-            child_json=$(gh api graphql -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){id parent{number}}}}' \
-                -f owner="$owner" -f repo="$repo" -F number="$issue_number" --jq '.data.repository.issue' 2>/dev/null)
+        local child_number
+        child_number=$(echo "$link" | jq -r '.childIssueNumber // empty')
+        local child_node
+        child_node=$(echo "$link" | jq -r '.childNodeId // empty')
+        local child_stable
+        child_stable=$(echo "$link" | jq -r '.childStableId')
 
-            local child_id
-            child_id=$(echo "$child_json" | jq -r '.id')
+        if [[ "$parent_type" == "pai" ]]; then
+            parent_number="$pai_number"
+        fi
 
-            local current_parent
-            current_parent=$(echo "$child_json" | jq -r '.parent.number // empty')
-
-            if [[ -z "$child_id" || "$child_id" == "null" ]]; then
-                log_error "Failed to resolve node id for #$issue_number"
-                fail_count=$((fail_count + 1))
+        if [[ -z "$child_number" || "$child_number" == "null" ]]; then
+            if [[ "$DRY_RUN" == "true" ]]; then
+                log_warning "[DRY-RUN] Would link (missing child issueNumber) stableId=${child_stable:0:10} kind=$kind"
                 continue
             fi
+            log_error "Missing child issueNumber for stableId=${child_stable:0:10} (kind=$kind). Re-run STAGE 4 without --dry-run."
+            fail_count=$((fail_count + 1))
+            continue
+        fi
 
-            if [[ -n "$current_parent" && "$current_parent" == "$pai_number" ]]; then
-                log_info "Already linked (#$issue_number parent is #$pai_number)"
-                skip_count=$((skip_count + 1))
-                continue
-            fi
-
-            if [[ -n "$current_parent" && "$current_parent" != "$pai_number" && "$REPLACE_PARENT" != "true" ]]; then
-                log_warning "Skipping (#$issue_number already has parent #$current_parent). Set REPLACE_PARENT=true to override."
-                fail_count=$((fail_count + 1))
-                continue
-            fi
-
-            local replace_parent_value
-            replace_parent_value=$([[ "$REPLACE_PARENT" == "true" ]] && echo true || echo false)
-
-            local resp
-            resp=$(gh api graphql \
-                -f query='mutation($issueId:ID!,$subIssueId:ID!,$replaceParent:Boolean){addSubIssue(input:{issueId:$issueId,subIssueId:$subIssueId,replaceParent:$replaceParent}){issue{number} subIssue{number}}}' \
-                -f issueId="$pai_id" \
-                -f subIssueId="$child_id" \
-                -F replaceParent="$replace_parent_value" \
-                2>&1)
-
-            if echo "$resp" | jq -e '.data.addSubIssue.subIssue.number' >/dev/null 2>&1; then
-                log_success "Linked #$issue_number"
-                link_count=$((link_count + 1))
-
-                audit_log "subissue_link" '{"parent":'$pai_number',"child":'$issue_number',"replaceParent":'$replace_parent_value'}'
+        if [[ "$DRY_RUN" == "true" ]]; then
+            if [[ "$parent_type" == "pai" ]]; then
+                log_warning "[DRY-RUN] Would link #$child_number as sub-issue of PAI #$pai_number"
             else
-                local msg
-                msg=$(echo "$resp" | jq -r '.errors[0].message // empty' 2>/dev/null)
-                if [[ -n "$msg" ]] && echo "$msg" | grep -qi 'already'; then
-                    log_info "Already linked (#$issue_number)"
-                    skip_count=$((skip_count + 1))
-                else
-                    log_error "Failed to link #$issue_number: ${msg:-$resp}"
+                log_warning "[DRY-RUN] Would link #$child_number as sub-issue of parentStableId=${parent_stable:0:10} (#${parent_number:-?})"
+            fi
+            continue
+        fi
+
+        # Resolve parent node id
+        local parent_id=""
+        if [[ "$parent_type" == "pai" ]]; then
+            parent_id="$pai_id"
+        else
+            if [[ -n "$parent_node" && "$parent_node" != "null" ]]; then
+                parent_id="$parent_node"
+            else
+                if [[ -z "$parent_number" || "$parent_number" == "null" ]]; then
+                    log_error "Missing parent issueNumber for parentStableId=${parent_stable:0:10} (child #$child_number)"
                     fail_count=$((fail_count + 1))
+                    continue
+                fi
+                parent_id=$(gh api graphql -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){id}}}' \
+                    -f owner="$owner" -f repo="$repo" -F number="$parent_number" --jq '.data.repository.issue.id' 2>/dev/null)
+                if [[ -z "$parent_id" || "$parent_id" == "null" ]]; then
+                    log_error "Failed to resolve parent node id for #$parent_number (parentStableId=${parent_stable:0:10})"
+                    fail_count=$((fail_count + 1))
+                    continue
                 fi
             fi
+        fi
 
-            sleep 0.3
-        done < <(jq -c '.[]' "$issues_file")
-    else
-        while IFS= read -r issue; do
-            local issue_number
-            issue_number=$(echo "$issue" | jq -r '.number')
-            log_warning "[DRY-RUN] Would link #$issue_number as sub-issue of #$pai_number"
-        done < <(jq -c '.[]' "$issues_file")
-    fi
+        # Resolve child node id
+        local child_id=""
+        if [[ -n "$child_node" && "$child_node" != "null" ]]; then
+            child_id="$child_node"
+        else
+            child_id=$(gh api graphql -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){id parent{number}}}}' \
+                -f owner="$owner" -f repo="$repo" -F number="$child_number" --jq '.data.repository.issue.id' 2>/dev/null)
+            if [[ -z "$child_id" || "$child_id" == "null" ]]; then
+                log_error "Failed to resolve child node id for #$child_number"
+                fail_count=$((fail_count + 1))
+                continue
+            fi
+        fi
+
+        local resp
+        resp=$(gh api graphql \
+            -f query='mutation($issueId:ID!,$subIssueId:ID!,$replaceParent:Boolean){addSubIssue(input:{issueId:$issueId,subIssueId:$subIssueId,replaceParent:$replaceParent}){issue{number} subIssue{number}}}' \
+            -f issueId="$parent_id" \
+            -f subIssueId="$child_id" \
+            -F replaceParent="$replace_parent_value" \
+            2>&1)
+
+        if echo "$resp" | jq -e '.data.addSubIssue.subIssue.number' >/dev/null 2>&1; then
+            log_success "Linked #$child_number"
+            link_count=$((link_count + 1))
+            audit_log "subissue_link" '{"parent":'"${parent_number:-$pai_number}"',"child":'$child_number',"replaceParent":'$replace_parent_value',"kind":'"$(echo "$kind" | jq -Rs '.')"'}'
+        else
+            local msg
+            msg=$(echo "$resp" | jq -r '.errors[0].message // empty' 2>/dev/null)
+            if [[ -n "$msg" ]] && echo "$msg" | grep -qi 'already'; then
+                log_info "Already linked (#$child_number)"
+                skip_count=$((skip_count + 1))
+            else
+                log_error "Failed to link #$child_number: ${msg:-$resp}"
+                fail_count=$((fail_count + 1))
+            fi
+        fi
+
+        sleep 0.2
+    done < <(echo "$link_plan" | jq -c '.[]')
 
     log_success "Sub-issue linking complete (linked=$link_count, skipped=$skip_count, failed=$fail_count)"
 
@@ -902,38 +1041,75 @@ stage_sync_projectv2() {
         return 0
     fi
 
-    resolve_repo_full || return 1
-
     local project_id
     project_id=$(resolve_project_id) || return 1
 
-    local issues_file=""
-    if [[ -n "$CHILDREN_FILE" ]]; then
-        issues_file="$CHILDREN_FILE"
-    else
-        local children_data
-        children_data=$(get_stage_data "4")
-        [[ $(echo "$children_data" | jq -r '.completed // false') != "true" ]] && { log_error "STAGE 4 not completed. Provide --children-file for Stage 6 standalone."; return 1; }
-        issues_file=$(echo "$children_data" | jq -r '.issuesFile')
-    fi
+    local pai_data
+    pai_data=$(get_stage_data "3")
+    local repo_full
+    repo_full=$(echo "$pai_data" | jq -r '.repository // empty')
+    [[ -z "$repo_full" ]] && { resolve_repo_full || return 1; repo_full="$SELECTED_REPO_FULL"; }
 
-    local owner="${SELECTED_REPO_FULL%/*}"
-    local repo="${SELECTED_REPO_FULL#*/}"
+    local owner="${repo_full%/*}"
+    local repo="${repo_full#*/}"
+
+    local pai_number
+    pai_number=$(echo "$pai_data" | jq -r '.paiNumber // empty')
+    [[ -n "$PARENT_ISSUE_NUMBER" ]] && pai_number="$PARENT_ISSUE_NUMBER"
+
+    local children_data
+    children_data=$(get_stage_data "4")
+    [[ $(echo "$children_data" | jq -r '.completed // false') != "true" ]] && { log_error "STAGE 4 not completed. Stage 6 requires engine-output.json."; return 1; }
+
+    local engine_output_path
+    engine_output_path=$(echo "$children_data" | jq -r '.engineOutputPath // empty')
+    [[ -z "$engine_output_path" || ! -f "$engine_output_path" ]] && { log_error "engine-output.json not found. Run STAGE 4."; return 1; }
+
+    # Build a map: issueNumber -> nodeId (when available)
+    local number_to_node
+    number_to_node=$(ENGINE_OUTPUT_FILE="$engine_output_path" node - <<'NODE'
+const fs = require('fs');
+const p = process.env.ENGINE_OUTPUT_FILE;
+const out = JSON.parse(fs.readFileSync(p, 'utf8'));
+const map = {};
+for (const r of (out.results || [])) {
+  for (const t of (r.tasks || [])) {
+    if (!t || !t.issueNumber) continue;
+    const num = String(t.issueNumber);
+    if (!map[num] && t.issueNodeId) map[num] = t.issueNodeId;
+  }
+}
+process.stdout.write(JSON.stringify(map));
+NODE
+    )
+
+    local issue_numbers
+    issue_numbers=$(jq -c '[.results[].tasks[]? | .issueNumber] | map(select(. != null)) | unique' "$engine_output_path" 2>/dev/null || echo '[]')
+    if [[ -n "$pai_number" && "$pai_number" != "null" ]]; then
+        issue_numbers=$(echo "$issue_numbers" | jq -c --argjson pai "$pai_number" '. + [$pai] | unique')
+    fi
     local added=0
     local skipped=0
     local failed=0
 
     log_info "Adding issues to ProjectV2 ($project_id)..."
 
-    while IFS= read -r issue; do
-        local issue_number
-        issue_number=$(echo "$issue" | jq -r '.number')
+    while IFS= read -r issue_number; do
         [[ -z "$issue_number" || "$issue_number" == "null" ]] && { skipped=$((skipped + 1)); continue; }
 
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_warning "[DRY-RUN] Would add #$issue_number to ProjectV2"
+            skipped=$((skipped + 1))
+            continue
+        fi
+
         local content_id
-        content_id=$(gh api graphql \
-            -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){id}}}' \
-            -f owner="$owner" -f repo="$repo" -F number="$issue_number" --jq '.data.repository.issue.id' 2>/dev/null || true)
+        content_id=$(echo "$number_to_node" | jq -r --arg n "$issue_number" '.[$n] // empty' 2>/dev/null || true)
+        if [[ -z "$content_id" || "$content_id" == "null" ]]; then
+            content_id=$(gh api graphql \
+                -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){id}}}' \
+                -f owner="$owner" -f repo="$repo" -F number="$issue_number" --jq '.data.repository.issue.id' 2>/dev/null || true)
+        fi
 
         if [[ -z "$content_id" || "$content_id" == "null" ]]; then
             log_error "Failed to resolve issue node id for #$issue_number"
@@ -963,7 +1139,7 @@ stage_sync_projectv2() {
         fi
 
         sleep 0.2
-    done < <(jq -c '.[]' "$issues_file")
+    done < <(echo "$issue_numbers" | jq -r '.[]')
 
     log_success "ProjectV2 sync complete (added=$added, skipped=$skipped, failed=$failed)"
     save_state "6" '{"completed": true, "enabled": true, "projectId": "'$project_id'", "added": '$added', "skipped": '$skipped', "failed": '$failed'}'
@@ -981,8 +1157,15 @@ stage_progress_tracking() {
     local pai_data=$(get_stage_data "3")
     local pai_number=$(echo "$pai_data" | jq -r '.paiNumber')
     local repo_full=$(echo "$pai_data" | jq -r '.repository')
-    local issues_file=$(echo "$children_data" | jq -r '.issuesFile')
-    local total_count=$(jq 'length' "$issues_file")
+
+    local engine_output_path
+    engine_output_path=$(echo "$children_data" | jq -r '.engineOutputPath // empty')
+    local metadata_file
+    metadata_file=$(echo "$children_data" | jq -r '.metadataFile // empty')
+    [[ -n "$METADATA_FILE" ]] && metadata_file="$METADATA_FILE"
+
+    [[ -z "$engine_output_path" || ! -f "$engine_output_path" ]] && { log_error "engine-output.json not found. Run STAGE 4."; return 1; }
+    [[ -z "$metadata_file" || ! -f "$metadata_file" ]] && { log_error "metadata.json not found. Run STAGE 2 or provide --metadata-file."; return 1; }
 
     local prep_data
     prep_data=$(get_stage_data "2")
@@ -993,32 +1176,103 @@ stage_progress_tracking() {
     simulated=$(echo "$pai_data" | jq -r '.simulated // false')
     [[ "$simulated" == "true" ]] && { log_warning "DRY-RUN simulated run. Skipping PAI body updates."; }
 
-    log_info "Generating checklist..."
+    log_info "Generating checklist from metadata.json + engine-output.json..."
     
     local checklist_file="$OUTPUT_DIR/progress-tracking.md"
     
-    cat > "$checklist_file" << EOF
+        local checklist_json
+        checklist_json=$(REPO_FULL="$repo_full" METADATA_FILE="$metadata_file" ENGINE_OUTPUT_FILE="$engine_output_path" node - <<'NODE'
+const fs = require('fs');
+
+const repoFull = process.env.REPO_FULL;
+const metadataFile = process.env.METADATA_FILE;
+const engineOutputFile = process.env.ENGINE_OUTPUT_FILE;
+
+const metadata = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
+const engineOut = JSON.parse(fs.readFileSync(engineOutputFile, 'utf8'));
+
+function buildStableToNumber(out) {
+    const map = new Map();
+    for (const r of (out.results || [])) {
+        for (const t of (r.tasks || [])) {
+            if (!t || !t.stableId) continue;
+            if (t.issueNumber != null) map.set(t.stableId, t.issueNumber);
+        }
+    }
+    return map;
+}
+
+const stableToNumber = buildStableToNumber(engineOut);
+const tasks = Array.isArray(metadata.tasks) ? metadata.tasks : [];
+const subtasks = Array.isArray(metadata.subtasks) ? metadata.subtasks : [];
+
+let total = 0;
+let completed = 0;
+const lines = [];
+
+function fmtLine(checked, num, text, extra) {
+    const box = checked ? 'x' : ' ';
+    const safeText = String(text || '').trim() || '(no text)';
+    if (num != null) {
+        const url = `https://github.com/${repoFull}/issues/${num}`;
+        return `- [${box}] [#${num}](${url}) ${safeText}${extra ? ' ' + extra : ''}`;
+    }
+    return `- [${box}] (missing issue) ${safeText}${extra ? ' ' + extra : ''}`;
+}
+
+for (const t of tasks) {
+    if (!t || !t.stableId) continue;
+    const num = stableToNumber.get(t.stableId) ?? null;
+    const checked = !!t.checked;
+    total += 1;
+    if (checked) completed += 1;
+    lines.push(fmtLine(checked, num, t.text, `(StableId: ${String(t.stableId).slice(0, 10)})`));
+}
+
+for (const s of subtasks) {
+    if (!s || !s.stableId) continue;
+    const num = stableToNumber.get(s.stableId) ?? null;
+    const parentNum = s.parentStableId ? (stableToNumber.get(s.parentStableId) ?? null) : null;
+    const checked = !!s.checked;
+    total += 1;
+    if (checked) completed += 1;
+    const parentExtra = parentNum != null ? `(parent #${parentNum})` : (s.parentStableId ? `(parentStableId: ${String(s.parentStableId).slice(0, 10)})` : '');
+    lines.push(fmtLine(checked, num, s.text, parentExtra));
+}
+
+const percent = total ? Math.round((completed / total) * 100) : 0;
+process.stdout.write(JSON.stringify({ total, completed, percent, markdownLines: lines }));
+NODE
+        )
+
+        local total_count
+        total_count=$(echo "$checklist_json" | jq -r '.total' 2>/dev/null || echo 0)
+        local completed_count
+        completed_count=$(echo "$checklist_json" | jq -r '.completed' 2>/dev/null || echo 0)
+        local percent
+        percent=$(echo "$checklist_json" | jq -r '.percent' 2>/dev/null || echo 0)
+
+        cat > "$checklist_file" << EOF
 ## Progress Tracking
 
 **Total:** $total_count  
-**Completed:** 0 / $total_count (0%)
+**Completed:** $completed_count / $total_count (${percent}%)
 
 ---
 
 EOF
-    
-    jq -r '.[] | "- [ ] [#\(.number)](https://github.com/'$repo_full'/issues/\(.number)) \(.title)"' "$issues_file" >> "$checklist_file"
+
+        echo "$checklist_json" | jq -r '.markdownLines[]' >> "$checklist_file"
     
     log_success "Checklist generated"
     
     if [[ "$DRY_RUN" != "true" && "$simulated" != "true" ]]; then
-        log_info "Updating PAI..."
-        local current_body=$(gh issue view "$pai_number" --repo "$repo_full" --json body --jq '.body')
-        echo "$current_body
-
----
-
-$(cat "$checklist_file")" | gh issue edit "$pai_number" --repo "$repo_full" --body-file - &>/dev/null
+        log_info "Updating PAI managed progress section..."
+        local current_body
+        current_body=$(gh issue view "$pai_number" --repo "$repo_full" --json body --jq '.body')
+        local merged_body
+        merged_body=$(merge_managed_section "$current_body" "<!-- E2E:PROGRESS_TRACKING:BEGIN -->" "<!-- E2E:PROGRESS_TRACKING:END -->" "$(cat "$checklist_file")")
+        echo "$merged_body" | gh issue edit "$pai_number" --repo "$repo_full" --body-file - &>/dev/null
         log_success "PAI updated"
 
         if [[ "$ENFORCE_PAI_CONTENT_MATCH" == "true" ]]; then
