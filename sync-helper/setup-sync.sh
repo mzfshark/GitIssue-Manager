@@ -19,6 +19,10 @@ require_cmd() {
   return 0
 }
 
+# Global requirements
+require_cmd "gh" || exit 1
+require_cmd "jq" || exit 1
+
 select_repo_for_owner() {
   local owner="$1"
   require_cmd gh
@@ -84,52 +88,115 @@ list_configured_repos() {
   if [ ${#files[@]} -eq 0 ]; then
     return 1
   fi
-  echo "Existing configurations:"
+  echo "Current Configurations:"
+  printf "  %-30s | %-20s\n" "Config ID" "Repository"
+  echo "  ------------------------------------------------------------"
   for f in "${files[@]}"; do
-    basename "$f" .json
+    local repo
+    repo=$(jq -r '.repo // empty' "$f" 2>/dev/null || echo "???")
+    printf "  %-30s | %-20s\n" "$(basename "$f" .json)" "$repo"
   done
   return 0
 }
 
-select_existing_config() {
-  shopt -s nullglob
-  local files=("$CONFIG_DIR"/*.json)
-  if [ ${#files[@]} -eq 0 ]; then
+show_config_details() {
+  local config_name="$1"
+  local f="$CONFIG_DIR/${config_name}.json"
+  if [ ! -f "$f" ]; then
+    echo "Config not found: $f"
     return 1
   fi
 
-  echo >&2
-  echo "Select a configuration to edit:" >&2
-  local i=1
-  local arr=()
-  for f in "${files[@]}"; do
-    local name
-    name=$(basename "$f" .json)
-    arr+=("$name")
-    printf "  %s) %s\n" "$i" "$name" >&2
-    i=$((i + 1))
-  done
-
-  if [ ${#arr[@]} -eq 0 ]; then
-    return 1
-  fi
-
-  printf "Enter number [1] (or empty to type): " >&2
-  local sel
-  builtin read -r sel
-
-  if [ -z "$sel" ]; then
-    return 2
-  fi
-
-  local idx=$((sel - 1))
-  if [ $idx -lt 0 ] || [ $idx -ge ${#arr[@]} ]; then
-    echo "Invalid selection" >&2
-    return 1
-  fi
-
-  echo "${arr[$idx]}"
+  echo
+  echo "--- Configuration: $config_name ---"
+  jq -r '"Repo: " + .repo + "\nOwner: " + .owner + "\nLocal Path: " + .localPath + "\nProject Sync: " + (.enableProjectSync|tostring) + "\nProject URL: " + (.project.url // "N/A")' "$f"
+  echo "-----------------------------------"
 }
+
+select_and_manage_configs() {
+  while true; do
+    echo
+    echo "Select a configuration to manage:"
+    local i=1
+    local arr=()
+    shopt -s nullglob
+    local files=("$CONFIG_DIR"/*.json)
+    
+    for f in "${files[@]}"; do
+      local name
+      name=$(basename "$f" .json)
+      arr+=("$name")
+      local repo
+      repo=$(jq -r '.repo // empty' "$f" 2>/dev/null || echo "???")
+      printf "  %s) %-30s (%s)\n" "$i" "$name" "$repo"
+      i=$((i + 1))
+    done
+
+    echo "  n) Configure a NEW repository"
+    echo "  q) Quit"
+    printf "Choice: "
+    builtin read -r sel
+
+    if [[ "$sel" == "n" ]]; then
+      return 1 # Fall through to new config logic
+    fi
+    if [[ "$sel" == "q" ]]; then
+      exit 0
+    fi
+
+    local idx=$((sel - 1))
+    if [ $idx -lt 0 ] || [ $idx -ge ${#arr[@]} ]; then
+      echo "Invalid selection"
+      continue
+    fi
+
+    local selected_name="${arr[$idx]}"
+    manage_single_config "$selected_name"
+  done
+}
+
+manage_single_config() {
+  local config_name="$1"
+  local config_path="$CONFIG_DIR/${config_name}.json"
+
+  while true; do
+    show_config_details "$config_name"
+    echo "Actions:"
+    echo "  1) Prepare (generate metadata & artifacts)"
+    echo "  2) Execute (create/sync issues based on artifacts)"
+    echo "  3) Edit (open JSON in default editor)"
+    echo "  4) Back to configuration list"
+    printf "Choice [1]: "
+    builtin read -r action
+    action=${action:-1}
+
+    case "$action" in
+      1)
+        echo "Running Prepare for $config_name..."
+        node "$ROOT_DIR/client/prepare.js" --config "$config_path"
+        ;;
+      2)
+        echo "Running Execute for $config_name..."
+        node "$ROOT_DIR/server/executor.js" --config "$config_path"
+        ;;
+      3)
+        echo "Opening $config_path in editor..."
+        ${EDITOR:-nano} "$config_path"
+        ;;
+      4)
+        return 0
+        ;;
+      *)
+        echo "Invalid option"
+        ;;
+    esac
+    echo
+    printf "Press Enter to continue..."
+    builtin read -r
+  done
+}
+
+# ... (main entry point later)
 
 is_organization() {
   local owner="${1:-}"
@@ -332,45 +399,25 @@ echo "============================================"
 echo "  GitIssue-Manager - Repository Setup"
 echo "============================================"
 echo
+echo "TIP: Use 'pnpm run configure' at any time to add a new repository or configuration."
+echo
 
-if list_configured_repos; then
-  echo
-  echo "Options:"
-  echo "  1) Configure a new repository"
-  echo "  2) Edit an existing repository configuration"
-  builtin read -r -p "Choose (1/2) [1]: " SETUP_MODE
-  SETUP_MODE=${SETUP_MODE:-1}
-
-  if [ "$SETUP_MODE" = "2" ]; then
-    EXISTING_CONFIG=""
-    if selected_config=$(select_existing_config); then
-      EXISTING_CONFIG="$selected_config"
-    else
-      # If return code is 2, user opted to type the config name.
-      builtin read -r -p "Enter config name to edit (e.g., mzfshark-AragonOSX): " EXISTING_CONFIG
-    fi
-
-    if [ -z "$EXISTING_CONFIG" ]; then
-      echo "No config selected." >&2
-      exit 1
-    fi
-
-    EXISTING_CONFIG_PATH="$CONFIG_DIR/${EXISTING_CONFIG}.json"
-    if [ -f "$EXISTING_CONFIG_PATH" ]; then
-      echo "Editing: $EXISTING_CONFIG_PATH"
-      echo "Opening in default editor..."
-      ${EDITOR:-nano} "$EXISTING_CONFIG_PATH"
-      echo "Configuration updated."
-      exit 0
-    else
-      echo "Config file not found: $EXISTING_CONFIG_PATH"
-      exit 1
-    fi
+# If we have existing configs, enter management menu.
+# select_and_manage_configs will return (fall through) if user chooses to create NEW.
+if shopt -s nullglob; files=("$CONFIG_DIR"/*.json); [ ${#files[@]} -gt 0 ]; then
+  if ! select_and_manage_configs; then
+    # if it returns 1, user chose "Configure a NEW repository"
+    SETUP_MODE=1
+  else
+    exit 0
   fi
+else
+  echo "No existing configurations found."
+  SETUP_MODE=1
 fi
 
 echo
-echo "=== Repository Configuration ==="
+echo "=== New Repository Configuration ==="
 builtin read -r -p "Owner (GitHub user or organization) [default: mzfshark]: " OWNER
 OWNER=${OWNER:-mzfshark}
 

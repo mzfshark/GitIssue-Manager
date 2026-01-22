@@ -2,11 +2,16 @@
 # E2E Flow v2.0 - Complete Implementation
 set -euo pipefail
 
+# Hardening: ensure we use bash builtins even if the environment exports a `read` alias/function.
+unalias read 2>/dev/null || true
+unset -f read 2>/dev/null || true
+
 # Config
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CONFIG_FILE="${CONFIG_FILE:-$PROJECT_ROOT/config/e2e-config.json}"
 OUTPUT_DIR="${OUTPUT_DIR:-$PROJECT_ROOT/tmp/e2e-execution}"
+# Default state file; will be updated once repository is selected to be repo-specific.
 STATE_FILE="$OUTPUT_DIR/execution-state.json"
 AUDIT_LOG_FILE="$OUTPUT_DIR/audit-log.jsonl"
 
@@ -79,6 +84,57 @@ resolve_sync_config_for_repo() {
         fi
     done
     return 1
+}
+
+prompt_for_repo_selection() {
+    local i=1
+    local repos=()
+    
+    # Look in sync-helper configs
+    for cfg in "$PROJECT_ROOT/sync-helper/configs"/*.json; do
+        [[ -f "$cfg" ]] || continue
+        local r
+        r=$(jq -r '.repo // empty' "$cfg" 2>/dev/null || true)
+        local id
+        id=$(basename "$cfg" .json)
+        
+        if [[ -n "$r" ]]; then
+            repos+=("$r")
+            printf "  %d) %-30s (%s)\n" "$i" "$id" "$r"
+            i=$((i + 1))
+        fi
+    done
+    
+    # Fallback/legacy check
+    if [[ ${#repos[@]} -eq 0 ]]; then
+         local raw
+         raw=$(jq -r '.repositories[]? | "\(.id)|\(.fullName)"' "$CONFIG_FILE" 2>/dev/null || true)
+         if [[ -n "$raw" ]]; then
+            while IFS='|' read -r k r; do
+                if [[ -n "$k" ]]; then
+                     repos+=("$r")
+                     printf "  %d) %-30s (%s)\n" "$i" "$k" "$r"
+                     i=$((i + 1))
+                fi
+            done <<< "$raw"
+         fi
+    fi
+
+    if [[ ${#repos[@]} -eq 0 ]]; then
+        log_warning "No repositories configured."
+        builtin read -r -p "Enter owner/name manually: " SELECTED_REPO
+        return 0
+    fi
+    
+    echo
+    builtin read -r -p "Select repository (1-${#repos[@]}) or type owner/name: " selection
+    
+    if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#repos[@]} ]; then
+        local idx=$((selection - 1))
+        SELECTED_REPO="${repos[$idx]}"
+    else
+        SELECTED_REPO="$selection"
+    fi
 }
 
 merge_managed_section() {
@@ -194,6 +250,18 @@ resolve_repo_full() {
     fi
 
     if [[ -n "$SELECTED_REPO_ID" ]]; then
+        # First try sync-helper config name (preferred; reflects newly added repos immediately)
+        local cfg_path
+        cfg_path="$PROJECT_ROOT/sync-helper/configs/${SELECTED_REPO_ID}.json"
+        if [[ -f "$cfg_path" ]]; then
+            local r
+            r=$(jq -r '.repo // empty' "$cfg_path" 2>/dev/null || true)
+            if [[ -n "$r" && "$r" != "null" ]]; then
+                SELECTED_REPO_FULL="$r"
+                return 0
+            fi
+        fi
+
         local repo_config
         repo_config=$(jq --arg id "$SELECTED_REPO_ID" '.repositories[] | select(.id == $id)' "$CONFIG_FILE" 2>/dev/null || true)
         [[ -n "$repo_config" ]] && SELECTED_REPO_FULL="$(echo "$repo_config" | jq -r '.fullName')"
@@ -332,18 +400,23 @@ resolve_project_id() {
             return 1
         }
 
-        # Try org project first, then user project.
+        # Try org project first
         local id
         id=$(gh api graphql \
             -f query='query($login:String!,$number:Int!){organization(login:$login){projectV2(number:$number){id}}}' \
             -f login="$PROJECT_OWNER" -F number="$PROJECT_NUMBER" --jq '.data.organization.projectV2.id' 2>/dev/null || true)
-        if [[ -z "$id" || "$id" == "null" ]]; then
+
+        # If ID is missing or looks like an error JSON (starts with {), try user project
+        if [[ -z "$id" || "$id" == "null" || "$id" == \{* ]]; then
             id=$(gh api graphql \
                 -f query='query($login:String!,$number:Int!){user(login:$login){projectV2(number:$number){id}}}' \
                 -f login="$PROJECT_OWNER" -F number="$PROJECT_NUMBER" --jq '.data.user.projectV2.id' 2>/dev/null || true)
         fi
 
-        [[ -z "$id" || "$id" == "null" ]] && { log_error "Failed to resolve ProjectV2 id for $PROJECT_SPEC"; return 1; }
+        if [[ -z "$id" || "$id" == "null" || "$id" == \{* ]]; then
+             log_error "Failed to resolve ProjectV2 id for $PROJECT_SPEC (Owner '$PROJECT_OWNER', Number '$PROJECT_NUMBER')"
+             return 1
+        fi
         PROJECT_ID="$id"
         echo "$PROJECT_ID"
         return 0
@@ -416,9 +489,13 @@ stage_setup() {
     log_success "jq found"
     
     local org
-    org=$(jq -r '.github.organization // empty' "$CONFIG_FILE" 2>/dev/null || true)
-    [[ -z "$org" ]] && org="${SELECTED_REPO_FULL%%/*}"
-    [[ -z "$org" || "$org" == "$SELECTED_REPO_FULL" ]] && org="(auto)"
+    # Use repo owner if known, else fall back to config default
+    if [[ -n "${SELECTED_REPO_FULL:-}" ]]; then
+        org="${SELECTED_REPO_FULL%%/*}"
+    else
+        org=$(jq -r '.github.organization // empty' "$CONFIG_FILE" 2>/dev/null || true)
+    fi
+    [[ -z "$org" ]] && org="(auto)"
     log_info "Organization: $org"
     
     save_state "1" '{"completed": true, "org": "'$org'"}'
@@ -452,11 +529,23 @@ stage_prepare() {
     if [[ -n "$SELECTED_PLAN_FILE" ]]; then
         plan_file="$SELECTED_PLAN_FILE"
     else
-        [[ -z "$docs_path" ]] && {
-            log_error "Plan file resolution requires either --plan-file <path> or a configured repo id via --repo <id>."
+        local candidates=(
+            "$PROJECT_ROOT/../$repo_name/$docs_path/$SELECTED_PLAN"
+            "$PROJECT_ROOT/../$repo_name/plans/$SELECTED_PLAN"
+            "$PROJECT_ROOT/../$repo_name/$SELECTED_PLAN"
+        )
+        for c in "${candidates[@]}"; do
+            if [[ -f "$c" ]]; then
+                plan_file="$c"
+                break
+            fi
+        done
+        
+        if [[ -z "$plan_file" ]]; then
+            log_error "Plan not found in candidates:"
+            for c in "${candidates[@]}"; do log_error "  - $c"; done
             return 1
-        }
-        plan_file="$PROJECT_ROOT/../$repo_name/$docs_path/$SELECTED_PLAN"
+        fi
     fi
 
     [[ ! -f "$plan_file" ]] && { log_error "Plan not found: $plan_file"; return 1; }
@@ -611,16 +700,18 @@ const planSource = `<details>\n<summary>Source plan file (${path.basename(planFi
 const progressPlaceholder = `## Progress Tracking\n\n_Not generated yet._`;
 
 const markers = {
+  metadataBegin: '<!-- E2E:PLAN_METADATA:BEGIN -->',
+  metadataEnd: '<!-- E2E:PLAN_METADATA:END -->',
   planBegin: '<!-- E2E:PLAN_SOURCE:BEGIN -->',
   planEnd: '<!-- E2E:PLAN_SOURCE:END -->',
   progressBegin: '<!-- E2E:PROGRESS_TRACKING:BEGIN -->',
   progressEnd: '<!-- E2E:PROGRESS_TRACKING:END -->',
 };
 
-body = `${body.trim()}\n\n${markers.planBegin}\n${planSource}\n${markers.planEnd}\n\n${markers.progressBegin}\n${progressPlaceholder}\n${markers.progressEnd}\n`;
+body = `${body.trim()}\n\n${markers.metadataBegin}\n${idBlock}\n${markers.metadataEnd}\n\n${markers.planBegin}\n${planSource}\n${markers.planEnd}\n\n${markers.progressBegin}\n${progressPlaceholder}\n${markers.progressEnd}\n`;
 const title = `[PLAN] ${planTitle}`;
 
-process.stdout.write(JSON.stringify({ title, body, planSource, progressPlaceholder, stableId }, null, 0));
+process.stdout.write(JSON.stringify({ title, body, planSource, progressPlaceholder, stableId, idBlock }, null, 0));
 NODE
     )
 
@@ -632,6 +723,8 @@ NODE
     pai_plan_source=$(echo "$rendered" | jq -r '.planSource')
     local progress_placeholder
     progress_placeholder=$(echo "$rendered" | jq -r '.progressPlaceholder')
+    local pai_metadata
+    pai_metadata=$(echo "$rendered" | jq -r '.idBlock')
 
     log_info "Creating/reusing PAI (StableId: $pai_stable_id)..."
 
@@ -698,7 +791,8 @@ NODE
     local current_body
     current_body=$(gh issue view "$pai_number" --repo "$repo_full" --json body --jq '.body' 2>/dev/null || echo "")
     local merged_body
-    merged_body=$(merge_managed_section "$current_body" "<!-- E2E:PLAN_SOURCE:BEGIN -->" "<!-- E2E:PLAN_SOURCE:END -->" "$pai_plan_source")
+    merged_body=$(merge_managed_section "$current_body" "<!-- E2E:PLAN_METADATA:BEGIN -->" "<!-- E2E:PLAN_METADATA:END -->" "$pai_metadata")
+    merged_body=$(merge_managed_section "$merged_body" "<!-- E2E:PLAN_SOURCE:BEGIN -->" "<!-- E2E:PLAN_SOURCE:END -->" "$pai_plan_source")
     if ! echo "$merged_body" | grep -Fq "<!-- E2E:PROGRESS_TRACKING:BEGIN -->"; then
         merged_body=$(merge_managed_section "$merged_body" "<!-- E2E:PROGRESS_TRACKING:BEGIN -->" "<!-- E2E:PROGRESS_TRACKING:END -->" "$progress_placeholder")
     fi
@@ -1014,6 +1108,27 @@ NODE
         else
             local msg
             msg=$(echo "$resp" | jq -r '.errors[0].message // empty' 2>/dev/null)
+            
+            # Retry with replaceParent=true if failure is due to multiple parents or duplicate sub-issues
+            if [[ -n "$msg" ]] && { echo "$msg" | grep -qi 'only have one parent'; }; then
+                 log_warning "Linking failed. Retrying with replaceParent=true for #$child_number..."
+                 resp=$(gh api graphql \
+                    -f query='mutation($issueId:ID!,$subIssueId:ID!,$replaceParent:Boolean){addSubIssue(input:{issueId:$issueId,subIssueId:$subIssueId,replaceParent:$replaceParent}){issue{number} subIssue{number}}}' \
+                    -f issueId="$parent_id" \
+                    -f subIssueId="$child_id" \
+                    -F replaceParent=true \
+                    2>&1)
+                 
+                 if echo "$resp" | jq -e '.data.addSubIssue.subIssue.number' >/dev/null 2>&1; then
+                    log_success "Linked #$child_number (parent replaced)"
+                    link_count=$((link_count + 1))
+                    audit_log "subissue_link" '{"parent":'"${parent_number:-$pai_number}"',"child":'$child_number',"replaceParent":true,"kind":'"$(echo "$kind" | jq -Rs '.')"'}'
+                    continue
+                 fi
+                 # Update msg if retry failed too
+                 msg=$(echo "$resp" | jq -r '.errors[0].message // empty' 2>/dev/null)
+            fi
+
             if [[ -n "$msg" ]] && echo "$msg" | grep -qi 'already'; then
                 log_info "Already linked (#$child_number)"
                 skip_count=$((skip_count + 1))
@@ -1363,16 +1478,26 @@ EOF
 show_navigation_menu() {
     local current=$1
     local stage_name=${STAGE_NAMES[$current-1]:-"UNKNOWN"}
-    echo ""
-    echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
-    echo -e "${CYAN}  Stage $current: $stage_name${NC}"
-    echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    echo "  [c] Continue  [r] Re-run  [s] State  [q] Quit"
-    [[ $current -gt 1 ]] && echo "  [b] Back"
-    echo ""
-    read -p "Choice: " choice
-    echo "$choice"
+    
+    # Print menu to stderr so it is visible to the user and not captured by command substitution
+    {
+        echo ""
+        echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
+        echo -e "${CYAN}  Stage $current: $stage_name - Complete${NC}"
+        echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo "Actions:"
+        echo "  [c] Continue (default)"
+        echo "  [r] Re-run stage"
+        echo "  [s] Show state"
+        [[ $current -gt 1 ]] && echo "  [b] Back"
+        echo "  [q] Quit"
+        echo ""
+    } >&2
+    
+    local input
+    read -p "Select action: " input
+    echo "${input:-c}"
 }
 
 run_stage() {
@@ -1470,12 +1595,52 @@ EOF
     
     [[ -z "$SELECTED_REPO" && -z "$SELECTED_REPO_ID" && -z "$SELECTED_REPO_FULL" ]] && {
         log_prompt "Repository:"
-        jq -r '.repositories[] | "  [\(.id)] \(.fullName)"' "$CONFIG_FILE"
-        read -p "ID: " SELECTED_REPO
+        prompt_for_repo_selection
         parse_repo_input "$SELECTED_REPO"
     }
 
     resolve_repo_full || exit 1
+
+    # Load defaults from sync-helper config if available
+    local sync_cfg
+    sync_cfg=$(resolve_sync_config_for_repo "$SELECTED_REPO_FULL")
+    if [[ -n "$sync_cfg" ]]; then
+        log_info "Found sync-helper config: $(basename "$sync_cfg")"
+        if [[ "$ENABLE_PROJECT_SYNC" != "true" ]]; then
+            local eps
+            eps=$(jq -r '.enableProjectSync // false' "$sync_cfg")
+            [[ "$eps" == "true" ]] && { ENABLE_PROJECT_SYNC=true; log_info "Auto-enabled ProjectSync"; }
+        fi
+        if [[ -z "$PROJECT_SPEC" ]]; then
+            local p_owner p_num
+            p_owner=$(jq -r '.owner // empty' "$sync_cfg")
+            p_num=$(jq -r '.project.number // empty' "$sync_cfg")
+            if [[ -n "$p_owner" && -n "$p_num" && "$p_num" != "null" ]]; then
+                PROJECT_SPEC="${p_owner}/${p_num}"
+                log_info "Auto-set project: $PROJECT_SPEC"
+            fi
+        fi
+        if [[ -z "$METADATA_FILE" ]]; then
+             local lpath
+             lpath=$(jq -r '.localPath // empty' "$sync_cfg")
+             if [[ -n "$lpath" && -f "$lpath/metadata.json" ]]; then
+                 METADATA_FILE="$lpath/metadata.json"
+                 log_info "Auto-set metadata: $METADATA_FILE"
+             fi
+        fi
+    fi
+
+    # Update STATE_FILE to be repo-specific once repo is resolved.
+    # This prevents state/plan leakage between different repositories.
+    if [[ -n "$SELECTED_REPO_FULL" ]]; then
+        mkdir -p "$OUTPUT_DIR"
+        STATE_FILE="$OUTPUT_DIR/execution-state-${SELECTED_REPO_FULL//\//-}.json"
+        
+        # If --resume was used, re-calculate based on the now-repo-specific state.
+        if [[ $CURRENT_STAGE -gt 1 && -f "$STATE_FILE" ]]; then
+             CURRENT_STAGE=$(($(get_last_completed_stage) + 1))
+        fi
+    fi
 
     # Non-interactive / stage re-runs: reuse previously selected plan file from state when available.
     if [[ -z "$SELECTED_PLAN" && -z "$SELECTED_PLAN_FILE" && -f "$STATE_FILE" ]]; then
