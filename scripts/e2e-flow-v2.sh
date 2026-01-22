@@ -87,13 +87,15 @@ merge_managed_section() {
     local end_marker="$3"
     local new_section="$4"
 
-    node - <<'NODE'
+    # Pass large payloads via stdin to avoid OS argv size limits.
+    jq -n --arg existing "$existing_body" --arg replacement "$new_section" '{existing:$existing,replacement:$replacement}' | node - <<'NODE'
 const fs = require('fs');
 
-const existing = fs.readFileSync(0, 'utf8');
+const payload = JSON.parse(fs.readFileSync(0, 'utf8') || '{}');
+const existing = String(payload.existing || '');
+const replacement = String(payload.replacement || '');
 const begin = process.argv[2];
 const end = process.argv[3];
-const replacement = process.argv[4];
 
 function ensureMarkers(text) {
   if (!text.includes(begin)) text += `\n\n${begin}\n${end}\n`;
@@ -106,7 +108,7 @@ const re = new RegExp(`${begin}[\\s\\S]*?${end}`, 'm');
 const next = withMarkers.replace(re, `${begin}\n${replacement}\n${end}`);
 process.stdout.write(next);
 NODE
-    "$begin_marker" "$end_marker" "$new_section" <<<"$existing_body"
+    "$begin_marker" "$end_marker"
 }
 
 # Audit logging (JSONL)
