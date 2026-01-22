@@ -1,0 +1,103 @@
+{
+  "version": "2.0",
+  "description": "E2E Flow Configuration - Interactive Issue Hierarchy Generation",
+  "executionMode": "interactive",
+  "github": {
+    "organization": "Axodus",
+    "tokenEnv": "GITHUB_TOKEN",
+    "apiVersion": "2022-11-28"
+  },
+  "repositories": [
+    {
+      "id": "aragon-osx",
+      "name": "AragonOSX",
+      "owner": "Axodus",
+      "fullName": "Axodus/AragonOSX",
+      "defaultBranch": "develop",
+      "docsPath": "./docs/plans",
+      "enabled": true,
+      "defaultOwner": "mzfshark",
+      "project": {
+        "id": "PVT_kwDOBfRHZM4BM-PB",
+        "number": 23,
+        "name": "Aragon OSx Sprint 1"
+      },
+      "metadata": {
+        "defaultLabels": ["plan", "sprint1"],
+        "defaultAssignee": "mzfshark",
+        "defaultType": "EPIC",
+        "defaultPriority": "HIGH",
+        "defaultStatus": "In Progress"
+      }
+    },
+    {
+      "id": "aragon-app",
+      "name": "aragon-app",
+      "owner": "Axodus",
+      "fullName": "Axodus/aragon-app",
+      "defaultBranch": "main",
+      "docsPath": "./docs/plans",
+      "enabled": true,
+      "defaultOwner": "mzfshark",
+      "project": {
+        "id": "PVT_kwDOBfRHZM4BM-PC",
+        "number": 24,
+        "name": "Frontend Sprint 1"
+      },
+      "metadata": {
+        "defaultLabels": ["plan", "sprint1"],
+        "defaultAssignee": "mzfshark",
+        "defaultType": "EPIC",
+        "defaultPriority": "HIGH",
+        "defaultStatus": "In Progress"
+      }
+    },
+    {
+      "id": "aragon-app-backend",
+      "name": "Aragon-app-backend",
+      "owner": "Axodus",
+      "fullName": "Axodus/Aragon-app-backend",
+      "defaultBranch": "development",
+      "docsPath": "./docs/plans",
+      "enabled": true,
+      "defaultOwner": "mzfshark",
+      "project": {
+        "id": "PVT_kwDOBfRHZM4BM-PD",
+        "number": 25,
+        "name": "Backend Sprint 1"
+      },
+      "metadata": {
+        "defaultLabels": ["plan", "sprint1"],
+        "defaultAssignee": "mzfshark",
+        "defaultType": "EPIC",
+        "defaultPriority": "HIGH",
+        "defaultStatus": "In Progress"
+      }
+    }
+  ],
+  "projectV2": {
+    "fieldMappings": {
+      "status": "Status",
+      "priority": "Priority",
+      "estimateHours": "Estimate Hours",
+      "startDate": "Start Date",
+      "endDate": "End Date"
+    }
+  },
+  "parsing": {
+    "checklistRegex": "^(\\s*)-\\s*\\[([x ])\\]\\s+(.+)$",
+    "levelIndent": 2,
+    "maxLevels": 5
+  },
+  "ui": {
+    "progressBar": true,
+    "verbosity": "normal",
+    "colors": true
+  },
+  "logging": {
+    "enabled": true,
+    "level": "info",
+    "format": "json",
+    "outputDir": "tmp/e2e-runs"
+  }
+}

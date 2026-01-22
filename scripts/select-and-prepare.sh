@@ -39,8 +39,36 @@ if [ -n "$SELECTED_REPO" ]; then
   fi
   
   repo=$(jq -r '.repo' "$config")
+  localPath=$(jq -r '.localPath // ""' "$config")
   echo "Using: $repo"
   echo "Config: $config"
+  if [ -n "$localPath" ] && [ -d "$localPath/docs/plans" ]; then
+    echo
+    echo "Select plans to include (comma-separated numbers):"
+    mapfile -t plan_files < <(ls "$localPath/docs/plans"/*.md 2>/dev/null)
+    i=1
+    for f in "${plan_files[@]}"; do
+      echo "  $i) $(basename "$f")"
+      i=$((i+1))
+    done
+    read -p "Choose (e.g. 1,3,5): " plan_choice
+    if [ -n "$plan_choice" ]; then
+      selected=""
+      IFS=',' read -ra picks <<< "$plan_choice"
+      for p in "${picks[@]}"; do
+        idx=$((p-1))
+        if [ $idx -ge 0 ] && [ $idx -lt ${#plan_files[@]} ]; then
+          name=$(basename "${plan_files[$idx]}")
+          selected="${selected}${selected:+,}${name}"
+        fi
+      done
+      if [ -n "$selected" ]; then
+        echo
+        node client/prepare.js --config "$config" --plans "$selected" --plans-dir "$localPath/docs/plans"
+        exit 0
+      fi
+    fi
+  fi
   echo
   node client/prepare.js --config "$config"
   exit 0
@@ -56,8 +84,36 @@ elif [ "$count" -eq 1 ]; then
   # Only one config, use it automatically
   config=$(ls "$CONFIG_DIR"/*.json)
   repo=$(jq -r '.repo' "$config")
+  localPath=$(jq -r '.localPath // ""' "$config")
   echo "Using: $repo"
   echo "Config: $config"
+  if [ -n "$localPath" ] && [ -d "$localPath/docs/plans" ]; then
+    echo
+    echo "Select plans to include (comma-separated numbers):"
+    mapfile -t plan_files < <(ls "$localPath/docs/plans"/*.md 2>/dev/null)
+    i=1
+    for f in "${plan_files[@]}"; do
+      echo "  $i) $(basename "$f")"
+      i=$((i+1))
+    done
+    read -p "Choose (e.g. 1,3,5): " plan_choice
+    if [ -n "$plan_choice" ]; then
+      selected=""
+      IFS=',' read -ra picks <<< "$plan_choice"
+      for p in "${picks[@]}"; do
+        idx=$((p-1))
+        if [ $idx -ge 0 ] && [ $idx -lt ${#plan_files[@]} ]; then
+          name=$(basename "${plan_files[$idx]}")
+          selected="${selected}${selected:+,}${name}"
+        fi
+      done
+      if [ -n "$selected" ]; then
+        echo
+        node client/prepare.js --config "$config" --plans "$selected" --plans-dir "$localPath/docs/plans"
+        exit 0
+      fi
+    fi
+  fi
   echo
   node client/prepare.js --config "$config"
 else
@@ -83,10 +139,37 @@ else
     # Process all
     for cfg in "${configs[@]}"; do
       repo=$(jq -r '.repo' "$cfg")
+      localPath=$(jq -r '.localPath // ""' "$cfg")
       echo
       echo "========================================"
       echo "Preparing: $repo"
       echo "========================================"
+      if [ -n "$localPath" ] && [ -d "$localPath/docs/plans" ]; then
+        echo
+        echo "Select plans to include (comma-separated numbers):"
+        mapfile -t plan_files < <(ls "$localPath/docs/plans"/*.md 2>/dev/null)
+        i=1
+        for f in "${plan_files[@]}"; do
+          echo "  $i) $(basename "$f")"
+          i=$((i+1))
+        done
+        read -p "Choose (e.g. 1,3,5): " plan_choice
+        if [ -n "$plan_choice" ]; then
+          selected=""
+          IFS=',' read -ra picks <<< "$plan_choice"
+          for p in "${picks[@]}"; do
+            idx=$((p-1))
+            if [ $idx -ge 0 ] && [ $idx -lt ${#plan_files[@]} ]; then
+              name=$(basename "${plan_files[$idx]}")
+              selected="${selected}${selected:+,}${name}"
+            fi
+          done
+          if [ -n "$selected" ]; then
+            node client/prepare.js --config "$cfg" --plans "$selected" --plans-dir "$localPath/docs/plans"
+            continue
+          fi
+        fi
+      fi
       node client/prepare.js --config "$cfg"
     done
   else
@@ -98,8 +181,35 @@ else
     fi
     config="${configs[$idx]}"
     repo=$(jq -r '.repo' "$config")
+    localPath=$(jq -r '.localPath // ""' "$config")
     echo "Selected: $repo"
     echo
+    if [ -n "$localPath" ] && [ -d "$localPath/docs/plans" ]; then
+      echo
+      echo "Select plans to include (comma-separated numbers):"
+      mapfile -t plan_files < <(ls "$localPath/docs/plans"/*.md 2>/dev/null)
+      i=1
+      for f in "${plan_files[@]}"; do
+        echo "  $i) $(basename "$f")"
+        i=$((i+1))
+      done
+      read -p "Choose (e.g. 1,3,5): " plan_choice
+      if [ -n "$plan_choice" ]; then
+        selected=""
+        IFS=',' read -ra picks <<< "$plan_choice"
+        for p in "${picks[@]}"; do
+          idx=$((p-1))
+          if [ $idx -ge 0 ] && [ $idx -lt ${#plan_files[@]} ]; then
+            name=$(basename "${plan_files[$idx]}")
+            selected="${selected}${selected:+,}${name}"
+          fi
+        done
+        if [ -n "$selected" ]; then
+          node client/prepare.js --config "$config" --plans "$selected" --plans-dir "$localPath/docs/plans"
+          exit 0
+        fi
+      fi
+    fi
     node client/prepare.js --config "$config"
   fi
 fi

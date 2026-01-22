@@ -1,25 +1,38 @@
-# Plan: Repository Work Plan
+#  #PLAN-001 - <Plan Title>
 
-This plan is the source of truth for work tracking.
+**Repository:** <REPO>(<OWNER>/<REPO>)  
+**End Date Goal:** <date>  
+**Priority:** <PRIORITY> [ LOW | HIGH | URGENT | MEDIUM ]  
+**Estimative Hours:** <ESTIMATE>  
+**Status:** <STATUS> [ in progress | Ready | Done | in Review | Backlog ]
 
-Rules:
-- Every checkbox line MUST include tags for labels, status, priority, estimate, start/end dates.
-- Subtasks are indented by 2 spaces under their parent.
-- Prefer short, action-oriented titles and include a brief description.
+---
 
-## Milestone: Foundation
+## Executive Summary
 
-- [ ] Define scope and acceptance criteria — Write a short problem statement and definition of done. [labels:plan,docs] [status:TODO] [priority:NORMAL] [estimate:2h] [start:TBD] [end:TBD]
-  - [ ] Collect existing constraints — Capture env, branches, dependencies, and boundaries. [labels:plan,docs] [status:TODO] [priority:NORMAL] [estimate:1h] [start:TBD] [end:TBD]
-  - [ ] Identify integration points — List systems/APIs impacted by this change. [labels:plan,docs] [status:TODO] [priority:NORMAL] [estimate:1h] [start:TBD] [end:TBD]
+Provide a brief description of the plan scope, objectives, and expected outcomes.
 
-## Milestone: Implementation
+### Key Metrics
+- **Total Planned Work:** <hours>
+- **Completion:** <percent>
+- **Active Features:** <count>
+- **Open Bugs:** <count>
+- **Timeline:** <start> → <end>
 
-- [ ] Implement core change — Deliver the minimal working version of the feature. [labels:plan,implementation] [status:TODO] [priority:HIGH] [estimate:6h] [start:TBD] [end:TBD]
-  - [ ] Add unit tests — Cover the happy path and key edge cases. [labels:plan,test] [status:TODO] [priority:NORMAL] [estimate:3h] [start:TBD] [end:TBD]
-  - [ ] Update documentation — Add/refresh README notes and usage examples. [labels:plan,docs] [status:TODO] [priority:NORMAL] [estimate:1h] [start:TBD] [end:TBD]
+---
 
-## Milestone: Validation & Release
+## Subtasks (Linked)
 
-- [ ] Run validation checklist — Confirm build/lint/tests and basic runtime checks. [labels:plan,qa] [status:TODO] [priority:NORMAL] [estimate:2h] [start:TBD] [end:TBD]
-- [ ] Prepare rollout notes — Summarize changes, risks, and rollback steps. [labels:plan,release] [status:TODO] [priority:LOW] [estimate:1h] [start:TBD] [end:TBD]
+Use headings that include an ID (e.g., PLAN-001, EPIC-001, FEATURE-002). Checklist items under these headings will be treated as subtasks.
+
+### PLAN-001: <Milestone Name>
+
+- [ ] <Subtask title> [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] <Subtask title> [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+
+---
+
+## Milestones
+
+- **Milestone 1:** <Milestone name> — <status> — <start> → <end>
+- **Milestone 2:** <Milestone name> — <status> — <start> → <end>

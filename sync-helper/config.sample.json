@@ -14,6 +14,42 @@
   "defaults": {
     "defaultEstimateHours": 1
   },
+  "labels": {
+    "source": "https://github.com/Axodus/aragon-app/labels",
+    "allowed": [
+      "frontend",
+      "backend",
+      "qa",
+      "bug",
+      "enhancement",
+      "documentation",
+      "plan",
+      "ui",
+      "api",
+      "epic",
+      "feature",
+      "breaking-change",
+      "cross-repo",
+      "testing",
+      "harmony",
+      "governance",
+      "sync-md",
+      "subtask",
+      "security",
+      "issue"
+
+    ]
+  },
+  "timing": {
+    "afterPaiSeconds": 30,
+    "afterChildrenSeconds": 30,
+    "afterLinkSeconds": 30
+  },
+  "validation": {
+    "enforceLabelAllowlist": true,
+    "enforceNoOrphans": true,
+    "enforcePaiContentMatch": true
+  },
   "targets": [
     {
       "repo": "mzfshark/REPO_NAME",
@@ -22,7 +58,8 @@
       "outputs": {
         "tasksPath": "./tmp/tasks.json",
         "subtasksPath": "./tmp/subtasks.json",
-        "engineInputPath": "./tmp/engine-input.json"
+        "engineInputPath": "./tmp/engine-input.json",
+        "metadataPath": "./tmp/metadata.json"
       }
     }
   ]

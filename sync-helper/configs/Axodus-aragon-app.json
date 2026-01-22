@@ -22,9 +22,10 @@
     "defaultStartDate": "TBD",
     "defaultEndDate": "TBD",
     "defaultLabels": [
-      "frontend",
       "harmony",
-      "goverance"
+      "frontend",
+      "governance",
+      "ui"
     ]
   },
   "outputs": {

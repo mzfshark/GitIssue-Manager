@@ -488,3 +488,168 @@ EOF
     log_success "All done! 🎉"
     return 0
 }
+
+# ============================================================================
+# NAVIGATION & ORCHESTRATION
+# ============================================================================
+
+show_navigation_menu() {
+    local current=$1
+    local stage_name=${STAGE_NAMES[$current-1]:-"UNKNOWN"}
+    
+    echo ""
+    echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}  Current Stage: $current - $stage_name${NC}"
+    echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "Options:"
+    echo "  [c] Continue to next stage"
+    [[ $current -gt 1 ]] && echo "  [b] Back to previous stage"
+    echo "  [r] Re-run current stage"
+    echo "  [s] Show current state"
+    echo "  [q] Quit"
+    echo ""
+    read -p "Choose option: " choice
+    echo "$choice"
+}
+
+run_stage() {
+    local stage_num=$1
+    case $stage_num in
+        1) stage_setup ;;
+        2) stage_prepare ;;
+        3) stage_create_pai ;;
+        4) stage_create_children ;;
+        5) stage_link_hierarchy ;;
+        6) stage_sync_projectv2 ;;
+        7) stage_progress_tracking ;;
+        8) stage_reporting ;;
+        *) log_error "Invalid stage: $stage_num"; return 1 ;;
+    esac
+}
+
+show_current_state() {
+    log_info "Current execution state:"
+    echo ""
+    for i in {1..8}; do
+        local stage_data=$(get_stage_data "$i")
+        local completed=$(echo "$stage_data" | jq -r '.completed // false')
+        local status="❌ Not started"
+        [[ "$completed" == "true" ]] && status="✅ Complete"
+        echo -e "  Stage $i (${STAGE_NAMES[$i-1]}): $status"
+    done
+    echo ""
+}
+
+# ============================================================================
+# MAIN ORCHESTRATOR
+# ============================================================================
+
+main() {
+    echo -e "${MAGENTA}"
+    cat << 'EOF'
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║                    E2E FLOW - ISSUE HIERARCHY GENERATOR                   ║
+║                              Version 2.0                                  ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+EOF
+    echo -e "${NC}"
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --repo) SELECTED_REPO="$2"; shift 2 ;;
+            --plan) SELECTED_PLAN="$2"; shift 2 ;;
+            --config) CONFIG_FILE="$2"; shift 2 ;;
+            --dry-run) DRY_RUN=true; shift ;;
+            --resume) CURRENT_STAGE=$(($(get_last_completed_stage) + 1)); shift ;;
+            --non-interactive) INTERACTIVE=false; shift ;;
+            --help)
+                echo "Usage: $0 [OPTIONS]"
+                echo ""
+                echo "Options:"
+                echo "  --repo <id>          Repository ID"
+                echo "  --plan <file>        Plan file (SPRINT.md, PLAN.md, etc.)"
+                echo "  --config <path>      Config file path"
+                echo "  --dry-run            Simulate without creating issues"
+                echo "  --resume             Resume from last stage"
+                echo "  --non-interactive    No prompts"
+                echo "  --help               This help"
+                exit 0
+                ;;
+            *) log_error "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+    
+    # Interactive repository selection
+    if [[ -z "$SELECTED_REPO" ]]; then
+        echo ""
+        log_prompt "Select repository:"
+        jq -r '.repositories[] | "  [\(.id)] \(.fullName)"' "$CONFIG_FILE" 2>/dev/null || {
+            log_error "Cannot read config file"
+            exit 1
+        }
+        echo ""
+        read -p "Repository ID: " SELECTED_REPO
+    fi
+    
+    # Interactive plan selection
+    if [[ -z "$SELECTED_PLAN" ]]; then
+        echo ""
+        log_prompt "Select plan file:"
+        echo "  [1] PLAN.md"
+        echo "  [2] SPRINT.md"
+        echo "  [3] Custom"
+        echo ""
+        read -p "Choice [1-3]: " plan_choice
+        case $plan_choice in
+            1) SELECTED_PLAN="PLAN.md" ;;
+            2) SELECTED_PLAN="SPRINT.md" ;;
+            3) read -p "Enter filename: " SELECTED_PLAN ;;
+            *) SELECTED_PLAN="SPRINT.md" ;;
+        esac
+    fi
+    
+    log_info "Repository: $SELECTED_REPO"
+    log_info "Plan: $SELECTED_PLAN"
+    [[ "$DRY_RUN" == "true" ]] && log_warning "DRY-RUN MODE"
+    
+    # Execute stages
+    if [[ "$INTERACTIVE" == "true" ]]; then
+        while [[ $CURRENT_STAGE -le 8 ]]; do
+            if run_stage $CURRENT_STAGE; then
+                [[ $CURRENT_STAGE -eq 8 ]] && break
+                
+                choice=$(show_navigation_menu $CURRENT_STAGE)
+                case $choice in
+                    c|C|"") CURRENT_STAGE=$((CURRENT_STAGE + 1)) ;;
+                    b|B) 
+                        if [[ $CURRENT_STAGE -gt 1 ]]; then
+                            CURRENT_STAGE=$((CURRENT_STAGE - 1))
+                        fi
+                        ;;
+                    r|R) log_info "Re-running stage $CURRENT_STAGE" ;;
+                    s|S) show_current_state ;;
+                    q|Q) log_warning "Stopped by user"; exit 0 ;;
+                    *) CURRENT_STAGE=$((CURRENT_STAGE + 1)) ;;
+                esac
+            else
+                log_error "Stage $CURRENT_STAGE failed"
+                read -p "Retry? [y/N]: " retry
+                [[ "$retry" =~ ^[Yy]$ ]] && continue || exit 1
+            fi
+        done
+    else
+        for stage in $(seq $CURRENT_STAGE 8); do
+            run_stage $stage || { log_error "Stage $stage failed"; exit 1; }
+        done
+    fi
+    
+    echo ""
+    log_success "E2E Flow completed! 🎉"
+}
+
+# Entry point
+main "$@"

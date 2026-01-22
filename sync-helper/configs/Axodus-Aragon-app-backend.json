@@ -1,7 +1,7 @@
 {
   "owner": "Axodus",
   "repo": "Axodus/Aragon-app-backend",
-  "localPath": "/opt/Aragon-app-backend",
+  "localPath": "../Aragon-app-backend",
   "enableProjectSync": true,
   "project": {
     "url": "https://github.com/orgs/Axodus/projects/23",
@@ -22,14 +22,13 @@
     "defaultStartDate": "TBD",
     "defaultEndDate": "TBD",
     "defaultLabels": [
-      "[PLAN]",
-      "[BACKEND]"
+      "plan"
     ]
   },
   "outputs": {
-    "tasksPath": "/opt/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/tasks.json",
-    "subtasksPath": "/opt/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/subtasks.json",
-    "engineInputPath": "/opt/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/engine-input.json",
-    "engineOutputPath": "/opt/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/engine-output.json"
+    "tasksPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/tasks.json",
+    "subtasksPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/subtasks.json",
+    "engineInputPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/engine-input.json",
+    "engineOutputPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-Aragon-app-backend/engine-output.json"
   }
 }

@@ -52,17 +52,56 @@ function extractLinkedMarkdownFiles(planPath, absRoot) {
   return Array.from(links);
 }
 
-function getPlanFiles(absRoot) {
+function resolvePlanFile(absRoot, plansDir, plan) {
+  if (!plan) return null;
+  const isAbs = path.isAbsolute(plan);
+  const candidate = isAbs
+    ? plan
+    : path.resolve(plansDir, plan);
+  if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+  const fallback = isAbs ? null : path.resolve(absRoot, plan);
+  if (fallback && fs.existsSync(fallback) && fs.statSync(fallback).isFile()) return fallback;
+  return null;
+}
+
+function getPlanFiles(absRoot, selectedPlans, plansDir) {
+  const files = [];
   const planPath = path.join(absRoot, 'PLAN.md');
-  if (!fs.existsSync(planPath)) {
-    console.warn('PLAN.md not found at:', planPath);
-    return [];
+  const resolvedPlansDir = plansDir || path.join(absRoot, 'docs', 'plans');
+
+  if (Array.isArray(selectedPlans) && selectedPlans.length > 0) {
+    const missing = [];
+    for (const plan of selectedPlans) {
+      const resolved = resolvePlanFile(absRoot, resolvedPlansDir, plan);
+      if (resolved) files.push(resolved);
+      else missing.push(plan);
+    }
+    if (missing.length) {
+      console.error('Selected plan files not found:', missing.join(', '));
+      return [];
+    }
+  } else {
+    const fallbackPlanPath = path.join(absRoot, 'docs', 'plans', 'PLAN.md');
+    if (fs.existsSync(planPath)) {
+      files.push(planPath);
+    } else if (fs.existsSync(fallbackPlanPath)) {
+      files.push(fallbackPlanPath);
+    } else {
+      console.warn('PLAN.md not found at:', planPath);
+      console.warn('PLAN.md not found at:', fallbackPlanPath);
+      return [];
+    }
   }
 
-  const files = [planPath];
-  const linked = extractLinkedMarkdownFiles(planPath, absRoot);
-  for (const f of linked) files.push(f);
-  return files;
+  const linkedFiles = new Set();
+  for (const f of files) {
+    const linked = extractLinkedMarkdownFiles(f, absRoot);
+    for (const lf of linked) linkedFiles.add(lf);
+  }
+
+  for (const lf of linkedFiles) files.push(lf);
+
+  return Array.from(new Set(files));
 }
 
 function parseTags(text) {
@@ -97,9 +136,42 @@ function parseTags(text) {
 function parseChecklistWithIndent(content) {
   const lines = content.split(/\r?\n/);
   const items = [];
+  const headingParents = [];
+  const parentPattern = /\b[A-Z]+-\d+\b/;
+
+  let currentHeading = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      const headingLevel = headingMatch[1].length;
+      const headingText = headingMatch[2].trim();
+      if (parentPattern.test(headingText)) {
+        const tags = parseTags(headingText);
+        const stableId = sha1(`${i + 1}:${tags.cleaned}`);
+        headingParents.push({
+          stableId,
+          line: i + 1,
+          text: tags.cleaned,
+          rawText: headingText,
+          level: headingLevel,
+          meta: {
+            estimateHours: tags.estimateHours,
+            priority: tags.priority,
+            status: tags.status,
+            startDate: tags.startDate,
+            endDate: tags.endDate,
+            labels: tags.labels,
+          },
+        });
+        currentHeading = { stableId, level: headingLevel };
+      } else if (currentHeading && headingLevel <= currentHeading.level) {
+        currentHeading = null;
+      }
+      continue;
+    }
+
     const m = line.match(/^(\s*)[-*]\s+\[( |x|X)\]\s+(.*)$/);
     if (!m) continue;
     const indent = m[1].replace(/\t/g, '    ').length;
@@ -112,6 +184,7 @@ function parseChecklistWithIndent(content) {
       text: tags.cleaned,
       rawText,
       line: i + 1,
+      parentHeadingStableId: indent === 0 && currentHeading ? currentHeading.stableId : null,
       meta: {
         estimateHours: tags.estimateHours,
         priority: tags.priority,
@@ -123,7 +196,7 @@ function parseChecklistWithIndent(content) {
     });
   }
 
-  return items;
+  return { items, headingParents };
 }
 
 function mergeLabels(defaultLabels, itemLabels) {
@@ -131,10 +204,37 @@ function mergeLabels(defaultLabels, itemLabels) {
   return Array.from(new Set(combined.map((l) => l.trim()).filter(Boolean)));
 }
 
-function buildHierarchy(relFile, items, defaults) {
+function buildHierarchy(relFile, items, defaults, headingParents) {
   const tasks = [];
   const subtasks = [];
   const stack = []; // { indent, stableId }
+  const headingMap = new Map();
+
+  for (const heading of headingParents || []) {
+    const labels = mergeLabels(defaults.defaultLabels, heading.meta.labels);
+    const priority = heading.meta.priority ?? defaults.defaultPriority;
+    const status = heading.meta.status ?? defaults.defaultStatus;
+    const startDate = heading.meta.startDate ?? defaults.defaultStartDate;
+    const endDate = heading.meta.endDate ?? defaults.defaultEndDate;
+    const estimateHours = heading.meta.estimateHours ?? defaults.defaultEstimateHours;
+
+    const base = {
+      stableId: heading.stableId,
+      file: relFile,
+      line: heading.line,
+      text: heading.text,
+      checked: false,
+      labels,
+      priority,
+      status,
+      startDate,
+      endDate,
+      estimateHours,
+    };
+
+    tasks.push(base);
+    headingMap.set(heading.stableId, base);
+  }
 
   for (const it of items) {
     const stableId = sha1(`${relFile}:${it.line}:${it.rawText}`);
@@ -163,10 +263,14 @@ function buildHierarchy(relFile, items, defaults) {
       estimateHours,
     };
 
-    if (!parent) {
+    const headingParent = (!parent && it.parentHeadingStableId && headingMap.has(it.parentHeadingStableId))
+      ? { stableId: it.parentHeadingStableId }
+      : null;
+
+    if (!parent && !headingParent) {
       tasks.push(base);
     } else {
-      subtasks.push({ ...base, parentStableId: parent.stableId });
+      subtasks.push({ ...base, parentStableId: (parent || headingParent).stableId });
     }
 
     stack.push({ indent: it.indent, stableId });
@@ -234,6 +338,13 @@ function main() {
   const args = process.argv.slice(2);
   const cfgIndex = args.indexOf('--config');
   const cfgPath = (cfgIndex >= 0 && args[cfgIndex + 1]) ? args[cfgIndex + 1] : path.join(__dirname, '../sync-helper/sync-config.json');
+  const plansIndex = args.indexOf('--plans');
+  const plansArg = (plansIndex >= 0 && args[plansIndex + 1]) ? args[plansIndex + 1] : '';
+  const plansDirIndex = args.indexOf('--plans-dir');
+  const plansDirArg = (plansDirIndex >= 0 && args[plansDirIndex + 1]) ? args[plansDirIndex + 1] : '';
+  const selectedPlans = plansArg
+    ? plansArg.split(',').map((p) => p.trim()).filter(Boolean)
+    : [];
 
   // Output paths are resolved relative to where the command is executed.
   // This keeps all generated artifacts in the GitIssue-Manager repo even when scanning external repos.
@@ -270,7 +381,8 @@ function main() {
       process.exit(3);
     }
 
-    const mdFiles = getPlanFiles(absRoot);
+    const plansDir = plansDirArg ? path.resolve(outBaseDir, plansDirArg) : '';
+    const mdFiles = getPlanFiles(absRoot, selectedPlans, plansDir);
     if (!mdFiles.length) {
       console.warn('No PLAN.md or linked files found for:', target.repo);
       continue;
@@ -280,12 +392,16 @@ function main() {
 
     for (const f of mdFiles) {
       const content = fs.readFileSync(f, 'utf8');
-      const items = parseChecklistWithIndent(content);
-      if (!items.length) continue;
+      const parsed = parseChecklistWithIndent(content);
+      if (!parsed.items.length && (!parsed.headingParents || !parsed.headingParents.length)) continue;
       const relFile = path.relative(absRoot, f).replace(/\\/g, '/');
-      const built = buildHierarchy(relFile, items, defaults);
+      const built = buildHierarchy(relFile, parsed.items, defaults, parsed.headingParents);
       tasks = tasks.concat(built.tasks);
       subtasks = subtasks.concat(built.subtasks);
+      if (built.tasks.length && built.subtasks.length === 0) {
+        console.warn('No subtasks detected for:', relFile);
+        console.warn('Tip: Use headings like EPIC-001 and list checkboxes under them, or indent subtasks with 2 spaces.');
+      }
     }
 
     sumSubtaskEstimates(tasks, subtasks, defaults.defaultEstimateHours);
@@ -303,11 +419,35 @@ function main() {
     // Write engine input in the GitIssue-Manager repo (cwd) so the executor can always find it.
     writeJson(path.resolve(outBaseDir, engineInputPath), engine);
 
-    // Build and write metadata file for this target (labels, status, estimate, priority, dates)
+    // Build and write metadata file for this target
     const metadataPath = out.metadataPath || path.join(path.dirname(tasksPath), 'metadata.json');
+    const planFiles = mdFiles.map((f) => ({
+      path: path.relative(absRoot, f).replace(/\\/g, '/'),
+      absPath: f,
+      sha1: sha1(fs.readFileSync(f, 'utf8')),
+    }));
+    const allowedLabels = Array.isArray(cfg.labels && cfg.labels.allowed) ? cfg.labels.allowed : [];
     const metadata = {
       generatedAt: new Date().toISOString(),
       repo: target.repo,
+      planFiles,
+      labels: {
+        allowed: allowedLabels,
+        source: (cfg.labels && cfg.labels.source) ? cfg.labels.source : '',
+      },
+      project: cfg.project || { url: '', number: 0, fieldIds: {} },
+      timing: cfg.timing || { afterPaiSeconds: 0, afterChildrenSeconds: 0, afterLinkSeconds: 0 },
+      validation: {
+        enforceLabelAllowlist: (cfg.validation && typeof cfg.validation.enforceLabelAllowlist === 'boolean')
+          ? cfg.validation.enforceLabelAllowlist
+          : allowedLabels.length > 0,
+        enforceNoOrphans: (cfg.validation && typeof cfg.validation.enforceNoOrphans === 'boolean')
+          ? cfg.validation.enforceNoOrphans
+          : false,
+        enforcePaiContentMatch: (cfg.validation && typeof cfg.validation.enforcePaiContentMatch === 'boolean')
+          ? cfg.validation.enforcePaiContentMatch
+          : true,
+      },
       defaults: {
         defaultEstimateHours: defaults.defaultEstimateHours,
         defaultPriority: defaults.defaultPriority,
