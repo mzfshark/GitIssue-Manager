@@ -1,13 +1,32 @@
 #!/usr/bin/env bash
 set -e
 
+# Hardening: ensure we use bash builtins even if the environment exports a `read` alias/function.
+unalias read 2>/dev/null || true
+unset -f read 2>/dev/null || true
+
 CONFIG_DIR="./sync-helper/configs"
 
-# Parse --repo flag
+# Parse args
 SELECTED_REPO=""
-if [ "$1" = "--repo" ] && [ -n "$2" ]; then
-  SELECTED_REPO="$2"
-fi
+EXTRA_ARGS=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --repo)
+      if [ -n "${2:-}" ]; then
+        SELECTED_REPO="$2"
+        shift 2
+      else
+        echo "Error: --repo requires a value" >&2
+        exit 2
+      fi
+      ;;
+    *)
+      EXTRA_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
 
 if [ ! -d "$CONFIG_DIR" ] || [ -z "$(ls -A "$CONFIG_DIR" 2>/dev/null)" ]; then
   echo "No repositories configured. Run: npm run setup"
@@ -42,7 +61,7 @@ if [ -n "$SELECTED_REPO" ]; then
   echo "Using: $repo"
   echo "Config: $config"
   echo
-  node server/executor.js --config "$config"
+  node server/executor.js --config "$config" "${EXTRA_ARGS[@]}"
   exit 0
 fi
 
@@ -59,7 +78,7 @@ elif [ "$count" -eq 1 ]; then
   echo "Using: $repo"
   echo "Config: $config"
   echo
-  node server/executor.js --config "$config"
+  node server/executor.js --config "$config" "${EXTRA_ARGS[@]}"
 else
   # Multiple configs, let user choose
   echo "Select a repository to execute:"
@@ -77,7 +96,7 @@ else
   echo "  a) All repositories"
   echo
   
-  read -p "Choose (1-$((i-1))/a): " choice
+  builtin read -r -p "Choose (1-$((i-1))/a): " choice
   
   if [ "$choice" = "a" ] || [ "$choice" = "A" ]; then
     # Process all
@@ -87,7 +106,7 @@ else
       echo "========================================"
       echo "Executing: $repo"
       echo "========================================"
-      node server/executor.js --config "$cfg"
+      node server/executor.js --config "$cfg" "${EXTRA_ARGS[@]}"
     done
   else
     # Process selected
@@ -100,6 +119,6 @@ else
     repo=$(jq -r '.repo' "$config")
     echo "Selected: $repo"
     echo
-    node server/executor.js --config "$config"
+    node server/executor.js --config "$config" "${EXTRA_ARGS[@]}"
   fi
 fi

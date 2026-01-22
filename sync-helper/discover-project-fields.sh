@@ -39,56 +39,77 @@ if [ -z "$OWNER" ] || [ -z "$REPO_NAME" ] || [ -z "$PROJECT_NUMBER" ]; then
   usage
 fi
 
-VIEWER_LOGIN="$OWNER"
 PROJECT_URL=""
-ITEM_ID=""
 
-# Try organization first, then user
-Q_ORG="query{ organization(login:\"$OWNER\"){ projectV2(number:$PROJECT_NUMBER){ items(first:1){ nodes{ id } } } } }"
-ITEM_ID=$(gh api graphql -f query="$Q_ORG" --jq '.data.organization.projectV2.items.nodes[0].id' 2>/dev/null || true)
-if [ -n "$ITEM_ID" ] && [ "$ITEM_ID" != "null" ]; then
+# Determine whether OWNER is an org or a user
+ORG_ID=$(gh api graphql -f query='query($login:String!){ organization(login:$login){ id } }' -F login="$OWNER" --jq '.data.organization.id' 2>/dev/null || true)
+OWNER_KIND="user"
+if [ -n "$ORG_ID" ] && [ "$ORG_ID" != "null" ]; then
+  OWNER_KIND="org"
   PROJECT_URL="https://github.com/orgs/$OWNER/projects/$PROJECT_NUMBER"
 else
-  Q_USER="query{ user(login:\"$OWNER\"){ projectV2(number:$PROJECT_NUMBER){ items(first:1){ nodes{ id } } } } }"
-  ITEM_ID=$(gh api graphql -f query="$Q_USER" --jq '.data.user.projectV2.items.nodes[0].id' 2>/dev/null || true)
-  if [ -n "$ITEM_ID" ] && [ "$ITEM_ID" != "null" ]; then
-    PROJECT_URL="https://github.com/users/$OWNER/projects/$PROJECT_NUMBER"
-  fi
+  PROJECT_URL="https://github.com/users/$OWNER/projects/$PROJECT_NUMBER"
 fi
 CONFIG_NAME="$OWNER-$REPO_NAME"
 OUT=${OUT:-"$CONFIGS_DIR/${CONFIG_NAME}.json"}
 
 echo "Discovering ProjectV2 fields for $PROJECT_URL (owner=$OWNER repo=$REPO_NAME)"
 
-# Get first project item id
-Q1="query{ user(login:\"$VIEWER_LOGIN\"){ projectV2(number:$PROJECT_NUMBER){ items(first:1){ nodes{ id } } } } }"
-ITEM_ID=$(gh api graphql -f query="$Q1" --jq '.data.user.projectV2.items.nodes[0].id')
-if [ -z "$ITEM_ID" ] || [ "$ITEM_ID" = "null" ]; then
-  echo "No project items found or failed to resolve item id for owner '$OWNER' project #$PROJECT_NUMBER" >&2
-  exit 3
+# Query project fields directly (avoids needing a sample item and avoids union selection errors).
+FIELDS_QUERY_COMMON='fields(first:50){ nodes{ __typename ... on ProjectV2FieldCommon{ id name } ... on ProjectV2SingleSelectField{ id name } ... on ProjectV2IterationField{ id name } } }'
+
+if [ "$OWNER_KIND" = "org" ]; then
+  Q_FIELDS="query{ organization(login:\"$OWNER\"){ projectV2(number:$PROJECT_NUMBER){ $FIELDS_QUERY_COMMON } } }"
+else
+  Q_FIELDS="query{ user(login:\"$OWNER\"){ projectV2(number:$PROJECT_NUMBER){ $FIELDS_QUERY_COMMON } } }"
 fi
 
-echo "Sample project item: $ITEM_ID"
+RESP=$(gh api graphql -f query="$Q_FIELDS")
 
-# Query fieldValues for that item and extract fields
-Q2="query{ node(id:\"$ITEM_ID\"){ ... on ProjectV2Item{ id fieldValues(first:50){ nodes{ __typename ... on ProjectV2ItemFieldNumberValue{ number field{ id name } } ... on ProjectV2ItemFieldTextValue{ text field{ id name } } ... on ProjectV2ItemFieldSingleSelectValue{ optionId field{ id name } } } } } } }"
-RESP=$(gh api graphql -f query="$Q2")
+if [ "$OWNER_KIND" = "org" ]; then
+  FIELDS=$(echo "$RESP" | jq -r '.data.organization.projectV2.fields.nodes[]? | select(.id != null and .name != null) | (.id + "|" + (.name|tostring))')
+else
+  FIELDS=$(echo "$RESP" | jq -r '.data.user.projectV2.fields.nodes[]? | select(.id != null and .name != null) | (.id + "|" + (.name|tostring))')
+fi
 
 # Extract field id by fuzzy name match (case-insensitive)
-ESTIMATE_FIELD_ID=$(echo "$RESP" | jq -r '.data.node.fieldValues.nodes[] | select(.field!=null) | .field as $f | ($f.id + "|" + ($f.name|tostring))' | grep -i "estimate" | head -1 | cut -d'|' -f1 || true)
-STATUS_FIELD_ID=$(echo "$RESP" | jq -r '.data.node.fieldValues.nodes[] | select(.field!=null) | .field as $f | ($f.id + "|" + ($f.name|tostring))' | grep -i "status" | head -1 | cut -d'|' -f1 || true)
-PRIORITY_FIELD_ID=$(echo "$RESP" | jq -r '.data.node.fieldValues.nodes[] | select(.field!=null) | .field as $f | ($f.id + "|" + ($f.name|tostring))' | grep -i "priority" | head -1 | cut -d'|' -f1 || true)
+ESTIMATE_FIELD_ID=$(echo "$FIELDS" | grep -i "estimate" | head -1 | cut -d'|' -f1 || true)
+STATUS_FIELD_ID=$(echo "$FIELDS" | grep -i "status" | head -1 | cut -d'|' -f1 || true)
+PRIORITY_FIELD_ID=$(echo "$FIELDS" | grep -i "priority" | head -1 | cut -d'|' -f1 || true)
+START_DATE_FIELD_ID=$(echo "$FIELDS" | grep -i "start" | grep -i "date" | head -1 | cut -d'|' -f1 || true)
+END_DATE_FIELD_ID=$(echo "$FIELDS" | grep -i "end" | grep -i "date" | head -1 | cut -d'|' -f1 || true)
 
-echo "Found: estimate=$ESTIMATE_FIELD_ID status=$STATUS_FIELD_ID priority=$PRIORITY_FIELD_ID"
+echo "Found: estimate=$ESTIMATE_FIELD_ID status=$STATUS_FIELD_ID priority=$PRIORITY_FIELD_ID startDate=$START_DATE_FIELD_ID endDate=$END_DATE_FIELD_ID"
 
 CFG_DIR=$(dirname "$OUT")
 mkdir -p "$CFG_DIR"
 
-cat > "$OUT" <<EOF
+# Update existing config in-place if it exists; otherwise, create a minimal config.
+if [ -f "$OUT" ]; then
+  tmpcfg="$(mktemp)"
+  jq \
+    --arg url "$PROJECT_URL" \
+    --argjson number "$PROJECT_NUMBER" \
+    --arg status "$STATUS_FIELD_ID" \
+    --arg priority "$PRIORITY_FIELD_ID" \
+    --arg estimate "$ESTIMATE_FIELD_ID" \
+    --arg startDate "$START_DATE_FIELD_ID" \
+    --arg endDate "$END_DATE_FIELD_ID" \
+    '(.project.url |= (if (. == null or . == "") then $url else . end))
+     | (.project.number |= (if (. == null or . == 0) then $number else . end))
+     | .project.fieldIds.statusFieldId=$status
+     | .project.fieldIds.priorityFieldId=$priority
+     | .project.fieldIds.estimateHoursFieldId=$estimate
+     | .project.fieldIds.startDateFieldId=$startDate
+     | .project.fieldIds.endDateFieldId=$endDate
+    ' "$OUT" > "$tmpcfg" && mv "$tmpcfg" "$OUT"
+  echo "Updated config: $OUT"
+else
+  cat > "$OUT" <<EOF
 {
   "owner": "$OWNER",
   "repo": "$OWNER/$REPO_NAME",
-  "localPath": "../$REPO_NAME",
+  "localPath": "/opt/$REPO_NAME",
   "enableProjectSync": true,
   "project": {
     "url": "$PROJECT_URL",
@@ -98,29 +119,16 @@ cat > "$OUT" <<EOF
       "statusFieldId": "$STATUS_FIELD_ID",
       "priorityFieldId": "$PRIORITY_FIELD_ID",
       "estimateHoursFieldId": "$ESTIMATE_FIELD_ID",
-      "startDateFieldId": "",
-      "endDateFieldId": ""
+      "startDateFieldId": "$START_DATE_FIELD_ID",
+      "endDateFieldId": "$END_DATE_FIELD_ID"
     }
-  },
-  "defaults": {
-    "defaultEstimateHours": 1,
-    "defaultPriority": "NORMAL",
-    "defaultStatus": "TODO",
-    "defaultStartDate": "TBD",
-    "defaultEndDate": "TBD",
-    "defaultLabels": [ "plan" ]
-  },
-  "outputs": {
-    "tasksPath": "./tmp/$CONFIG_NAME/tasks.json",
-    "subtasksPath": "./tmp/$CONFIG_NAME/subtasks.json",
-    "engineInputPath": "./tmp/$CONFIG_NAME/engine-input.json",
-    "engineOutputPath": "./tmp/$CONFIG_NAME/engine-output.json"
   }
 }
 EOF
+  echo "Wrote config: $OUT"
+fi
 
-echo "Wrote config: $OUT"
-if [[ "$PROJECT_URL" == *"/orgs/"* ]]; then
+if [ "$OWNER_KIND" = "org" ]; then
   echo "If projectNodeId is required, run: gh api graphql -f query='query{ organization(login:\"$OWNER\"){ projectV2(number:$PROJECT_NUMBER){ id } } }' --jq '.data.organization.projectV2.id'"
 else
   echo "If projectNodeId is required, run: gh api graphql -f query='query{ user(login:\"$OWNER\"){ projectV2(number:$PROJECT_NUMBER){ id } } }' --jq '.data.user.projectV2.id'"

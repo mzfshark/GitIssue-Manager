@@ -216,6 +216,22 @@ function graphql(query, variables) {
 	return JSON.parse(out);
 }
 
+const ownerTypeCache = {};
+
+function getOwnerType(login) {
+	if (!login) return null;
+	if (ownerTypeCache[login]) return ownerTypeCache[login];
+	try {
+		// REST is the simplest way to distinguish User vs Organization without GraphQL errors.
+		const data = ghApi([`users/${login}`]);
+		const t = data && data.type ? String(data.type) : null;
+		ownerTypeCache[login] = t;
+		return t;
+	} catch (e) {
+		return null;
+	}
+}
+
 function getViewerLogin() {
 	try {
 		const res = execFileSync('gh', ['api', 'graphql', '-f', 'query={ viewer { login } }'], { encoding: 'utf8' });
@@ -413,9 +429,31 @@ function loadProjectFieldsForOrg(ownerLogin, projectNumber) {
 	}
 }
 
+function loadProjectFieldsForUser(ownerLogin, projectNumber) {
+	try {
+		const q = `query($login:String!,$number:Int!){ user(login:$login){ projectV2(number:$number){ fields(first:100){ nodes{ ... on ProjectV2Field { id name dataType } ... on ProjectV2IterationField { id name dataType } ... on ProjectV2SingleSelectField { id name dataType } __typename } } } } }`;
+		const res = graphql(q, { login: ownerLogin, number: projectNumber });
+		const nodes = res && res.data && res.data.user && res.data.user.projectV2 && res.data.user.projectV2.fields && res.data.user.projectV2.fields.nodes ? res.data.user.projectV2.fields.nodes : [];
+		return nodes;
+	} catch (e) {
+		console.error('loadProjectFieldsForUser failed for', ownerLogin, projectNumber, e.message);
+		return [];
+	}
+}
+
+function loadProjectFieldsForOwner(ownerLogin, projectNumber) {
+	const t = getOwnerType(ownerLogin);
+	if (t === 'Organization') return loadProjectFieldsForOrg(ownerLogin, projectNumber);
+	if (t === 'User') return loadProjectFieldsForUser(ownerLogin, projectNumber);
+	// Unknown type: try user first (common), then org.
+	const u = loadProjectFieldsForUser(ownerLogin, projectNumber);
+	if (u && u.length) return u;
+	return loadProjectFieldsForOrg(ownerLogin, projectNumber);
+}
+
 function resolveProjectFieldNodeIdByProject(ownerLogin, projectNumber, candidate) {
 	if (!ownerLogin || !projectNumber || !candidate) return null;
-	const fields = loadProjectFieldsForOrg(ownerLogin, projectNumber);
+	const fields = loadProjectFieldsForOwner(ownerLogin, projectNumber);
 	if (/^[0-9]+$/.test(String(candidate))) {
 		const num = parseInt(candidate, 10);
 		for (const f of fields) {
@@ -427,6 +465,10 @@ function resolveProjectFieldNodeIdByProject(ownerLogin, projectNumber, candidate
 		if ((f.name || '').toLowerCase().includes(cname)) return f.id;
 	}
 	return null;
+}
+
+function canResolveByNodeId(projectNodeId) {
+	return !!(projectNodeId && typeof projectNodeId === 'string' && projectNodeId.startsWith('PVT_'));
 }
 
 function resolveProjectFieldNodeId(projectNodeId, candidate) {
@@ -668,9 +710,11 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						const statusFieldCandidate = cfgFields.statusFieldId || null;
 						const priorityFieldCandidate = cfgFields.priorityFieldId || null;
 
-						// Resolve using organization/project number when possible
+						// Prefer resolving via projectNodeId (node query). Fallback to owner/projectNumber only when node id is missing.
 						const projectNumber = (engine.project && engine.project.number) || null;
-						const estimateFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, estimateFieldCandidate) : resolveProjectFieldNodeId(projectNodeId, estimateFieldCandidate);
+						const estimateFieldNodeId = canResolveByNodeId(projectNodeId)
+							? resolveProjectFieldNodeId(projectNodeId, estimateFieldCandidate)
+							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, estimateFieldCandidate) : null);
 						if (estimateFieldNodeId && task.estimateHours != null) {
 							updateProjectField(projectNodeId, projectItemId, estimateFieldNodeId, { number: task.estimateHours });
 						}
@@ -684,14 +728,22 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						const end = new Date(today.getTime()); end.setUTCDate(end.getUTCDate()+7);
 						const eyyyy = end.getUTCFullYear(); const emm = String(end.getUTCMonth()+1).padStart(2,'0'); const edd = String(end.getUTCDate()).padStart(2,'0');
 						const endDateStr = (task.endDate && task.endDate !== 'TBD') ? task.endDate : `${eyyyy}-${emm}-${edd}`;
-												const startFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, startFieldCandidate) : resolveProjectFieldNodeId(projectNodeId, startFieldCandidate);
+												const startFieldNodeId = canResolveByNodeId(projectNodeId)
+													? resolveProjectFieldNodeId(projectNodeId, startFieldCandidate)
+													: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, startFieldCandidate) : null);
 												if (startFieldNodeId) updateProjectField(projectNodeId, projectItemId, startFieldNodeId, { date: startDateStr });
-												const endFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, endFieldCandidate) : resolveProjectFieldNodeId(projectNodeId, endFieldCandidate);
+												const endFieldNodeId = canResolveByNodeId(projectNodeId)
+													? resolveProjectFieldNodeId(projectNodeId, endFieldCandidate)
+													: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, endFieldCandidate) : null);
 												if (endFieldNodeId) updateProjectField(projectNodeId, projectItemId, endFieldNodeId, { date: endDateStr });
 
-						// Status / Priority: single-select fields — map by option name
-												const statusFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, statusFieldCandidate || 'Status') : resolveProjectFieldNodeId(projectNodeId, statusFieldCandidate || 'Status');
-												const priorityFieldNodeId = projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, priorityFieldCandidate || 'Priority') : resolveProjectFieldNodeId(projectNodeId, priorityFieldCandidate || 'Priority');
+										// Status / Priority: single-select fields — map by option name
+												const statusFieldNodeId = canResolveByNodeId(projectNodeId)
+													? resolveProjectFieldNodeId(projectNodeId, statusFieldCandidate || 'Status')
+													: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, statusFieldCandidate || 'Status') : null);
+												const priorityFieldNodeId = canResolveByNodeId(projectNodeId)
+													? resolveProjectFieldNodeId(projectNodeId, priorityFieldCandidate || 'Priority')
+													: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, priorityFieldCandidate || 'Priority') : null);
 						if (statusFieldNodeId) {
 							const desired = (task.status || engine.defaults && engine.defaults.defaultStatus || 'Backlog');
 							const optId = findSingleSelectOptionId(statusFieldNodeId, desired);
@@ -803,9 +855,9 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						const priorityFieldCandidate = cfgFields.priorityFieldId || null;
 						const projectNumber = (engine.project && engine.project.number) || null;
 
-						const estimateFieldNodeId = projectNumber
-							? resolveProjectFieldNodeIdByProject(owner, projectNumber, estimateFieldCandidate)
-							: resolveProjectFieldNodeId(projectNodeId, estimateFieldCandidate);
+						const estimateFieldNodeId = canResolveByNodeId(projectNodeId)
+							? resolveProjectFieldNodeId(projectNodeId, estimateFieldCandidate)
+							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, estimateFieldCandidate) : null);
 						if (estimateFieldNodeId && s.estimateHours != null) {
 							updateProjectField(projectNodeId, projectItemId, estimateFieldNodeId, { number: s.estimateHours });
 						}
@@ -822,21 +874,21 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						const edd = String(end.getUTCDate()).padStart(2, '0');
 						const endDateStr = (s.endDate && s.endDate !== 'TBD') ? s.endDate : `${eyyyy}-${emm}-${edd}`;
 
-						const startFieldNodeId = projectNumber
-							? resolveProjectFieldNodeIdByProject(owner, projectNumber, startFieldCandidate)
-							: resolveProjectFieldNodeId(projectNodeId, startFieldCandidate);
+						const startFieldNodeId = canResolveByNodeId(projectNodeId)
+							? resolveProjectFieldNodeId(projectNodeId, startFieldCandidate)
+							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, startFieldCandidate) : null);
 						if (startFieldNodeId) updateProjectField(projectNodeId, projectItemId, startFieldNodeId, { date: startDateStr });
-						const endFieldNodeId = projectNumber
-							? resolveProjectFieldNodeIdByProject(owner, projectNumber, endFieldCandidate)
-							: resolveProjectFieldNodeId(projectNodeId, endFieldCandidate);
+						const endFieldNodeId = canResolveByNodeId(projectNodeId)
+							? resolveProjectFieldNodeId(projectNodeId, endFieldCandidate)
+							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, endFieldCandidate) : null);
 						if (endFieldNodeId) updateProjectField(projectNodeId, projectItemId, endFieldNodeId, { date: endDateStr });
 
-						const statusFieldNodeId = projectNumber
-							? resolveProjectFieldNodeIdByProject(owner, projectNumber, statusFieldCandidate || 'Status')
-							: resolveProjectFieldNodeId(projectNodeId, statusFieldCandidate || 'Status');
-						const priorityFieldNodeId = projectNumber
-							? resolveProjectFieldNodeIdByProject(owner, projectNumber, priorityFieldCandidate || 'Priority')
-							: resolveProjectFieldNodeId(projectNodeId, priorityFieldCandidate || 'Priority');
+						const statusFieldNodeId = canResolveByNodeId(projectNodeId)
+							? resolveProjectFieldNodeId(projectNodeId, statusFieldCandidate || 'Status')
+							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, statusFieldCandidate || 'Status') : null);
+						const priorityFieldNodeId = canResolveByNodeId(projectNodeId)
+							? resolveProjectFieldNodeId(projectNodeId, priorityFieldCandidate || 'Priority')
+							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, priorityFieldCandidate || 'Priority') : null);
 						if (statusFieldNodeId) {
 							const desired = (s.status || (engine.defaults && engine.defaults.defaultStatus) || 'Backlog');
 							const optId = findSingleSelectOptionId(statusFieldNodeId, desired);
