@@ -56,6 +56,53 @@ Expected outcomes:
 
 ---
 
+# PLAN-003 - Per-Repo Registry + ISSUE_UPDATES Apply Engine
+
+Repository: GitIssue-Manager (mzfshark/GitIssue-Manager)
+End Date Goal: 2026-01-30
+Priority: [ HIGH ]
+Estimative Hours: 10h
+Status: [ TODO ]
+
+## Executive Summary
+
+Goal: Add an explicit, per-repo issue identity registry under `.gitissuer/registry/` and introduce `ISSUE_UPDATES.md` as a safe swap-file for small, deterministic actions against known issues.
+
+This plan hardens idempotency and auditability:
+- Registry is the source of truth that maps stable IDs (or explicit IDs) to GitHub issue/node IDs.
+- `ISSUE_UPDATES.md` actions MUST target existing registry entries; no best-effort matching.
+- Default execution is dry-run; GitHub writes require explicit confirmation.
+
+Non-goals:
+- Full redesign of the engine schema.
+- Backward compatibility with legacy repo list configs (configs-only is acceptable in DEV).
+- Bulk migration of historic issues without a plan fingerprint.
+
+Expected outcomes:
+- No more “false success”: apply reports reflect what was actually changed.
+- Reliable deduplication: repeated runs do not create duplicate issues.
+- Safe operator workflow: edit `ISSUE_UPDATES.md`, preview, then apply with confirm.
+
+### Acceptance Criteria
+
+- Each repo has a registry file `.gitissuer/registry/issue-registry.json` created/updated deterministically from `engine-input.json` + `engine-output.json`.
+- `ISSUE_UPDATES.md` supports actions: `open`, `reopen`, `close`, with optional `labels`, `comment`, `estimate`, `endDate`.
+- Dry-run output includes a machine-readable report (JSON) and a human summary (Markdown).
+- Apply mode requires `--confirm` and logs an audit record under `.gitissuer/updates/`.
+- Actions referencing unknown IDs fail fast with a clear error (no fuzzy matching).
+
+## Subtasks (Linked)
+
+### PLAN-003:
+
+- [ ] Define registry schema and report schema [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-23] [end:2026-01-24]
+- [ ] Implement registry read/write helpers + atomic update [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-24] [end:2026-01-25]
+- [ ] Implement ISSUE_UPDATES.md parser with strict validation [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-25] [end:2026-01-26]
+- [ ] Implement dry-run and apply modes with confirmation gate [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:3h] [start:2026-01-26] [end:2026-01-29]
+- [ ] Wire daemon to run apply step (dry-run by default) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:1h] [start:2026-01-29] [end:2026-01-30]
+
+---
+
 ## Archive
 
 ### PLAN-001 - Fix ProjectV2 GraphQL Variable Handling (GitIssue-Manager)

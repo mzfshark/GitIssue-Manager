@@ -1,0 +1,42 @@
+# ISSUE UPDATES
+
+Generated: 2026-01-23T12:25:34Z
+
+- 2026-01-22 20:39:29 -0300 1573a4e feat(systemd): Implement GitIssuer automation with systemd integration
+- 2026-01-22 16:56:13 -0300 cc5acf8 feat: Atualiza scripts de configuração e execução para melhorar a gestão de repositórios e adicionar suporte a novos comandos
+- 2026-01-22 15:44:18 -0300 63ed4bf feat: Melhora a lógica de seleção de repositórios e projetos, adiciona suporte para configuração dinâmica e atualiza a estrutura do arquivo de configuração
+- 2026-01-22 13:51:19 -0300 36b0edc feat: Atualiza a lógica de manipulação de seções e validação de conteúdo do PAI para suportar novos formatos e melhorar a reutilização de arquivos de plano
+- 2026-01-22 12:23:39 -0300 6ba2e75 feat: Adiciona suporte para registrar o número do PAI durante simulações de execução
+- 2026-01-22 12:16:03 -0300 3932c76 feat: Adiciona suporte para passar grandes cargas úteis via stdin para evitar limites de tamanho de argv do OS
+- 2026-01-22 12:15:27 -0300 51df6f7 feat: Melhora a lógica de vinculação de subtarefas e a geração de checklist no fluxo E2E
+- 2026-01-22 11:42:09 -0300 6ff7594 feat: Atualiza a criação e edição de PAI para incluir novos campos de metadados e melhorar a estrutura do corpo
+- 2026-01-22 11:40:10 -0300 7e2d438 feat: Implementa sync-helper como fonte única de verdade para geração de issues e atualizações de subtarefas
+- 2026-01-22 11:04:51 -0300 eb0f3c4 feat: Atualiza rótulos padrão de "sprint1" para "harmony" em várias configurações do fluxo E2E
+- 2026-01-22 09:31:58 -0300 c8b0fe1 Refactor code structure for improved readability and maintainability
+- 2026-01-21 19:41:30 -0300 fdaf4a9 feat: Implement E2E Flow for Complete Issue Hierarchy Generation
+- 2026-01-21 18:07:26 -0300 8de4010 feat: Add execute-pipeline script for automated issue management
+- 2026-01-21 14:48:29 -0300 8302536 Add templates for FEATURE, HOTFIX, and TASK documentation
+- 2026-01-21 13:15:36 -0300 7ef366b feat: Adiciona funções para construção de títulos de issues e guia de uso em português
+- 2026-01-21 11:37:03 -0300 f2f62ce feat: Refactor cleanup script and add new configuration files
+- 2026-01-20 22:36:51 -0300 7204152 feat: Adiciona script de limpeza para fechar issues "Não Implementadas" em múltiplos repositórios
+- 2026-01-20 22:36:36 -0300 936e1c1 Add cleanup script for closing "Not Implemented" issues across multiple repos
+- 2026-01-20 20:21:05 -0300 47556c1 feat: Adiciona configuração de limpeza de issues com suporte a múltiplos repositórios e arquivos de plano
+- 2026-01-20 18:11:32 -0300 1c2a0f8 feat: Add GitHub Issue Cleanup Script with examples and guide
+- 2026-01-20 17:32:10 -0300 cfd080b Adiciona arquivo de configuração do Codacy com definições de runtimes e ferramentas
+- 2026-01-20 00:21:33 -0300 7faf128 Refactor code structure for improved readability and maintainability
+- 2026-01-20 00:20:22 -0300 8439b0e Remove Codacy CLI scripts and configuration files
+- 2026-01-19 23:35:41 -0300 fb80017 Remove outdated documentation files: EXECUTION_SUMMARY.md, QUICK_START.md, and README.md
+- 2026-01-19 22:01:59 -0300 81470f0 Adiciona scripts para aplicar subtarefas e registrar campos de projeto, incluindo validação de entrada e manipulação de erros.
+- 2026-01-19 21:06:11 -0300 6ab30f9 Atualiza o caminho local no arquivo de configuração Axodus-AragonOSX.json e remove rótulos não utilizados da lista de rótulos padrão.
+- 2026-01-19 19:43:34 -0300 da031e4 Melhora o tratamento de erros no script setup-sync.sh ao buscar projetos V2, adicionando verificação de erros e mensagens mais informativas. Permite entrada manual de URL de projeto caso a listagem automática falhe.
+- 2026-01-19 19:22:02 -0300 09b917c Adiciona comando para limpeza completa no package.json e refatora o script setup-sync.sh para melhorar a seleção de projetos e a configuração do repositório.
+- 2026-01-19 18:03:34 -0300 702a53f Remove unused organization check and related input handling from setup-sync script
+- 2026-01-19 17:58:38 -0300 e2a6ccd Remove deprecated Axodus project configuration files and enhance sync setup
+- 2026-01-19 14:09:08 -0300 5445030 Adiciona suporte a metadados e templates para gerenciamento de tarefas. Cria arquivo de configuração metadata.config.json e modelo de plano (PLAN.md) com regras e exemplos de uso. Atualiza README.md com instruções de uso.
+- 2026-01-19 13:17:48 -0300 3f9a616 Atualiza o guia rápido para configuração de múltiplos repositórios e aprimora a estrutura de comandos. Adiciona suporte a novos campos de configuração, incluindo prioridade, status e rótulos. Refatora scripts de preparação e execução para melhor gerenciamento de repositórios. Remove configurações obsoletas e adiciona novos arquivos de configuração para repositórios Axodus.
+- 2026-01-19 11:23:37 -0300 56fc522 Adiciona documentação e guia rápido para configuração e uso do GitIssue-Manager
+- 2026-01-19 10:41:43 -0300 bffa85e Adiciona resumo de execução com detalhes sobre criação de issues, identificação de problemas e próximos passos
+- 2026-01-19 09:34:29 -0300 8146bb1 Atualiza a configuração do sync-helper para incluir novos campos e estrutura de projeto, além de ajustar os caminhos de saída para os artefatos gerados.
+- 2026-01-19 00:28:30 -0300 45f0820 Adiciona estrutura de configuração e scripts para gerenciamento de projetos no GitHub, incluindo suporte a tarefas e subtarefas a partir de arquivos Markdown
+- 2026-01-19 00:00:05 -0300 562d8dd Atualiza .gitignore para incluir diretórios e remove arquivos temporários
+- 2026-01-18 23:58:17 -0300 c606a89 Adiciona scripts de gerenciamento de rótulos e configuração de sincronização

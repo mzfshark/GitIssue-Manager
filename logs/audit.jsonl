@@ -1,0 +1,4 @@
+{"ts":"2026-01-21T00:00:00.000Z","action":"create_file","path":"PLAN.md","repo":"GitIssue-Manager","reason":"Add planning document for Sprint single-issue workflow and artifact standardization"}
+{"ts":"2026-01-21T11:43:18-03:00","action":"create_issue","repo":"GitIssue-Manager","issueUrl":"https://github.com/mzfshark/GitIssue-Manager/issues/1","title":"[Plan] Sprint single-issue workflow + artifact standardization","reason":"User-approved plan issue creation"}
+{"ts":"2026-01-21T11:43:18-03:00","action":"add_project_item","repo":"GitIssue-Manager","projectUrl":"https://github.com/users/mzfshark/projects/15","issueUrl":"https://github.com/mzfshark/GitIssue-Manager/issues/1","reason":"Add plan issue to Projects v2"}
+{"ts":"2026-01-21T11:45:00-03:00","action":"edit_file","path":"server/executor.js","repo":"GitIssue-Manager","reason":"Apply issue title prefix pattern [repo | #TYPE-NNN] for tasks and subtasks"}

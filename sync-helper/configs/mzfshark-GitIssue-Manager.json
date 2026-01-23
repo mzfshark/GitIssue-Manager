@@ -15,6 +15,10 @@
     },
     "projectNodeId": "PVT_kwHOAZZpx84BM1N0"
   },
+  "gitissuer": {
+    "enabled": true,
+    "autoDeploy": false
+  },
   "defaults": {
     "defaultEstimateHours": 1,
     "defaultPriority": "NORMAL",
@@ -22,8 +26,8 @@
     "defaultStartDate": "TBD",
     "defaultEndDate": "TBD",
     "defaultLabels": [
-	"plan",
-	"api"
+      "plan",
+      "api"
     ]
   },
   "outputs": {
@@ -33,4 +37,3 @@
     "engineOutputPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/mzfshark-GitIssue-Manager/engine-output.json"
   }
 }
-

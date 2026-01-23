@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GitIssue-Manager Issue Registry",
+  "type": "object",
+  "required": ["version", "repo", "updatedAt", "items"],
+  "properties": {
+    "version": { "type": "string" },
+    "repo": { "type": "string" },
+    "updatedAt": { "type": "string" },
+    "planFingerprint": { "type": ["string", "null"] },
+    "planFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha1"],
+        "properties": {
+          "path": { "type": "string" },
+          "sha1": { "type": "string" }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["stableId", "kind"],
+        "properties": {
+          "stableId": { "type": "string" },
+          "explicitId": { "type": ["string", "null"] },
+          "kind": { "type": "string", "enum": ["parent", "task", "subtask"] },
+          "issueNumber": { "type": ["integer", "null"] },
+          "issueNodeId": { "type": ["string", "null"] },
+          "issueUrl": { "type": ["string", "null"] },
+          "projectItemId": { "type": ["string", "null"] },
+          "title": { "type": ["string", "null"] },
+          "source": {
+            "type": ["object", "null"],
+            "properties": {
+              "file": { "type": ["string", "null"] },
+              "line": { "type": ["integer", "null"] }
+            }
+          },
+          "lastSyncedAt": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

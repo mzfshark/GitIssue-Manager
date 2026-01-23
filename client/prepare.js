@@ -8,12 +8,29 @@ Client-side preparer:
 No external dependencies.
 */
 
+/* eslint-env node */
+/* global require, __dirname, process, console */
+
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
 function sha1(str) {
   return crypto.createHash('sha1').update(str).digest('hex');
+}
+
+function extractExplicitId(text) {
+  if (!text) return null;
+  const m = String(text).trim().match(/^([A-Za-z]+)[-_](\d{2,})\b/);
+  if (!m) return null;
+  return `${m[1].toUpperCase()}-${m[2]}`;
+}
+
+function computePlanFingerprint(planFiles) {
+  const parts = (Array.isArray(planFiles) ? planFiles : [])
+    .map((p) => `${p.path}:${p.sha1}`)
+    .sort();
+  return sha1(parts.join('\n'));
 }
 
 function readJson(p) {
@@ -220,6 +237,7 @@ function buildHierarchy(relFile, items, defaults, headingParents) {
 
     const base = {
       stableId: heading.stableId,
+      explicitId: extractExplicitId(heading.rawText) || extractExplicitId(heading.text),
       file: relFile,
       line: heading.line,
       text: heading.text,
@@ -251,6 +269,7 @@ function buildHierarchy(relFile, items, defaults, headingParents) {
 
     const base = {
       stableId,
+      explicitId: extractExplicitId(it.rawText) || extractExplicitId(it.text),
       file: relFile,
       line: it.line,
       text: it.text,
@@ -409,8 +428,18 @@ function main() {
     writeJson(path.resolve(outBaseDir, tasksPath), tasks);
     writeJson(path.resolve(outBaseDir, subtasksPath), subtasks);
 
+    const planFiles = mdFiles.map((f) => ({
+      path: path.relative(absRoot, f).replace(/\\/g, '/'),
+      absPath: f,
+      sha1: sha1(fs.readFileSync(f, 'utf8')),
+    }));
+    const planFingerprint = computePlanFingerprint(planFiles);
+
     engine.targets.push({
       repo: target.repo,
+      localPath,
+      planFiles,
+      planFingerprint,
       enableProjectSync: !!target.enableProjectSync,
       tasks,
       subtasks,
@@ -421,11 +450,6 @@ function main() {
 
     // Build and write metadata file for this target
     const metadataPath = out.metadataPath || path.join(path.dirname(tasksPath), 'metadata.json');
-    const planFiles = mdFiles.map((f) => ({
-      path: path.relative(absRoot, f).replace(/\\/g, '/'),
-      absPath: f,
-      sha1: sha1(fs.readFileSync(f, 'utf8')),
-    }));
     const allowedLabels = Array.isArray(cfg.labels && cfg.labels.allowed) ? cfg.labels.allowed : [];
     const metadata = {
       generatedAt: new Date().toISOString(),

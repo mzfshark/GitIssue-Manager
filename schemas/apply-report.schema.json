@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GitIssue-Manager Apply Report",
+  "type": "object",
+  "required": ["version", "generatedAt", "repo", "mode", "updates"],
+  "properties": {
+    "version": { "type": "string" },
+    "generatedAt": { "type": "string" },
+    "repo": { "type": "string" },
+    "mode": { "type": "string", "enum": ["dry-run", "apply"] },
+    "updates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["inputId", "action", "status"],
+        "properties": {
+          "inputId": { "type": "string" },
+          "resolvedStableId": { "type": ["string", "null"] },
+          "resolvedIssueNumber": { "type": ["integer", "null"] },
+          "action": { "type": "string", "enum": ["open", "reopen", "close"] },
+          "labels": { "type": "array", "items": { "type": "string" } },
+          "comment": { "type": ["string", "null"] },
+          "estimateHours": { "type": ["number", "null"] },
+          "endDate": { "type": ["string", "null"] },
+          "notes": { "type": "array", "items": { "type": "string" } },
+          "status": { "type": "string", "enum": ["planned", "applied", "skipped", "failed"] },
+          "error": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

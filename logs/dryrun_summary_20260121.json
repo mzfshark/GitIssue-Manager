@@ -1,0 +1,10 @@
+[
+{
+  "config": "sync-helper/configs/Axodus-Aragon-app-backend.json",
+  "timestamp": "20260121",
+  "repos": [
+    "osx-plugin-foundry"
+  ],
+  "execute": false
+}
+]

@@ -66,6 +66,7 @@
   },
   "bin": {
     "gitissue-prepare": "./client/prepare.js",
-    "gitissue-execute": "./server/executor.js"
+    "gitissue-execute": "./server/executor.js",
+    "gitissuer": "./bin/gitissuer"
   }
 }

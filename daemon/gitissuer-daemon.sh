@@ -2,7 +2,6 @@
 set -euo pipefail
 
 MANAGER_PATH="/opt/GitIssue-Manager"
-CONFIG_FILE="$MANAGER_PATH/config/repos.config.json"
 LOG_FILE="/var/log/gitissuer/daemon-$(date +%Y%m%d).log"
 STATE_FILE="/var/lib/gitissuer/.daemon-state.json"
 
@@ -50,48 +49,50 @@ cat >"$STATE_FILE" <<EOF
 }
 EOF
 
-if [[ ! -f "$CONFIG_FILE" ]]; then
-  log "ERROR" "Configuration file not found: $CONFIG_FILE"
-  exit 1
-fi
+config_glob="$MANAGER_PATH/sync-helper/configs"/*.json
 
-repos=$(jq -r '.repositories[] | select(.enabled==true) | .path' "$CONFIG_FILE")
+shopt -s nullglob
+configs=( $config_glob )
+shopt -u nullglob
 
-if [[ -z "$repos" ]]; then
-  log "WARN" "No enabled repositories found"
+if [[ ${#configs[@]} -eq 0 ]]; then
+  log "WARN" "No configs found under $MANAGER_PATH/sync-helper/configs"
   exit 0
 fi
 
-total_repos=$(echo "$repos" | wc -l | tr -d ' ')
+total_repos=${#configs[@]}
 repos_processed=0
 repos_success=0
 repos_failed=0
 
-log "INFO" "Found $total_repos repositories to process"
+log "INFO" "Found $total_repos configs to process"
 
-while IFS= read -r repo_path; do
+for cfg in "${configs[@]}"; do
   repos_processed=$((repos_processed + 1))
 
-  repo_owner=$(jq -r --arg path "$repo_path" '.repositories[] | select(.path==$path) | .owner' "$CONFIG_FILE")
-  repo_name=$(jq -r --arg path "$repo_path" '.repositories[] | select(.path==$path) | .repo' "$CONFIG_FILE")
-  auto_deploy=$(jq -r --arg path "$repo_path" '.repositories[] | select(.path==$path) | .auto_deploy' "$CONFIG_FILE")
-
-  if [[ -z "$repo_owner" || -z "$repo_name" || "$repo_owner" == "null" || "$repo_name" == "null" ]]; then
-    log "ERROR" "Invalid repo configuration for path: $repo_path"
-    repos_failed=$((repos_failed + 1))
+  enabled=$(jq -r '.gitissuer.enabled // true' "$cfg" 2>/dev/null || echo true)
+  if [[ "$enabled" != "true" ]]; then
+    log "INFO" "[$repos_processed/$total_repos] Skipping (disabled): $(basename "$cfg")"
     continue
   fi
 
-  log "INFO" "---------------------------------------------"
-  log "INFO" "[$repos_processed/$total_repos] Processing: $repo_owner/$repo_name"
+  repo_full=$(jq -r '.repo // empty' "$cfg" 2>/dev/null || true)
+  auto_deploy=$(jq -r '.gitissuer.autoDeploy // true' "$cfg" 2>/dev/null || echo true)
 
-  if /bin/bash "$MANAGER_PATH/daemon/gitissuer-auto.sh" "$repo_path" "$repo_owner" "$repo_name" "$auto_deploy"; then
+  log "INFO" "---------------------------------------------"
+  log "INFO" "[$repos_processed/$total_repos] Processing: ${repo_full:-$(basename "$cfg" .json)}"
+
+  extra_args=()
+  if [[ "$auto_deploy" == "true" ]]; then
+    extra_args+=("--auto-deploy")
+  fi
+
+  if /bin/bash "$MANAGER_PATH/daemon/gitissuer-auto.sh" --config "$cfg" "${extra_args[@]}"; then
     repos_success=$((repos_success + 1))
   else
     repos_failed=$((repos_failed + 1))
   fi
-
-done <<< "$repos"
+done
 
 log "INFO" "---------------------------------------------"
 log "INFO" "GitIssuer daemon completed"

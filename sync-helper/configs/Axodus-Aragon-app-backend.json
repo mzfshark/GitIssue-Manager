@@ -3,6 +3,10 @@
   "repo": "Axodus/Aragon-app-backend",
   "localPath": "../Aragon-app-backend",
   "enableProjectSync": true,
+  "gitissuer": {
+    "enabled": false,
+    "autoDeploy": true
+  },
   "project": {
     "url": "https://github.com/orgs/Axodus/projects/23",
     "number": 23,

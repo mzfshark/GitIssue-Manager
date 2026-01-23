@@ -4,4 +4,4 @@ dist/
 build/
 tmp/
 cleanup_*.log
-logs/
+logs/.gitissuer/state.json
