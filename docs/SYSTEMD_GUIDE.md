@@ -12,7 +12,7 @@ This guide explains how to install and operate the GitIssuer automation with sys
 ## Install
 
 1. Copy this repository to `/opt/GitIssue-Manager`.
-2. Edit `/opt/GitIssue-Manager/config/repos.config.json` with the correct repository paths.
+2. Ensure per-repo configs exist under `/opt/GitIssue-Manager/sync-helper/configs/*.json`.
 3. Run the installer:
 
    ```bash
@@ -31,6 +31,25 @@ Optional file watcher:
 sudo systemctl enable --now gitissuer-watch.service
 ```
 
+### Watch targets (per-repo)
+
+The watcher reads watched repositories from `sync-helper/configs/*.json`.
+
+- A repo is watched when:
+   - `gitissuer.enabled == true` (defaults to true if missing)
+   - `gitissuer.watch.enabled == true` (defaults to false if missing)
+
+Enable/disable watch per repo:
+
+```bash
+cd /opt/GitIssue-Manager
+./bin/gitissuer watch enable --repo <owner/name>
+./bin/gitissuer watch disable --repo <owner/name>
+./bin/gitissuer watch list --include-disabled
+```
+
+Note: If you change configs, `gitissuer-watch.service` restarts itself to reload the watch list.
+
 ## Status & Logs
 
 ```bash
@@ -42,5 +61,5 @@ journalctl -u gitissuer.service -f
 ## Troubleshooting
 
 - Ensure `gh auth status` works for user `gitissuer`.
-- Ensure the `repos.config.json` paths are correct.
+- Ensure `sync-helper/configs/*.json` has correct `localPath` values.
 - Check logs in `/var/log/gitissuer/`.

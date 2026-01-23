@@ -28,6 +28,9 @@ Commands:
                                                        Run E2E orchestrator (dry-run by default)
   enable [--repo <owner/name>]                          Enable gitissuer automation for repo config
   disable [--repo <owner/name>]                         Disable gitissuer automation for repo config
+  config <list|create|edit|show|path>                  Create/edit per-repo configs in sync-helper/configs
+  check update [--repo <owner/name>] [--limit N] [--since <ISO-8601>]  List recently-updated issues in a repo (read-only)
+  watch <enable|disable|list>                          Manage gitissuer.watch.enabled per repo (controls systemd watcher targets)
 
 Examples:
   gitissuer generate
@@ -39,6 +42,13 @@ Examples:
   gitissuer apply --repo Axodus/AragonOSX --confirm
   gitissuer enable --repo Axodus/AragonOSX
   gitissuer disable --repo Axodus/AragonOSX
+  gitissuer config list --include-disabled
+  gitissuer config create --repo Axodus/new-repo --local-path ../new-repo
+  gitissuer config edit --repo Axodus/AragonOSX
+  gitissuer check update --repo Axodus/AragonOSX --limit 20 --since 2026-01-01T00:00:00Z
+  gitissuer watch enable --repo Axodus/AragonOSX
+  gitissuer watch disable --repo Axodus/AragonOSX
+  gitissuer watch list --include-disabled
 EOF
 }
 
@@ -139,6 +149,192 @@ list_known_repos() {
 list_enabled_repo_slugs() {
   # Output only repos where gitissuer.enabled == true
   list_known_repos | awk -F'|' '$3 == "true" { print $1 }'
+}
+
+config_filename_for_repo_full() {
+  local repo_full="$1"
+  local owner="${repo_full%%/*}"
+  local name="${repo_full##*/}"
+  printf '%s/%s-%s.json' "$CONFIGS_DIR" "$owner" "$name"
+}
+
+config_path_for_repo_full() {
+  local repo_full="$1"
+  local guessed
+  guessed="$(config_filename_for_repo_full "$repo_full")"
+  if [[ -f "$guessed" ]]; then
+    printf '%s' "$guessed"
+    return 0
+  fi
+
+  local cfg
+  cfg="$(resolve_config_path_from_repo_full "$repo_full" || true)"
+  if [[ -n "$cfg" && -f "$cfg" ]]; then
+    printf '%s' "$cfg"
+    return 0
+  fi
+
+  printf '%s' "$guessed"
+  return 0
+}
+
+default_local_path_for_repo_full() {
+  # If running inside the target repo, use a relative path from GitIssue-Manager root.
+  local repo_root
+  repo_root="$(infer_git_root_from_cwd)"
+  if [[ -z "$repo_root" ]]; then
+    echo ""
+    return 0
+  fi
+
+  # Try to compute a relative path using Python if available; else fall back to absolute.
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - <<'PY'
+import os
+import sys
+root = os.environ.get('GITISSUER_ROOT')
+repo = os.environ.get('GITISSUER_REPO_ROOT')
+if not root or not repo:
+  print('')
+  sys.exit(0)
+print(os.path.relpath(repo, root))
+PY
+    return 0
+  fi
+
+  echo "$repo_root"
+}
+
+create_or_update_config() {
+  local repo_full="$1"
+  local local_path="$2"
+  local enabled_value="${3:-true}"
+
+  require_cmd jq
+
+  if [[ -z "$local_path" ]]; then
+    echo "[ERROR] --local-path is required for config create" >&2
+    exit 2
+  fi
+
+  local cfg_path
+  cfg_path="$(config_path_for_repo_full "$repo_full")"
+
+  local owner="${repo_full%%/*}"
+
+  local tmp
+  tmp="${cfg_path}.tmp-${$}"
+
+  if [[ -f "$cfg_path" ]]; then
+    # Preserve existing config, but ensure required fields exist.
+    jq \
+      --arg owner "$owner" \
+      --arg repo "$repo_full" \
+      --arg localPath "$local_path" \
+      --argjson enabled "$enabled_value" \
+      '.owner = ($owner) | .repo = ($repo) | .localPath = ($localPath) | (.gitissuer //= {}) | .gitissuer.enabled = $enabled' \
+      "$cfg_path" >"$tmp"
+  else
+    # Minimal skeleton config.
+    jq -n \
+      --arg owner "$owner" \
+      --arg repo "$repo_full" \
+      --arg localPath "$local_path" \
+      --argjson enabled "$enabled_value" \
+      '{
+        owner: $owner,
+        repo: $repo,
+        localPath: $localPath,
+        enableProjectSync: false,
+        gitissuer: { enabled: $enabled, autoDeploy: false },
+        defaults: {
+          defaultEstimateHours: 1,
+          defaultPriority: "NORMAL",
+          defaultStatus: "TODO",
+          defaultStartDate: "TBD",
+          defaultEndDate: "TBD",
+          defaultLabels: ["plan"]
+        }
+      }' >"$tmp"
+  fi
+
+  mkdir -p "$(dirname "$cfg_path")"
+  mv "$tmp" "$cfg_path"
+  echo "[OK] Wrote config: $cfg_path"
+}
+
+open_in_editor_or_print() {
+  local file_path="$1"
+  if [[ -n "${EDITOR-}" ]]; then
+    "$EDITOR" "$file_path"
+    return 0
+  fi
+  echo "[INFO] EDITOR is not set; open this file in your editor:" >&2
+  echo "$file_path"
+}
+
+parse_repo_from_args_for_config() {
+  # config commands should default to current repo, else fall back to selection.
+  # They also accept --select/--all and --include-disabled.
+  mapfile -t parsed < <(extract_repo_flag_or_infer "$@")
+  local mode="${parsed[0]}"
+  local repo_full="${parsed[1]}"
+  local include_disabled="${parsed[2]}"
+  local passthrough=("${parsed[@]:3}")
+
+  printf '%s\n' "$mode"
+  printf '%s\n' "$repo_full"
+  printf '%s\n' "$include_disabled"
+  if (( ${#passthrough[@]} > 0 )); then
+    printf '%s\n' "${passthrough[@]}"
+  fi
+}
+
+targets_for_mode() {
+  local mode="$1"
+  local repo_full="$2"
+  local include_disabled="$3"
+
+  local -a targets=()
+  case "$mode" in
+    repo)
+      targets+=("$repo_full")
+      ;;
+    all)
+      if [[ "$include_disabled" == "true" ]]; then
+        mapfile -t targets < <(list_known_repos | cut -d'|' -f1)
+      else
+        mapfile -t targets < <(list_enabled_repo_slugs)
+      fi
+      ;;
+    select)
+      if [[ "$include_disabled" == "true" ]]; then
+        mapfile -t targets < <(prompt_select_repo_slugs --include-disabled)
+      else
+        mapfile -t targets < <(prompt_select_repo_slugs)
+      fi
+      ;;
+    infer)
+      if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        targets+=("$(infer_repo_full_from_cwd)")
+      else
+        if [[ "$include_disabled" == "true" ]]; then
+          mapfile -t targets < <(prompt_select_repo_slugs --include-disabled)
+        else
+          mapfile -t targets < <(prompt_select_repo_slugs)
+        fi
+      fi
+      ;;
+  esac
+
+  if (( ${#targets[@]} > 0 )) && [[ "${targets[0]}" == "__CANCEL__" ]]; then
+    return 1
+  fi
+
+  local t
+  for t in "${targets[@]}"; do
+    printf '%s\n' "$t"
+  done
 }
 
 prompt_select_repo_slugs() {
@@ -455,6 +651,41 @@ is_repo_enabled_in_config() {
   fi
 
   jq -r 'if .gitissuer.enabled == null then true else .gitissuer.enabled end' "$cfg" 2>/dev/null || echo "true"
+}
+
+is_repo_watch_enabled_in_config() {
+  local repo_full="$1"
+  require_cmd jq
+
+  local cfg
+  cfg="$(resolve_config_path_from_repo_full "$repo_full" || true)"
+  if [[ -z "$cfg" || ! -f "$cfg" ]]; then
+    # If there's no config, default to not watched.
+    echo "false"
+    return 0
+  fi
+
+  jq -r 'if .gitissuer.watch.enabled == null then false else .gitissuer.watch.enabled end' "$cfg" 2>/dev/null || echo "false"
+}
+
+set_repo_watch_flag() {
+  local repo_full="$1"
+  local enabled_value="$2" # true|false
+  require_cmd jq
+
+  local cfg
+  cfg="$(resolve_config_path_from_repo_full "$repo_full" || true)"
+  if [[ -z "$cfg" || ! -f "$cfg" ]]; then
+    echo "[ERROR] Could not find config for repo: $repo_full" >&2
+    echo "[HINT] Expected a file in $CONFIGS_DIR with .repo == '$repo_full'" >&2
+    exit 2
+  fi
+
+  local tmp
+  tmp="${cfg}.tmp-${$}"
+  jq --argjson v "$enabled_value" '(.gitissuer //= {}) | (.gitissuer.watch //= {}) | .gitissuer.watch.enabled = $v' "$cfg" >"$tmp"
+  mv "$tmp" "$cfg"
+  echo "[OK] Updated $cfg: gitissuer.watch.enabled=$enabled_value"
 }
 
 set_repo_enabled_flag() {
@@ -786,6 +1017,334 @@ cmd_generate() {
   return 0
 }
 
+cmd_config() {
+  local sub="${1-}"
+  shift || true
+
+  case "$sub" in
+    list)
+      local include_disabled="false"
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --include-disabled) include_disabled="true"; shift ;;
+          -h|--help) usage; exit 0 ;;
+          *) echo "[ERROR] Unknown arg: $1"; usage; exit 1 ;;
+        esac
+      done
+
+      if [[ "$include_disabled" == "true" ]]; then
+        list_known_repos | awk -F'|' '{ printf "%s\t(enabled=%s)\t%s\n", $1, $3, $4 }'
+      else
+        list_known_repos | awk -F'|' '$3 == "true" { printf "%s\t(enabled=%s)\t%s\n", $1, $3, $4 }'
+      fi
+      ;;
+
+    path)
+      mapfile -t parsed < <(parse_repo_from_args_for_config "$@")
+      local mode="${parsed[0]}"
+      local repo_full="${parsed[1]}"
+      local include_disabled="${parsed[2]}"
+
+      mapfile -t targets < <(targets_for_mode "$mode" "$repo_full" "$include_disabled" || true)
+      if (( ${#targets[@]} == 0 )); then
+        exit 0
+      fi
+      local t
+      for t in "${targets[@]}"; do
+        echo "$(config_path_for_repo_full "$t")"
+      done
+      ;;
+
+    show)
+      mapfile -t parsed < <(parse_repo_from_args_for_config "$@")
+      local mode="${parsed[0]}"
+      local repo_full="${parsed[1]}"
+      local include_disabled="${parsed[2]}"
+
+      mapfile -t targets < <(targets_for_mode "$mode" "$repo_full" "$include_disabled" || true)
+      if (( ${#targets[@]} == 0 )); then
+        exit 0
+      fi
+      local t
+      for t in "${targets[@]}"; do
+        local p
+        p="$(config_path_for_repo_full "$t")"
+        if [[ ! -f "$p" ]]; then
+          echo "[WARN] Missing config for $t: $p" >&2
+          continue
+        fi
+        echo "===== $t ====="
+        cat "$p"
+        echo ""
+      done
+      ;;
+
+    create)
+      local repo_full=""
+      local local_path=""
+      local want_select="false"
+      local include_disabled="true" # config mgmt should be able to target disabled
+
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --repo) repo_full="$2"; shift 2 ;;
+          --local-path) local_path="$2"; shift 2 ;;
+          --select) want_select="true"; shift ;;
+          --all) echo "[ERROR] Refusing config create with --all (too risky). Use --select or --repo." >&2; exit 2 ;;
+          --include-disabled) include_disabled="true"; shift ;;
+          -h|--help) usage; exit 0 ;;
+          *) echo "[ERROR] Unknown arg: $1"; usage; exit 1 ;;
+        esac
+      done
+
+      if [[ -z "$repo_full" ]]; then
+        if [[ "$want_select" == "true" ]]; then
+          mapfile -t picked < <(prompt_select_repo_slugs --include-disabled)
+          if (( ${#picked[@]} > 0 )) && [[ "${picked[0]}" == "__CANCEL__" ]]; then
+            exit 0
+          fi
+          repo_full="${picked[0]}"
+        else
+          # Default to current repo if possible; else prompt selection.
+          if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            repo_full="$(infer_repo_full_from_cwd)"
+          else
+            mapfile -t picked < <(prompt_select_repo_slugs --include-disabled)
+            if (( ${#picked[@]} > 0 )) && [[ "${picked[0]}" == "__CANCEL__" ]]; then
+              exit 0
+            fi
+            repo_full="${picked[0]}"
+          fi
+        fi
+      fi
+
+      if [[ -z "$local_path" ]]; then
+        # Only auto-derive localPath when we're running inside the same repo.
+        if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          local current
+          current="$(infer_repo_full_from_cwd 2>/dev/null || true)"
+          if [[ -n "$current" && "$current" == "$repo_full" ]]; then
+            export GITISSUER_ROOT="$ROOT"
+            export GITISSUER_REPO_ROOT="$(infer_git_root_from_cwd)"
+            local_path="$(default_local_path_for_repo_full "$repo_full" || true)"
+          fi
+        fi
+      fi
+
+      create_or_update_config "$repo_full" "$local_path" true
+      ;;
+
+    edit)
+      mapfile -t parsed < <(parse_repo_from_args_for_config --include-disabled "$@")
+      local mode="${parsed[0]}"
+      local repo_full="${parsed[1]}"
+      local include_disabled="true"
+
+      mapfile -t targets < <(targets_for_mode "$mode" "$repo_full" "$include_disabled" || true)
+      if (( ${#targets[@]} == 0 )); then
+        exit 0
+      fi
+      if (( ${#targets[@]} > 1 )); then
+        echo "[ERROR] config edit supports a single target. Use --repo or select exactly one." >&2
+        exit 2
+      fi
+      local t="${targets[0]}"
+      local p
+      p="$(config_path_for_repo_full "$t")"
+      if [[ ! -f "$p" ]]; then
+        echo "[INFO] Config does not exist yet; creating minimal config: $p" >&2
+        echo "[HINT] You can pass --local-path when creating if needed." >&2
+        echo "[ERROR] Missing config for $t. Run: gitissuer config create --repo $t --local-path <path>" >&2
+        exit 2
+      fi
+      open_in_editor_or_print "$p"
+      ;;
+
+    ""|help|-h|--help)
+      usage
+      ;;
+
+    *)
+      echo "[ERROR] Unknown config subcommand: $sub" >&2
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+cmd_check() {
+  local sub="${1-}"
+  shift || true
+
+  case "$sub" in
+    update|updates)
+      require_cmd gh
+      require_cmd jq
+
+      local limit=20
+      local since=""
+
+      # Use standard targeting: --repo/--select/--all + optional --include-disabled
+      mapfile -t parsed < <(extract_repo_flag_or_infer "$@")
+      local mode="${parsed[0]}"
+      local repo_full="${parsed[1]}"
+      local include_disabled="${parsed[2]}"
+      local rest=("${parsed[@]:3}")
+
+      local i=0
+      while [[ $i -lt ${#rest[@]} ]]; do
+        case "${rest[$i]}" in
+          --limit)
+            limit="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --since)
+            since="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          -h|--help)
+            usage; exit 0
+            ;;
+          *)
+            echo "[ERROR] Unknown arg: ${rest[$i]}" >&2
+            usage
+            exit 1
+            ;;
+        esac
+      done
+
+      mapfile -t targets < <(targets_for_mode "$mode" "$repo_full" "$include_disabled" || true)
+      if (( ${#targets[@]} == 0 )); then
+        exit 0
+      fi
+
+      local t
+      for t in "${targets[@]}"; do
+        local enabled
+        enabled="$(is_repo_enabled_in_config "$t")"
+        if [[ "$enabled" != "true" ]]; then
+          echo "[INFO] Skipping disabled repo: $t" >&2
+          continue
+        fi
+
+        local owner="${t%%/*}"
+        local name="${t##*/}"
+
+        echo "===== $t (recent updates) ====="
+        # Use REST to sort by updated; filter out PRs.
+        local json
+        if ! json="$(
+          gh api -X GET "/repos/$owner/$name/issues" \
+            -f state=all \
+            -f sort=updated \
+            -f direction=desc \
+            -f per_page="$limit"
+        )"; then
+          echo "[ERROR] Failed to fetch issues for $t via 'gh api'." >&2
+          echo "[HINT] Ensure you're authenticated: gh auth status" >&2
+          echo "" # keep output formatting stable
+          continue
+        fi
+
+        if [[ -n "$since" ]]; then
+          jq -r --arg since "$since" '
+            map(select(.pull_request|not))
+            | map(select(.updated_at >= $since))
+            | .[]
+            | "#\(.number)\t\(.state)\t\(.updated_at)\t\(.title)"' <<<"$json"
+        else
+          jq -r '
+            map(select(.pull_request|not))
+            | .[]
+            | "#\(.number)\t\(.state)\t\(.updated_at)\t\(.title)"' <<<"$json"
+        fi
+        echo ""
+      done
+      ;;
+
+    ""|help|-h|--help)
+      usage
+      ;;
+
+    *)
+      echo "[ERROR] Unknown check subcommand: $sub" >&2
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+cmd_watch() {
+  local sub="${1-}"
+  shift || true
+
+  case "$sub" in
+    list)
+      local include_disabled="false"
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --include-disabled) include_disabled="true"; shift ;;
+          -h|--help) usage; exit 0 ;;
+          *) echo "[ERROR] Unknown arg: $1"; usage; exit 1 ;;
+        esac
+      done
+
+      local line
+      while IFS='|' read -r repo _cfg enabled local_path; do
+        if [[ -z "$repo" ]]; then
+          continue
+        fi
+        if [[ "$include_disabled" != "true" && "$enabled" != "true" ]]; then
+          continue
+        fi
+        local watch
+        watch="$(is_repo_watch_enabled_in_config "$repo")"
+        printf '%s\t(enabled=%s, watch=%s)\t%s\n' "$repo" "$enabled" "$watch" "$local_path"
+      done < <(list_known_repos)
+      ;;
+
+    enable|activate)
+      mapfile -t parsed < <(extract_repo_flag_or_infer "$@")
+      local mode="${parsed[0]}"
+      local repo_full="${parsed[1]}"
+      local include_disabled="${parsed[2]}"
+
+      mapfile -t targets < <(targets_for_mode "$mode" "$repo_full" "$include_disabled" || true)
+      if (( ${#targets[@]} == 0 )); then
+        exit 0
+      fi
+      local t
+      for t in "${targets[@]}"; do
+        set_repo_watch_flag "$t" true
+      done
+      ;;
+
+    disable|deactivate)
+      mapfile -t parsed < <(extract_repo_flag_or_infer "$@")
+      local mode="${parsed[0]}"
+      local repo_full="${parsed[1]}"
+      local include_disabled="${parsed[2]}"
+
+      mapfile -t targets < <(targets_for_mode "$mode" "$repo_full" "$include_disabled" || true)
+      if (( ${#targets[@]} == 0 )); then
+        exit 0
+      fi
+      local t
+      for t in "${targets[@]}"; do
+        set_repo_watch_flag "$t" false
+      done
+      ;;
+
+    ""|help|-h|--help)
+      usage
+      ;;
+
+    *)
+      echo "[ERROR] Unknown watch subcommand: $sub" >&2
+      usage
+      exit 1
+      ;;
+  esac
+}
+
 main() {
   local cmd_raw="${1-}"
   shift || true
@@ -807,6 +1366,9 @@ main() {
     e2e:run) cmd_e2e_run "$@" ;;
     enable|activate) cmd_enable "$@" ;;
     disable|deactivate) cmd_disable "$@" ;;
+    config) cmd_config "$@" ;;
+    check) cmd_check "$@" ;;
+    watch) cmd_watch "$@" ;;
     "") usage; exit 1 ;;
     *) echo "[ERROR] Unknown command: $cmd"; usage; exit 1 ;;
   esac

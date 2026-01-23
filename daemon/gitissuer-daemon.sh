@@ -70,7 +70,7 @@ log "INFO" "Found $total_repos configs to process"
 for cfg in "${configs[@]}"; do
   repos_processed=$((repos_processed + 1))
 
-  enabled=$(jq -r '.gitissuer.enabled // true' "$cfg" 2>/dev/null || echo true)
+  enabled=$(jq -r 'if .gitissuer.enabled == null then true else .gitissuer.enabled end' "$cfg" 2>/dev/null || echo true)
   if [[ "$enabled" != "true" ]]; then
     log "INFO" "[$repos_processed/$total_repos] Skipping (disabled): $(basename "$cfg")"
     continue

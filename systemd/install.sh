@@ -48,10 +48,11 @@ chmod 644 "$SYSTEMD_PATH/gitissuer.service"
 chmod 644 "$SYSTEMD_PATH/gitissuer.timer"
 chmod 644 "$SYSTEMD_PATH/gitissuer-watch.service"
 
-if [[ -f "$MANAGER_PATH/config/repos.config.json" ]]; then
-  echo "OK: repos.config.json found"
+if compgen -G "$MANAGER_PATH/sync-helper/configs/*.json" >/dev/null; then
+  echo "OK: Found per-repo configs under $MANAGER_PATH/sync-helper/configs"
 else
-  echo "WARN: repos.config.json not found. Create it at $MANAGER_PATH/config/repos.config.json"
+  echo "WARN: No per-repo configs found under $MANAGER_PATH/sync-helper/configs"
+  echo "HINT: Create one with: $MANAGER_PATH/bin/gitissuer config create --repo <owner/name> --local-path <path>"
 fi
 
 echo "[4/7] Setting ownership and permissions"
@@ -73,6 +74,9 @@ systemctl enable gitissuer.timer
 
 echo "[7/7] Installation complete"
 echo "Next steps:"
-echo "- Edit $MANAGER_PATH/config/repos.config.json"
+echo "- Ensure per-repo configs exist under $MANAGER_PATH/sync-helper/configs/*.json"
 echo "- Start timer: systemctl start gitissuer.timer"
 echo "- Check status: systemctl status gitissuer.timer"
+
+echo "Optional: enable real-time watcher (ISSUE_UPDATES.md):"
+echo "- systemctl enable --now gitissuer-watch.service"
