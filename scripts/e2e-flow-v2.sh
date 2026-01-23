@@ -518,9 +518,24 @@ stage_prepare() {
     local docs_path=""
     local repo_config=""
 
+    # Use sync-helper config as the source of truth for where the repo lives.
+    local sync_config
+    sync_config=$(resolve_sync_config_for_repo "$repo_full_name" 2>/dev/null || true)
+    [[ -z "$sync_config" ]] && { log_error "No sync-helper config found for repo: $repo_full_name"; return 1; }
+
+    local repo_root_abs
+    repo_root_abs=$(jq -r '.localPath // empty' "$sync_config" 2>/dev/null || true)
+    if [[ -z "$repo_root_abs" || "$repo_root_abs" == "null" ]]; then
+        # Legacy fallback: sibling repo next to GitIssue-Manager.
+        repo_root_abs="$PROJECT_ROOT/../$repo_name"
+    fi
+    # Normalize common ./ prefix in docsPath values.
+    docs_path="docs/plans"
+
     if [[ -n "$SELECTED_REPO_ID" ]]; then
         repo_config=$(jq --arg id "$SELECTED_REPO_ID" '.repositories[] | select(.id == $id)' "$CONFIG_FILE" 2>/dev/null || true)
-        docs_path=$(echo "$repo_config" | jq -r '.docsPath // "./docs/plans"' 2>/dev/null || true)
+        docs_path=$(echo "$repo_config" | jq -r '.docsPath // "docs/plans"' 2>/dev/null || true)
+        docs_path="${docs_path#./}"
     fi
     
     log_info "Repository: $repo_full_name"
@@ -530,17 +545,26 @@ stage_prepare() {
     if [[ -n "$SELECTED_PLAN_FILE" ]]; then
         plan_file="$SELECTED_PLAN_FILE"
     else
+        # Allow passing an absolute plan path via --plan.
+        if [[ -n "$SELECTED_PLAN" && "$SELECTED_PLAN" == /* && -f "$SELECTED_PLAN" ]]; then
+            plan_file="$SELECTED_PLAN"
+        fi
+
         local candidates=(
-            "$PROJECT_ROOT/../$repo_name/$docs_path/$SELECTED_PLAN"
-            "$PROJECT_ROOT/../$repo_name/plans/$SELECTED_PLAN"
-            "$PROJECT_ROOT/../$repo_name/$SELECTED_PLAN"
+            "$repo_root_abs/$docs_path/$SELECTED_PLAN"
+            "$repo_root_abs/docs/plans/$SELECTED_PLAN"
+            "$repo_root_abs/plans/$SELECTED_PLAN"
+            "$repo_root_abs/$SELECTED_PLAN"
         )
-        for c in "${candidates[@]}"; do
-            if [[ -f "$c" ]]; then
-                plan_file="$c"
-                break
-            fi
-        done
+
+        if [[ -z "$plan_file" ]]; then
+            for c in "${candidates[@]}"; do
+                if [[ -f "$c" ]]; then
+                    plan_file="$c"
+                    break
+                fi
+            done
+        fi
         
         if [[ -z "$plan_file" ]]; then
             log_error "Plan not found in candidates:"
@@ -551,11 +575,6 @@ stage_prepare() {
 
     [[ ! -f "$plan_file" ]] && { log_error "Plan not found: $plan_file"; return 1; }
     log_success "Plan found"
-
-    # Use sync-helper artifacts as the single source of truth.
-    local sync_config
-    sync_config=$(resolve_sync_config_for_repo "$repo_full_name" 2>/dev/null || true)
-    [[ -z "$sync_config" ]] && { log_error "No sync-helper config found for repo: $repo_full_name"; return 1; }
 
     log_info "Using sync-helper config: $sync_config"
     log_info "Running prepare (client/prepare.js)..."

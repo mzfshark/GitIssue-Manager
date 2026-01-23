@@ -1,11 +1,14 @@
 {
   "owner": "Axodus",
   "repo": "Axodus/Aragon-app-backend",
-  "localPath": "../Aragon-app-backend",
+  "localPath": "/opt/Aragon-app-backend",
   "enableProjectSync": true,
   "gitissuer": {
-    "enabled": false,
-    "autoDeploy": true
+    "enabled": true,
+    "autoDeploy": true,
+    "watch": {
+      "enabled": true
+    }
   },
   "project": {
     "url": "https://github.com/orgs/Axodus/projects/23",
@@ -22,11 +25,13 @@
   "defaults": {
     "defaultEstimateHours": 1,
     "defaultPriority": "NORMAL",
-    "defaultStatus": "TODO",
-    "defaultStartDate": "TBD",
+    "defaultStatus": "Backlog",
+    "defaultStartDate": "2026-1-23",
     "defaultEndDate": "TBD",
     "defaultLabels": [
-      "plan"
+      "harmony",
+      "fovernance",
+      "ui"
     ]
   },
   "outputs": {

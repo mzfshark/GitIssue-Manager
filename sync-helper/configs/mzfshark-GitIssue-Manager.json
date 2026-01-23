@@ -1,7 +1,7 @@
 {
   "owner": "mzfshark",
   "repo": "mzfshark/GitIssue-Manager",
-  "localPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager",
+  "localPath": "/opt/GitIssue-Manager",
   "enableProjectSync": true,
   "project": {
     "url": "https://github.com/users/mzfshark/projects/15",
@@ -17,7 +17,10 @@
   },
   "gitissuer": {
     "enabled": true,
-    "autoDeploy": true
+    "autoDeploy": true,
+    "watch": {
+      "enabled": true
+    }
   },
   "defaults": {
     "defaultEstimateHours": 1,
@@ -26,9 +29,9 @@
     "defaultStartDate": "TBD",
     "defaultEndDate": "TBD",
     "defaultLabels": [
-      "harmony",
-      "governance",
-      "contracts"
+      "feature",
+      "apie",
+      "apps"
     ]
   },
   "outputs": {

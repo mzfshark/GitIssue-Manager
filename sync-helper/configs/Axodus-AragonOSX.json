@@ -2,26 +2,30 @@
   "owner": "Axodus",
   "repo": "Axodus/AragonOSX",
   "localPath": "/opt/AragonOSX",
-  "enableProjectSync": false,
+  "enableProjectSync": true,
   "gitissuer": {
     "enabled": true,
-    "autoDeploy": false,
+    "autoDeploy": true,
     "watch": {
       "enabled": true
-    },
-    "hierarchy": {
-      "parentIssueNumber": 123
     }
   },
   "defaults": {
-    "defaultEstimateHours": 2,
-    "defaultPriority": "HIGH",
-    "defaultStatus": "TODO",
-    "defaultStartDate": "TBD",
+    "defaultEstimateHours": 1,
+    "defaultPriority": "NORMAL",
+    "defaultStatus": "Backlog",
+    "defaultStartDate": "2026-01-23",
     "defaultEndDate": "TBD",
     "defaultLabels": [
-      "plan",
-      "osx"
+      "harmony",
+      "governance",
+      "contracts"
     ]
+  },
+  "outputs": {
+    "tasksPath": "/opt/AragonOSX/tmp/tasks.json",
+    "subtasksPath": "/opt/AragonOSX/tmp/subtasks.json",
+    "engineInputPath": "/opt/AragonOSX/tmp/engine-input.json",
+    "engineOutputPath": "/opt/AragonOSX/tmp/engine-output.json"
   }
 }

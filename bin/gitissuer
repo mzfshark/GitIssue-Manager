@@ -10,30 +10,88 @@ usage() {
 Usage: gitissuer <command> [options]
 
 Target selection (all commands):
-  --repo <owner/name>   Run against a specific repo
-  --select              Interactive prompt (supports multi-select: 1,3,5 and 'a' for all)
-  --include-disabled     With --select, also show disabled repos in the prompt
-  --all                 Run for all enabled repos in sync-helper/configs (gitissuer.enabled=true)
+  --repo <owner/name>     Run against a specific repo
+  --select                Interactive prompt (supports multi-select: 1,3,5 and 'a' for all)
+  --include-disabled      With --select, also show disabled repos in the prompt
+  --all                   Run for all enabled repos in sync-helper/configs (gitissuer.enabled=true)
 
 Commands (typical flow order):
-  config <list|create|set|edit|delete|show|path>       Manage per-repo configs in sync-helper/configs
-  enable [--repo <owner/name>]                          Enable gitissuer automation for repo config
-  disable [--repo <owner/name>]                         Disable gitissuer automation for repo config
-  watch <enable|disable|list>                          Manage gitissuer.watch.enabled per repo (controls systemd watcher targets)
-  parent <set|show|clear> [--repo <owner/name>]        Manage gitissuer.hierarchy.parentIssueNumber in repo config
-  generate [updates] [--repo <path|owner/name>]        Generate ISSUE_UPDATES.md from git log (defaults to current repo)
-  prepare [--repo <owner/name>] [--config <path>]      Generate engine-input.json (defaults to current repo)
-  deploy [--repo <owner/name>] [--config <path>] --confirm [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
-                                                       Execute GitHub writes (issues/project sync)
-  registry:update [--repo <owner/name>] [--config <path>]
-                                                       Update per-repo registry from engine input/output
-  link-hierarchy [--repo <owner/name>] [--parent-number <n>] [--metadata-file <path>] [--engine-output-file <path>] [--dry-run|--confirm] [--replace-parent] [--non-interactive]
-                                                       Link parent↔child hierarchy only (E2E stage 5)
-  apply [--repo <owner/name>] [--config <path>] [--file <ISSUE_UPDATES.md>] [--dry-run|--confirm]
-                                                       Apply bounded ISSUE_UPDATES actions using the registry
-  e2e:run [--repo <owner/name>] [--config <path>] [--dry-run|--confirm] [--non-interactive]
-                                                       Run E2E orchestrator (dry-run by default)
-  check update [--repo <owner/name>] [--limit N] [--since <ISO-8601>]  List recently-updated issues in a repo (read-only)
+  config <list|create|set|edit|delete|show|path>         Manage per-repo configs in sync-helper/configs
+  enable [--repo <owner/name>]                           Enable gitissuer automation for repo config
+  disable [--repo <owner/name>]                          Disable gitissuer automation for repo config
+  watch <enable|disable|list>                            Manage gitissuer.watch.enabled per repo (controls systemd watcher targets)
+  parent <set|show|clear> [--repo <owner/name>]          Manage gitissuer.hierarchy.parentIssueNumber in repo config
+  issues list   [--repo <owner/name>]                    List issues from GitHub (read-only)
+               [--state open|closed|all]
+               [--limit N]
+               [--show-parents] [--parents-only]
+               [--show-project]
+  generate  [updates] [--repo <path|owner/name>]         Generate ISSUE_UPDATES.md from git log (defaults to current repo)
+  prepare   [--repo <owner/name>]                        Generate engine-input.json (defaults to current repo)
+            [--config <path>]                            
+  deploy    [--repo <owner/name>]                        Execute GitHub writes (issues/project sync) 
+            [--config <path>] --confirm 
+            [--link-hierarchy |--no-link-hierarchy] 
+            [--parent-number <n>] 
+            [--replace-parent]                                                      
+  registry:update   [--repo <owner/name>]                Update per-repo registry from engine input/output
+                    [--config <path>] 
+  link-hierarchy    [--repo <owner/name>]                Link parent↔child hierarchy only (E2E stage 5) 
+                    [--parent-number <n>] 
+                    [--metadata-file <path>] 
+                    [--engine-output-file <path>] 
+                    [--dry-run|--confirm] 
+                    [--replace-parent] 
+                    [--non-interactive]                                                     
+  apply   [--repo <owner/name>]                          Apply bounded ISSUE_UPDATES actions using the registry 
+          [--config <path>] 
+          [--file <ISSUE_UPDATES.md>] 
+          [--dry-run|--confirm]                                                      
+  e2e:run   [--repo <owner/name>]                       Run E2E orchestrator (dry-run by default)
+            [--config <path>] 
+            [--dry-run|--confirm] 
+            [--non-interactive]                                                      
+  check update  [--repo <owner/name>]                   List recently-updated issues in a repo (read-only)
+                [--limit N] 
+                [--since <ISO-8601>]  
+
+Config subcommands:
+  config list               [--include-disabled]
+  config path|show|edit     [--repo <owner/name>] [--select] [--include-disabled]
+  config create             [--repo <owner/name>] [--local-path <absPath>]
+                            [--enable-project-sync|--disable-project-sync]
+                            [--auto-deploy|--no-auto-deploy]
+                            [--default-estimate-hours <n>] [--default-priority <str>] [--default-status <str>]
+                            [--default-start-date <str>] [--default-end-date <str>] [--default-labels <csv>]
+                            [--select]
+  config set                [--repo <owner/name>] [--select] [--include-disabled]
+                            [--set-repo <owner/name>] [--local-path <absPath>]
+                            [--enabled|--disabled] [--watch-enabled|--watch-disabled]
+                            [--enable-project-sync|--disable-project-sync]
+                            [--auto-deploy|--no-auto-deploy]
+                            [--parent-number <n>|--clear-parent]
+                            [--default-estimate-hours <n>] [--default-priority <str>] [--default-status <str>]
+                            [--default-start-date <str>] [--default-end-date <str>] [--default-labels <csv>]
+                            [--force]
+  config delete             [--repo <owner/name>] [--select] [--include-disabled] --confirm
+  config dedupe             [--include-disabled] [--by repo|path|both]
+
+Watch subcommands:
+  watch list                [--include-disabled]
+  watch enable|disable      [--repo <owner/name>] [--select] [--include-disabled]
+                            [--all]
+
+Parent subcommands:
+  parent show               [--repo <owner/name>]
+  parent set                [--repo <owner/name>] --number <n>
+  parent clear              [--repo <owner/name>]
+
+Issues subcommands:
+  issues list                [--repo <owner/name>] [--select] [--include-disabled]
+                             [--state open|closed|all]
+                             [--limit N]
+                             [--show-parents] [--parents-only]
+                             [--show-project]
 EOF
 }
 
@@ -313,6 +371,21 @@ prompt_string() {
   fi
 }
 
+today_yyyy_mm_dd() {
+  if command -v date >/dev/null 2>&1; then
+    date -u +%F 2>/dev/null || date +%F
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - <<'PY'
+from datetime import datetime, timezone
+print(datetime.now(timezone.utc).strftime('%Y-%m-%d'))
+PY
+    return 0
+  fi
+  echo "TBD"
+}
+
 create_or_update_config() {
   local repo_full="$1"
   local local_path="$2"
@@ -321,8 +394,8 @@ create_or_update_config() {
   local auto_deploy="${5:-false}"
   local default_estimate_hours="${6:-1}"
   local default_priority="${7:-NORMAL}"
-  local default_status="${8:-TODO}"
-  local default_start_date="${9:-TBD}"
+  local default_status="${8:-Backlog}"
+  local default_start_date="${9:-}"
   local default_end_date="${10:-TBD}"
   local default_labels_csv="${11:-plan}"
 
@@ -343,6 +416,10 @@ create_or_update_config() {
 
   # Normalize localPath to absolute.
   local_path="$(abs_path "$local_path")"
+
+  if [[ -z "$default_start_date" ]]; then
+    default_start_date="$(today_yyyy_mm_dd)"
+  fi
 
   local labels_json
   if command -v python3 >/dev/null 2>&1; then
@@ -1489,7 +1566,7 @@ cmd_config() {
         local existing_default_estimate_hours="1"
         local existing_default_priority="NORMAL"
         local existing_default_status="TODO"
-        local existing_default_start_date="TBD"
+        local existing_default_start_date="$(today_yyyy_mm_dd)"
         local existing_default_end_date="TBD"
         local existing_default_labels_csv="plan"
 
@@ -1521,9 +1598,11 @@ cmd_config() {
           default_status="$(prompt_string "Default status" "$existing_default_status")"
         fi
         if [[ -z "$default_start_date" ]]; then
+          echo "[HINT] Date format: YYYY-MM-DD (e.g. 2026-01-23)" >&2
           default_start_date="$(prompt_string "Default start date" "$existing_default_start_date")"
         fi
         if [[ -z "$default_end_date" ]]; then
+          echo "[HINT] Date format: YYYY-MM-DD or TBD" >&2
           default_end_date="$(prompt_string "Default end date" "$existing_default_end_date")"
         fi
         if [[ -z "$default_labels_csv" ]]; then
@@ -1536,8 +1615,8 @@ cmd_config() {
       [[ -z "$auto_deploy" ]] && auto_deploy="false"
       [[ -z "$default_estimate_hours" ]] && default_estimate_hours="1"
       [[ -z "$default_priority" ]] && default_priority="NORMAL"
-      [[ -z "$default_status" ]] && default_status="TODO"
-      [[ -z "$default_start_date" ]] && default_start_date="TBD"
+      [[ -z "$default_status" ]] && default_status="Backlog"
+      [[ -z "$default_start_date" ]] && default_start_date="$(today_yyyy_mm_dd)"
       [[ -z "$default_end_date" ]] && default_end_date="TBD"
       [[ -z "$default_labels_csv" ]] && default_labels_csv="plan"
 
@@ -2055,6 +2134,181 @@ cmd_check() {
   esac
 }
 
+cmd_issues() {
+  local sub="${1-}"
+  shift || true
+
+  case "$sub" in
+    list)
+      require_cmd gh
+      require_cmd jq
+
+      local state="open" # open|closed|all
+      local limit=30
+      local show_parents="false"
+      local parents_only="false"
+      local show_project="false"
+
+      mapfile -t parsed < <(extract_repo_flag_or_infer "$@")
+      local mode="${parsed[0]}"
+      local repo_full="${parsed[1]}"
+      local include_disabled="${parsed[2]}"
+      local rest=("${parsed[@]:3}")
+
+      local i=0
+      while [[ $i -lt ${#rest[@]} ]]; do
+        case "${rest[$i]}" in
+          --state)
+            state="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --limit)
+            limit="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --show-parents)
+            show_parents="true"; i=$((i+1))
+            ;;
+          --parents-only)
+            parents_only="true"; i=$((i+1))
+            ;;
+          --show-project)
+            show_project="true"; i=$((i+1))
+            ;;
+          -h|--help)
+            usage; exit 0
+            ;;
+          *)
+            echo "[ERROR] Unknown arg: ${rest[$i]}" >&2
+            usage
+            exit 1
+            ;;
+        esac
+      done
+
+      case "$state" in
+        open|closed|all) : ;;
+        *)
+          echo "[ERROR] --state must be one of: open|closed|all" >&2
+          exit 2
+          ;;
+      esac
+
+      mapfile -t targets < <(targets_for_mode "$mode" "$repo_full" "$include_disabled" || true)
+      if (( ${#targets[@]} == 0 )); then
+        exit 0
+      fi
+
+      local t
+      for t in "${targets[@]}"; do
+        local enabled
+        enabled="$(is_repo_enabled_in_config "$t")"
+        if [[ "$enabled" != "true" ]]; then
+          if handle_disabled_repo_or_exit "$t" "issues list"; then
+            :
+          else
+            continue
+          fi
+        fi
+
+        local owner="${t%%/*}"
+        local name="${t##*/}"
+
+        local cfg
+        cfg="$(resolve_config_path_from_repo_full "$t" || true)"
+
+        local project_sync_enabled="false"
+        local project_node_id=""
+        local project_url=""
+
+        if [[ -n "$cfg" && -f "$cfg" ]]; then
+          project_sync_enabled="$(jq -r 'if .enableProjectSync == null then false else .enableProjectSync end' "$cfg" 2>/dev/null || echo false)"
+          project_node_id="$(jq -r '.project.projectNodeId // empty' "$cfg" 2>/dev/null || true)"
+          project_url="$(jq -r '.project.url // empty' "$cfg" 2>/dev/null || true)"
+        fi
+
+        echo "===== $t (issues, state=$state, limit=$limit) ====="
+        if [[ "$show_project" == "true" ]]; then
+          if [[ "$project_sync_enabled" != "true" ]]; then
+            echo "[INFO] Project sync is disabled for this repo (enableProjectSync=false)." >&2
+            echo "[HINT] Enable it with: gitissuer config set --repo $t --enable-project-sync" >&2
+          elif [[ -z "$project_node_id" ]]; then
+            echo "[WARN] enableProjectSync=true but project.projectNodeId is missing." >&2
+            if [[ -n "$project_url" ]]; then
+              echo "[HINT] Config project.url is: $project_url" >&2
+            fi
+            echo "[HINT] Recreate or set project fields in the repo config." >&2
+          else
+            echo "[INFO] Project: ${project_url:-$project_node_id}" >&2
+          fi
+        fi
+
+        local query
+        if [[ "$state" == "open" ]]; then
+          query='query($owner:String!,$name:String!,$first:Int!){repository(owner:$owner,name:$name){issues(first:$first,states:[OPEN],orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number title state updatedAt url parent{number title} projectItems(first:20){nodes{project{id number title}}}}}}}'
+        elif [[ "$state" == "closed" ]]; then
+          query='query($owner:String!,$name:String!,$first:Int!){repository(owner:$owner,name:$name){issues(first:$first,states:[CLOSED],orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number title state updatedAt url parent{number title} projectItems(first:20){nodes{project{id number title}}}}}}}'
+        else
+          query='query($owner:String!,$name:String!,$first:Int!){repository(owner:$owner,name:$name){issues(first:$first,orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number title state updatedAt url parent{number title} projectItems(first:20){nodes{project{id number title}}}}}}}'
+        fi
+
+        local json
+        if ! json="$(gh api graphql -f query="$query" -F owner="$owner" -F name="$name" -F first="$limit")"; then
+          echo "[ERROR] Failed to query issues for $t via GraphQL." >&2
+          echo "[HINT] Check auth: gh auth status" >&2
+          echo ""
+          continue
+        fi
+
+        jq -r \
+          --argjson showParents "$( [[ "$show_parents" == "true" ]] && echo true || echo false )" \
+          --argjson parentsOnly "$( [[ "$parents_only" == "true" ]] && echo true || echo false )" \
+          --arg projectId "$project_node_id" \
+          --argjson showProject "$( [[ "$show_project" == "true" ]] && echo true || echo false )" \
+          '
+          .data.repository.issues.nodes
+          | map(select(. != null))
+          | (if $parentsOnly then map(select(.parent != null)) else . end)
+          | .[]
+          | {
+              number,
+              state,
+              updatedAt,
+              title,
+              url,
+              parentNumber: (.parent.number // null),
+              parentTitle: (.parent.title // null),
+              inProject: (
+                if ($showProject and ($projectId|length) > 0)
+                then any(.projectItems.nodes[]?; .project.id == $projectId)
+                else null
+                end
+              )
+            }
+          | "#\(.number)\t\(.state)\t\(.updatedAt)\t" +
+            (if $showProject then (if .inProject == null then "n/a" elif .inProject then "inProject" else "notInProject" end) + "\t" else "" end) +
+            (if $showParents then (if .parentNumber == null then "-" else ("#" + (.parentNumber|tostring)) end) + "\t" else "" end) +
+            .title
+          ' <<<"$json"
+
+        if [[ "$show_project" == "true" && "$project_sync_enabled" == "true" ]]; then
+          echo "[HINT] If issues show 'notInProject', run: gitissuer deploy --repo $t --confirm" >&2
+        fi
+
+        echo ""
+      done
+      ;;
+
+    ""|help|-h|--help)
+      usage
+      ;;
+
+    *)
+      echo "[ERROR] Unknown issues subcommand: $sub" >&2
+      usage
+      exit 1
+      ;;
+  esac
+}
+
 cmd_watch() {
   local sub="${1-}"
   shift || true
@@ -2254,6 +2508,7 @@ main() {
     apply) cmd_apply "$@" ;;
     e2e:run) cmd_e2e_run "$@" ;;
     link:hierarchy) cmd_link_hierarchy "$@" ;;
+    issues) cmd_issues "$@" ;;
     enable|activate) cmd_enable "$@" ;;
     disable|deactivate) cmd_disable "$@" ;;
     config) cmd_config "$@" ;;

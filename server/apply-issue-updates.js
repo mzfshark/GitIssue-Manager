@@ -254,25 +254,6 @@ function main() {
     ? path.resolve(args[fileIndex + 1])
     : path.join(repoRootAbs, 'ISSUE_UPDATES.md');
 
-  if (!fs.existsSync(updateFilePath)) {
-    console.error('ISSUE_UPDATES.md not found:', updateFilePath);
-    process.exit(2);
-  }
-
-  const updateText = fs.readFileSync(updateFilePath, 'utf8');
-
-  let parsedUpdates;
-  try {
-    parsedUpdates = parseUpdates(updateText);
-  } catch (e) {
-    console.error('Failed to parse ISSUE_UPDATES section:', e.message);
-    process.exit(2);
-  }
-
-  const reg = loadRegistry(repoRootAbs);
-
-  const allowedLabels = Array.isArray(cfg.labels && cfg.labels.allowed) ? cfg.labels.allowed : null;
-
   const report = {
     version: '1.0',
     generatedAt: new Date().toISOString(),
@@ -285,6 +266,47 @@ function main() {
   const updatesDir = path.join(repoRootAbs, '.gitissuer', 'updates');
   const reportJsonPath = path.join(updatesDir, `${ts}-apply-report.json`);
   const reportMdPath = path.join(updatesDir, `${ts}-apply-report.md`);
+
+  if (!fs.existsSync(updateFilePath)) {
+    // If the user explicitly provided --file, fail fast. Otherwise, treat missing default file as "no updates".
+    if (fileIndex >= 0) {
+      console.error('ISSUE_UPDATES.md not found:', updateFilePath);
+      process.exit(2);
+    }
+
+    const md = [
+      '# GitIssuer Apply Report',
+      '',
+      `Repo: ${repo}`,
+      `Mode: ${report.mode}`,
+      '',
+      'No updates file found; nothing to apply.',
+      '',
+      'Create ISSUE_UPDATES.md with a bounded section:',
+      '',
+      UPDATES_BEGIN,
+      '@PLAN-003 close',
+      'labels: type:plan',
+      'comment: |',
+      '  Example comment',
+      UPDATES_END,
+      '',
+    ].join('\n');
+    writeJsonAtomic(reportJsonPath, report);
+    writeTextAtomic(reportMdPath, md);
+    console.log('OK: No updates to apply. Report written:', reportJsonPath);
+    process.exit(0);
+  }
+
+  const updateText = fs.readFileSync(updateFilePath, 'utf8');
+
+  let parsedUpdates;
+  try {
+    parsedUpdates = parseUpdates(updateText);
+  } catch (e) {
+    console.error('Failed to parse ISSUE_UPDATES section:', e.message);
+    process.exit(2);
+  }
 
   if (parsedUpdates.length === 0) {
     const md = [
@@ -308,6 +330,10 @@ function main() {
     console.log('OK: No updates to apply. Report written:', reportJsonPath);
     process.exit(0);
   }
+
+  const reg = loadRegistry(repoRootAbs);
+
+  const allowedLabels = Array.isArray(cfg.labels && cfg.labels.allowed) ? cfg.labels.allowed : null;
 
   for (const u of parsedUpdates) {
     const entry = {

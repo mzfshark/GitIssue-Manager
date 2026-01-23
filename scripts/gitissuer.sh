@@ -16,7 +16,7 @@ Commands:
   add --file <path> --output <path>        Copy ISSUE_UPDATES.md into a timestamped update file
   prepare --repo <owner/name> [--config <path>] [--dry-run]
                                            Generate engine input from Markdown plans
-  deploy --repo <owner/name> [--config <path>] [--batch] --confirm [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
+  deploy --repo <owner/name> [--config <path>] [--batch] [--dry-run|--confirm] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
                                            Execute GitHub writes (issues + optional ProjectV2)
   registry:update --repo <owner/name> [--config <path>]
                                            Update per-repo registry from engine-input + engine-output
@@ -152,6 +152,7 @@ cmd_deploy() {
   local repo_full=""
   local config_path=""
   local confirm="false"
+  local dry_run="false"
   local link_hierarchy="true"
   local parent_number=""
   local replace_parent="false"
@@ -160,6 +161,7 @@ cmd_deploy() {
     case "$1" in
       --repo) repo_full="$2"; shift 2 ;;
       --config) config_path="$2"; shift 2 ;;
+      --dry-run) dry_run="true"; shift ;;
       --confirm) confirm="true"; shift ;;
       --link-hierarchy) link_hierarchy="true"; shift ;;
       --no-link-hierarchy) link_hierarchy="false"; shift ;;
@@ -171,15 +173,25 @@ cmd_deploy() {
     esac
   done
 
-  if [[ "$confirm" != "true" ]]; then
-    echo "ERROR: Refusing to deploy without --confirm" >&2
+  if [[ "$confirm" == "true" && "$dry_run" == "true" ]]; then
+    echo "ERROR: Choose one: --dry-run or --confirm" >&2
+    exit 2
+  fi
+
+  if [[ "$confirm" != "true" && "$dry_run" != "true" ]]; then
+    echo "ERROR: Refusing to deploy without --confirm (or preview with --dry-run)" >&2
     exit 2
   fi
 
   local cfg
   cfg=$(resolve_config_path "$repo_full" "$config_path")
-  node "$PROJECT_ROOT/server/executor.js" --config "$cfg"
-  echo "OK: deploy completed for $repo_full"
+  if [[ "$dry_run" == "true" ]]; then
+    node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run
+    echo "OK: deploy (dry-run) completed for $repo_full"
+  else
+    node "$PROJECT_ROOT/server/executor.js" --config "$cfg"
+    echo "OK: deploy completed for $repo_full"
+  fi
 
   # Natural flow: link hierarchy right after deploy (when confirmed), if we can resolve the parent.
   if [[ "$link_hierarchy" == "true" ]]; then
@@ -196,7 +208,12 @@ cmd_deploy() {
 
     echo "INFO: Linking hierarchy under parent #$parent_number..." >&2
 
-    local -a link_args=(--repo "$repo_full" --parent-number "$parent_number" --confirm --non-interactive)
+    local -a link_args=(--repo "$repo_full" --parent-number "$parent_number" --non-interactive)
+    if [[ "$dry_run" == "true" ]]; then
+      link_args+=(--dry-run)
+    else
+      link_args+=(--confirm)
+    fi
     if [[ "$replace_parent" == "true" ]]; then
       link_args+=(--replace-parent)
     fi

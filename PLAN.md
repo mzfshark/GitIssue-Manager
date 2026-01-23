@@ -44,8 +44,10 @@ Expected outcomes:
 ### PLAN-002:
 
 - [ ] Make Stage 2 call sync-helper prepare and persist artifact paths [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-22] [end:2026-01-23]
+- [ ] Fix Stage 2 plan resolution to use `<repoRoot>/docs/plans/` by default (avoid hardcoded sibling paths) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
 - [ ] Make Stage 3 create/reuse PAI from templates + plan file content [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-22] [end:2026-01-24]
 - [ ] Make Stage 4 run executor (idempotent issue upsert) and capture engine-output.json [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-23] [end:2026-01-24]
+- [ ] Add `deploy --dry-run` support in `scripts/gitissuer.sh` (no writes; allow `--link-hierarchy` to dry-run too) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
 - [ ] Make Stage 5 link hierarchy based on stableId/parentStableId maps [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:1h] [start:2026-01-24] [end:2026-01-25]
 - [ ] Make Stage 7 update progress via bounded markers (no overwrite) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:1h] [start:2026-01-25] [end:2026-01-26]
 
@@ -98,6 +100,9 @@ Expected outcomes:
 - [ ] Define registry schema and report schema [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-23] [end:2026-01-24]
 - [ ] Implement registry read/write helpers + atomic update [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-24] [end:2026-01-25]
 - [ ] Implement ISSUE_UPDATES.md parser with strict validation [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-25] [end:2026-01-26]
+- [ ] Make `registry:update` infer outputs from `<repo>/tmp/*.json` when missing in config (zero-to-hero flow) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
+- [ ] Fix configs missing `outputs.*` so `registry:update` works after `prepare`/`deploy` [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
+- [ ] Make apply skip missing registry when there are no actionable updates (improves `apply --all` UX) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
 - [ ] Implement dry-run and apply modes with confirmation gate [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:3h] [start:2026-01-26] [end:2026-01-29]
 - [ ] Wire daemon to run apply step (dry-run by default) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:1h] [start:2026-01-29] [end:2026-01-30]
 

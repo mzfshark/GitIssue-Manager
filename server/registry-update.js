@@ -27,6 +27,13 @@ function resolveRepoRootAbs(localPath) {
   return path.resolve(managerRoot, localPath);
 }
 
+function resolveMaybeRelative(p, baseDir) {
+  if (!p) return null;
+  const s = String(p);
+  if (!s) return null;
+  return path.isAbsolute(s) ? s : path.resolve(baseDir, s);
+}
+
 function normalizeExplicitId(explicitId) {
   if (!explicitId) return null;
   return String(explicitId).trim().toUpperCase();
@@ -90,10 +97,29 @@ function main() {
     process.exit(3);
   }
 
-  const engineInputPath = cfg.outputs && cfg.outputs.engineInputPath ? cfg.outputs.engineInputPath : null;
-  const engineOutputPath = cfg.outputs && cfg.outputs.engineOutputPath ? cfg.outputs.engineOutputPath : null;
+  // Zero-to-hero: allow missing outputs in config and infer defaults from the repo root.
+  // This matches what `prepare` prints: ./tmp/tasks.json ./tmp/subtasks.json ./tmp/engine-input.json
+  const repoRootAbsFromCfg = resolveRepoRootAbs(cfg.localPath || '.');
+  const inferred = {
+    tasksPath: path.join(repoRootAbsFromCfg, 'tmp', 'tasks.json'),
+    subtasksPath: path.join(repoRootAbsFromCfg, 'tmp', 'subtasks.json'),
+    engineInputPath: path.join(repoRootAbsFromCfg, 'tmp', 'engine-input.json'),
+    engineOutputPath: path.join(repoRootAbsFromCfg, 'tmp', 'engine-output.json'),
+  };
+
+  const cfgOutputs = cfg.outputs || {};
+
+  const engineInputPath = resolveMaybeRelative(cfgOutputs.engineInputPath, repoRootAbsFromCfg)
+    || (fs.existsSync(inferred.engineInputPath) ? inferred.engineInputPath : null);
+  const engineOutputPath = resolveMaybeRelative(cfgOutputs.engineOutputPath, repoRootAbsFromCfg)
+    || (fs.existsSync(inferred.engineOutputPath) ? inferred.engineOutputPath : null);
+
   if (!engineInputPath || !engineOutputPath) {
     console.error('Missing outputs.engineInputPath or outputs.engineOutputPath in config.');
+    console.error('Tried inferred paths under repo root:', repoRootAbsFromCfg);
+    console.error(' -', inferred.engineInputPath);
+    console.error(' -', inferred.engineOutputPath);
+    console.error('HINT: Run `gitissuer prepare --repo <owner/name>` and then `gitissuer deploy --dry-run --repo <owner/name>` to generate engine-output.json.');
     process.exit(2);
   }
 
