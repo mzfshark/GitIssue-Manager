@@ -45,7 +45,6 @@ Expected outcomes:
 
 - [ ] Make Stage 2 call sync-helper prepare and persist artifact paths [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-22] [end:2026-01-23]
 - [ ] Fix Stage 2 plan resolution to use `<repoRoot>/docs/plans/` by default (avoid hardcoded sibling paths) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
-- [ ] Add `gitissuer sync` command (prepare + deploy + registry:update) as a first-class CLI workflow [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
 - [ ] Make Stage 3 create/reuse PAI from templates + plan file content [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-22] [end:2026-01-24]
 - [ ] Make Stage 4 run executor (idempotent issue upsert) and capture engine-output.json [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-23] [end:2026-01-24]
 - [ ] Add `deploy --dry-run` support in `scripts/gitissuer.sh` (no writes; allow `--link-hierarchy` to dry-run too) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]

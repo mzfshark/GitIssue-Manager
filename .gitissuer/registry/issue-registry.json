@@ -1,12 +1,12 @@
 {
   "version": "1.0",
   "repo": "mzfshark/GitIssue-Manager",
-  "updatedAt": "2026-01-23T18:35:08.000Z",
-  "planFingerprint": "905b1d07e2bf545fe20c369db99962797f7fc6c0",
+  "updatedAt": "2026-01-23T19:29:34.386Z",
+  "planFingerprint": "dca453012e21f0cb781a91c75c43de7101f30745",
   "planFiles": [
     {
-      "path": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
-      "sha1": "b4b876f13ac3d86ed0978c06d7dda9e87e33b9f1"
+      "path": "PLAN.md",
+      "sha1": "69b43956712c88d1c4e7b293ab984659fcf89f96"
     }
   ],
   "items": [
@@ -20,10 +20,10 @@
       "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkGOgc",
       "title": "#PLAN-002 - Single Source of Truth for Issue Generation (sync-helper + E2E)",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 1
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.972Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
       "stableId": "536c3d4952caf8fd77ec3efe8250a26df30a5346",
@@ -35,280 +35,295 @@
       "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkGOg4",
       "title": "PLAN-002:",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 44
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "416b8f8ae0934263ec8a020b634cc2c689982a64",
+      "stableId": "bdc4d3a40c60d282cfcb3967038b3011bf6ceb02",
       "explicitId": "PLAN-003",
       "kind": "task",
-      "issueNumber": 21,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZd76",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/21",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTTM",
+      "issueNumber": 38,
+      "issueNodeId": "I_kwDOQ8e5Ls7laNr9",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/38",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcVA",
       "title": "PLAN-003 - Per-Repo Registry + ISSUE_UPDATES Apply Engine",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
-        "line": 61
+        "file": "PLAN.md",
+        "line": 62
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "3a691f466076323db32c22cafac0ab48230afd27",
+      "stableId": "d2d3c8998252864f5532bc8a50e36f0004b1ecd6",
       "explicitId": "PLAN-003",
       "kind": "task",
-      "issueNumber": 22,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZd-G",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/22",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTTc",
+      "issueNumber": 39,
+      "issueNodeId": "I_kwDOQ8e5Ls7laNvU",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/39",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcV8",
       "title": "PLAN-003:",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
-        "line": 98
+        "file": "PLAN.md",
+        "line": 99
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "1a139b005b0ade865edf138f49057d525413c209",
+      "stableId": "2f9f8d80a3b9b23f3445165c100bedb3d862c77f",
       "explicitId": "PLAN-001",
       "kind": "task",
-      "issueNumber": 23,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZeAf",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/23",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTTw",
+      "issueNumber": 40,
+      "issueNodeId": "I_kwDOQ8e5Ls7laN1Q",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/40",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcWk",
       "title": "PLAN-001 - Fix ProjectV2 GraphQL Variable Handling (GitIssue-Manager)",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
-        "line": 113
+        "file": "PLAN.md",
+        "line": 114
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "df2cea6757c738a8b84480a0ecb3a3d6a62f2599",
+      "stableId": "eab915c7d759c7eef087fa7d331c4fae21b7af83",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 13,
-      "issueNodeId": "I_kwDOQ8e5Ls7lJCck",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/13",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkGYe8",
+      "issueNumber": 7,
+      "issueNodeId": "I_kwDOQ8e5Ls7lIOqW",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/7",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkGOhs",
       "title": "Make Stage 2 call sync-helper prepare and persist artifact paths",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 46
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "a9759686fd615a43f8b8fcb8850df65113aead28",
+      "stableId": "0898d08f051aa0e2785fe3f6c46c5142dc4e0ac8",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 24,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZeFu",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/24",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTU8",
+      "issueNumber": 41,
+      "issueNodeId": "I_kwDOQ8e5Ls7laN9p",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/41",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKccA",
       "title": "Fix Stage 2 plan resolution to use `<repoRoot>/docs/plans/` by default (avoid hardcoded sibling paths)",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 47
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "8f57112f7f97492e630f3f5c267c5bb26e5ac942",
+      "stableId": "8859e9980dd2429ab64d2f60d7565323c0bc1b2c",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 25,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZeKc",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/25",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTVU",
-      "title": "Make Stage 3 create/reuse PAI from templates + plan file content",
+      "issueNumber": 42,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOAR",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/42",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcc4",
+      "title": "Add `gitissuer sync` command (prepare + deploy + registry:update) as a first-class CLI workflow",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 48
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "f175b1c8c3e770143de66b36aedfba1f38270f2c",
+      "stableId": "391bc1f2db791d3035bf5d3a91213d3aa7f0ce5f",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 26,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZeM-",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/26",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTWA",
-      "title": "Make Stage 4 run executor (idempotent issue upsert) and capture engine-output.json",
+      "issueNumber": 43,
+      "issueNodeId": "I_kwDOQ8e5Ls7laODA",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/43",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcdg",
+      "title": "Make Stage 3 create/reuse PAI from templates + plan file content",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 49
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "1cb229a6adf6f131e67be8f6d6df16d30a313ac0",
+      "stableId": "3098b142ddc72005086c47a567444fb0fe9c949c",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 27,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZePm",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/27",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTWg",
-      "title": "Add `deploy --dry-run` support in `scripts/gitissuer.sh` (no writes; allow `--link-hierarchy` to dry-run too)",
+      "issueNumber": 44,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOHv",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/44",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKceM",
+      "title": "Make Stage 4 run executor (idempotent issue upsert) and capture engine-output.json",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 50
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "e8629268ae130a2107e9c7845defb96e254a3792",
+      "stableId": "4c117fe13888123dabf5d2950684d8c663abcf44",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 28,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZeTe",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/28",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTXY",
-      "title": "Make Stage 5 link hierarchy based on stableId/parentStableId maps",
+      "issueNumber": 45,
+      "issueNodeId": "I_kwDOQ8e5Ls7laONR",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/45",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKce4",
+      "title": "Add `deploy --dry-run` support in `scripts/gitissuer.sh` (no writes; allow `--link-hierarchy` to dry-run too)",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 51
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "86f6b251e51171fd8d73b6505fa2287e250aa764",
+      "stableId": "06c36f7821ab5d9ddb712530e8c70825d0c17375",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 29,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZeXZ",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/29",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTXw",
-      "title": "Make Stage 7 update progress via bounded markers (no overwrite)",
+      "issueNumber": 46,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOQ_",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/46",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcgw",
+      "title": "Make Stage 5 link hierarchy based on stableId/parentStableId maps",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 52
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "bedae63b1e6ee0658c74756f3fc42864403f356a",
+      "stableId": "e3276285f09e0f95b1180dcfd8de555ef3d2b26f",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 30,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZebn",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/30",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTYY",
+      "issueNumber": 47,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOTz",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/47",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKchk",
+      "title": "Make Stage 7 update progress via bounded markers (no overwrite)",
+      "source": {
+        "file": "PLAN.md",
+        "line": 53
+      },
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
+    },
+    {
+      "stableId": "9ada40aceb619a9c5c447be5e7332aa235dcf9f7",
+      "explicitId": null,
+      "kind": "subtask",
+      "issueNumber": 48,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOZh",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/48",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcjA",
       "title": "Define registry schema and report schema",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
-        "line": 100
-      },
-      "lastSyncedAt": "2026-01-23T18:35:07.973Z"
-    },
-    {
-      "stableId": "91b47d0fadf7ffb1930d14af74fee85b247c416e",
-      "explicitId": null,
-      "kind": "subtask",
-      "issueNumber": 31,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZefG",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/31",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTZI",
-      "title": "Implement registry read/write helpers + atomic update",
-      "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 101
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.974Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "be40c40de80e7b90128826ed07689ea3be5c4b09",
+      "stableId": "0c8ca30b5c9b48be1031f960b5db7d517e5c5f3b",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 32,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZekL",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/32",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTaM",
-      "title": "Implement ISSUE_UPDATES.md parser with strict validation",
+      "issueNumber": 49,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOhJ",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/49",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKclM",
+      "title": "Implement registry read/write helpers + atomic update",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 102
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.974Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "166ed8cd4009a86a4e4426a4f8039169e36e64eb",
+      "stableId": "b287f698954b1b2055d76635310bc3e3632e4cc7",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 33,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZenZ",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/33",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTa8",
-      "title": "Make `registry:update` infer outputs from `<repo>/tmp/*.json` when missing in config (zero-to-hero flow)",
+      "issueNumber": 50,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOn0",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/50",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcl0",
+      "title": "Implement ISSUE_UPDATES.md parser with strict validation",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 103
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.974Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "2cd8cd4aec19a638939be8b5ac5c0e914317da6c",
+      "stableId": "ebe27733b9aa924b33bf451bf9bf77ff129ac61b",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 34,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZeqq",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/34",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTb8",
-      "title": "Fix configs missing `outputs.*` so `registry:update` works after `prepare`/`deploy`",
+      "issueNumber": 51,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOrL",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/51",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcmw",
+      "title": "Make `registry:update` infer outputs from `<repo>/tmp/*.json` when missing in config (zero-to-hero flow)",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 104
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.974Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "3015f099820f895abd9ae1102c5c7d217f454198",
+      "stableId": "25c344760c64abb251277e8e39c88c1d97c7cae9",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 35,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZewI",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/35",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTcc",
-      "title": "Make apply skip missing registry when there are no actionable updates (improves `apply --all` UX)",
+      "issueNumber": 52,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOua",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/52",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcoA",
+      "title": "Fix configs missing `outputs.*` so `registry:update` works after `prepare`/`deploy`",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 105
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.974Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "c4eab876d2e534fd29e37e68e49f72ef01f87024",
+      "stableId": "bd1077b77265e95a761e136566b3d8d4174d6582",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 36,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZezd",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/36",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTc4",
-      "title": "Implement dry-run and apply modes with confirmation gate",
+      "issueNumber": 53,
+      "issueNodeId": "I_kwDOQ8e5Ls7laOxQ",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/53",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcpA",
+      "title": "Make apply skip missing registry when there are no actionable updates (improves `apply --all` UX)",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 106
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.974Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     },
     {
-      "stableId": "8bb5b040de3c7e9fbd144251d0bbdd67171004e1",
+      "stableId": "cf8ea6ca7831dce636cee89ba3c890dce4043300",
       "explicitId": null,
       "kind": "subtask",
-      "issueNumber": 37,
-      "issueNodeId": "I_kwDOQ8e5Ls7lZe26",
-      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/37",
-      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKTdc",
-      "title": "Wire daemon to run apply step (dry-run by default)",
+      "issueNumber": 54,
+      "issueNodeId": "I_kwDOQ8e5Ls7laO6x",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/54",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcq8",
+      "title": "Implement dry-run and apply modes with confirmation gate",
       "source": {
-        "file": "../../mnt/d/Rede/Github/mzfshark/GitIssue-Manager/PLAN.md",
+        "file": "PLAN.md",
         "line": 107
       },
-      "lastSyncedAt": "2026-01-23T18:35:07.974Z"
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
+    },
+    {
+      "stableId": "fa25cd934ed2de79f6cb4fc6558cafecb4485e32",
+      "explicitId": null,
+      "kind": "subtask",
+      "issueNumber": 55,
+      "issueNodeId": "I_kwDOQ8e5Ls7laO-j",
+      "issueUrl": "https://github.com/mzfshark/GitIssue-Manager/issues/55",
+      "projectItemId": "PVTI_lAHOAZZpx84BM1N0zgkKcro",
+      "title": "Wire daemon to run apply step (dry-run by default)",
+      "source": {
+        "file": "PLAN.md",
+        "line": 108
+      },
+      "lastSyncedAt": "2026-01-23T19:29:34.380Z"
     }
   ]
 }

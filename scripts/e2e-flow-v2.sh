@@ -1703,17 +1703,22 @@ EOF
         fi
     fi
     
-    [[ -z "$SELECTED_PLAN" && -z "$SELECTED_PLAN_FILE" ]] && {
-        log_prompt "Plan:"
-        echo "  [1] PLAN.md  [2] SPRINT.md  [3] Custom"
-        read -p "Choice: " plan_choice
-        case $plan_choice in
-            1) SELECTED_PLAN="PLAN.md" ;;
-            2) SELECTED_PLAN="SPRINT.md" ;;
-            3) read -p "Filename: " SELECTED_PLAN ;;
-            *) SELECTED_PLAN="SPRINT.md" ;;
-        esac
-    }
+    if [[ -z "$SELECTED_PLAN" && -z "$SELECTED_PLAN_FILE" ]]; then
+        if [[ "$INTERACTIVE" == "false" ]]; then
+            SELECTED_PLAN="PLAN.md"
+            log_info "Non-interactive mode: defaulting plan to PLAN.md"
+        else
+            log_prompt "Plan:"
+            echo "  [1] PLAN.md  [2] SPRINT.md  [3] Custom"
+            read -p "Choice: " plan_choice
+            case $plan_choice in
+                1) SELECTED_PLAN="PLAN.md" ;;
+                2) SELECTED_PLAN="SPRINT.md" ;;
+                3) read -p "Filename: " SELECTED_PLAN ;;
+                *) SELECTED_PLAN="SPRINT.md" ;;
+            esac
+        fi
+    fi
     
     log_info "Repo: $SELECTED_REPO_FULL"
     [[ -n "$SELECTED_PLAN_FILE" ]] && log_info "Plan file: $SELECTED_PLAN_FILE" || log_info "Plan: $SELECTED_PLAN"

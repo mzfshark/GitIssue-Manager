@@ -357,13 +357,19 @@ function main() {
   const args = process.argv.slice(2);
   const cfgIndex = args.indexOf('--config');
   const cfgPath = (cfgIndex >= 0 && args[cfgIndex + 1]) ? args[cfgIndex + 1] : path.join(__dirname, '../sync-helper/sync-config.json');
+  const planIndex = args.indexOf('--plan');
+  const planArg = (planIndex >= 0 && args[planIndex + 1]) ? args[planIndex + 1] : '';
   const plansIndex = args.indexOf('--plans');
   const plansArg = (plansIndex >= 0 && args[plansIndex + 1]) ? args[plansIndex + 1] : '';
   const plansDirIndex = args.indexOf('--plans-dir');
   const plansDirArg = (plansDirIndex >= 0 && args[plansDirIndex + 1]) ? args[plansDirIndex + 1] : '';
-  const selectedPlans = plansArg
-    ? plansArg.split(',').map((p) => p.trim()).filter(Boolean)
-    : [];
+  const selectedPlans = [];
+  if (plansArg) {
+    selectedPlans.push(...plansArg.split(',').map((p) => p.trim()).filter(Boolean));
+  }
+  if (planArg) {
+    selectedPlans.push(planArg.trim());
+  }
 
   // Output paths are resolved relative to where the command is executed.
   // This keeps all generated artifacts in the GitIssue-Manager repo even when scanning external repos.

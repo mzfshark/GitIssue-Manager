@@ -28,7 +28,11 @@ Commands (typical flow order):
                [--show-project]
   generate  [updates] [--repo <path|owner/name>]         Generate ISSUE_UPDATES.md from git log (defaults to current repo)
   prepare   [--repo <owner/name>]                        Generate engine-input.json (defaults to current repo)
-            [--config <path>]                            
+            [--config <path>] [--plan <file>|--plans <csv>] [--plans-dir <path>]
+  sync      [--repo <owner/name>]                        Convenience: prepare + deploy + registry:update
+            [--config <path>] [--dry-run|--confirm] [--plan <file>|--plans <csv>] [--plans-dir <path>]
+            [--link-hierarchy |--no-link-hierarchy]
+            [--parent-number <n>] [--replace-parent]
   deploy    [--repo <owner/name>]                        Execute GitHub writes (issues/project sync) 
             [--config <path>] --confirm 
             [--link-hierarchy |--no-link-hierarchy] 
@@ -1207,6 +1211,10 @@ run_for_targets() {
 
 cmd_prepare() {
   run_for_targets prepare "$@"
+}
+
+cmd_sync() {
+  run_for_targets sync "$@"
 }
 
 cmd_deploy() {
@@ -2503,6 +2511,7 @@ main() {
   case "$cmd" in
     generate) cmd_generate "$@" ;;
     prepare) cmd_prepare "$@" ;;
+    sync) cmd_sync "$@" ;;
     deploy) cmd_deploy "$@" ;;
     registry:update) cmd_registry_update "$@" ;;
     apply) cmd_apply "$@" ;;

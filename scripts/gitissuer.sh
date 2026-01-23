@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Minimal GitIssuer wrapper to support daemon steps.
-# Commands: add, prepare, deploy, registry:update, apply, e2e:run, link:hierarchy
+# Commands: add, prepare, sync, deploy, registry:update, apply, e2e:run, link:hierarchy
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -14,8 +14,10 @@ Usage: gitissuer.sh <command> [options]
 
 Commands:
   add --file <path> --output <path>        Copy ISSUE_UPDATES.md into a timestamped update file
-  prepare --repo <owner/name> [--config <path>] [--dry-run]
+  prepare --repo <owner/name> [--config <path>] [--dry-run] [--plan <file>|--plans <csv>] [--plans-dir <path>]
                                            Generate engine input from Markdown plans
+  sync --repo <owner/name> [--config <path>] [--dry-run|--confirm] [--plan <file>|--plans <csv>] [--plans-dir <path>] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
+                                           Convenience command: prepare + deploy + registry:update
   deploy --repo <owner/name> [--config <path>] [--batch] [--dry-run|--confirm] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
                                            Execute GitHub writes (issues + optional ProjectV2)
   registry:update --repo <owner/name> [--config <path>]
@@ -121,12 +123,18 @@ cmd_prepare() {
   local repo_full=""
   local config_path=""
   local dry_run="false"
+  local plan_arg=""
+  local plans_arg=""
+  local plans_dir_arg=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --repo) repo_full="$2"; shift 2 ;;
       --config) config_path="$2"; shift 2 ;;
       --dry-run) dry_run="true"; shift ;;
+      --plan) plan_arg="$2"; shift 2 ;;
+      --plans) plans_arg="$2"; shift 2 ;;
+      --plans-dir) plans_dir_arg="$2"; shift 2 ;;
       -h|--help) usage; exit 0 ;;
       *) echo "ERROR: Unknown arg: $1"; usage; exit 1 ;;
     esac
@@ -136,12 +144,119 @@ cmd_prepare() {
   cfg=$(resolve_config_path "$repo_full" "$config_path")
 
   # prepare.js already is deterministic; dry-run is informational for compatibility.
-  node "$PROJECT_ROOT/client/prepare.js" --config "$cfg"
+  local -a prepare_args=(--config "$cfg")
+  if [[ -n "$plans_arg" ]]; then
+    prepare_args+=(--plans "$plans_arg")
+  elif [[ -n "$plan_arg" ]]; then
+    prepare_args+=(--plan "$plan_arg")
+  fi
+  if [[ -n "$plans_dir_arg" ]]; then
+    prepare_args+=(--plans-dir "$plans_dir_arg")
+  fi
+  node "$PROJECT_ROOT/client/prepare.js" "${prepare_args[@]}"
   if [[ "$dry_run" == "true" ]]; then
     echo "OK: prepare (dry-run) completed for $repo_full"
   else
     echo "OK: prepare completed for $repo_full"
   fi
+}
+
+cmd_sync() {
+  require_cmd bash
+  require_cmd jq
+
+  local repo_full=""
+  local config_path=""
+
+  local confirm="false"
+  local dry_run="false"
+
+  local plan_arg=""
+  local plans_arg=""
+  local plans_dir_arg=""
+
+  local link_hierarchy="true"
+  local parent_number=""
+  local replace_parent="false"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --repo) repo_full="$2"; shift 2 ;;
+      --config) config_path="$2"; shift 2 ;;
+      --dry-run) dry_run="true"; shift ;;
+      --confirm) confirm="true"; shift ;;
+      --plan) plan_arg="$2"; shift 2 ;;
+      --plans) plans_arg="$2"; shift 2 ;;
+      --plans-dir) plans_dir_arg="$2"; shift 2 ;;
+      --link-hierarchy) link_hierarchy="true"; shift ;;
+      --no-link-hierarchy) link_hierarchy="false"; shift ;;
+      --parent-number) parent_number="$2"; shift 2 ;;
+      --replace-parent) replace_parent="true"; shift ;;
+      --batch) shift ;; # accepted for compatibility; sub-steps are non-interactive
+      -h|--help) usage; exit 0 ;;
+      *) echo "ERROR: Unknown arg: $1"; usage; exit 1 ;;
+    esac
+  done
+
+  if [[ "$confirm" == "true" && "$dry_run" == "true" ]]; then
+    echo "ERROR: Choose one: --dry-run or --confirm" >&2
+    exit 2
+  fi
+
+  if [[ "$confirm" != "true" && "$dry_run" != "true" ]]; then
+    echo "ERROR: Refusing to sync without --confirm (or preview with --dry-run)" >&2
+    exit 2
+  fi
+
+  # 1) Prepare artifacts
+  local -a prepare_args=(--repo "$repo_full")
+  if [[ -n "$config_path" ]]; then
+    prepare_args+=(--config "$config_path")
+  fi
+  if [[ "$dry_run" == "true" ]]; then
+    prepare_args+=(--dry-run)
+  fi
+  if [[ -n "$plans_arg" ]]; then
+    prepare_args+=(--plans "$plans_arg")
+  elif [[ -n "$plan_arg" ]]; then
+    prepare_args+=(--plan "$plan_arg")
+  fi
+  if [[ -n "$plans_dir_arg" ]]; then
+    prepare_args+=(--plans-dir "$plans_dir_arg")
+  fi
+  cmd_prepare "${prepare_args[@]}"
+
+  # 2) Deploy (dry-run or confirmed write)
+  local -a deploy_args=(--repo "$repo_full")
+  if [[ -n "$config_path" ]]; then
+    deploy_args+=(--config "$config_path")
+  fi
+  if [[ "$dry_run" == "true" ]]; then
+    deploy_args+=(--dry-run)
+  else
+    deploy_args+=(--confirm)
+  fi
+  if [[ "$link_hierarchy" == "true" ]]; then
+    deploy_args+=(--link-hierarchy)
+  else
+    deploy_args+=(--no-link-hierarchy)
+  fi
+  if [[ -n "$parent_number" ]]; then
+    deploy_args+=(--parent-number "$parent_number")
+  fi
+  if [[ "$replace_parent" == "true" ]]; then
+    deploy_args+=(--replace-parent)
+  fi
+  cmd_deploy "${deploy_args[@]}"
+
+  # 3) Update registry locally (required for later `apply` workflows)
+  local -a reg_args=(--repo "$repo_full")
+  if [[ -n "$config_path" ]]; then
+    reg_args+=(--config "$config_path")
+  fi
+  cmd_registry_update "${reg_args[@]}"
+
+  echo "OK: sync completed for $repo_full"
 }
 
 cmd_deploy() {
@@ -391,6 +506,7 @@ main() {
   case "$cmd" in
     add) cmd_add "$@" ;;
     prepare) cmd_prepare "$@" ;;
+    sync) cmd_sync "$@" ;;
     deploy) cmd_deploy "$@" ;;
     registry:update) cmd_registry_update "$@" ;;
     apply) cmd_apply "$@" ;;
