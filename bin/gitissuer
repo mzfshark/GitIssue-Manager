@@ -15,40 +15,25 @@ Target selection (all commands):
   --include-disabled     With --select, also show disabled repos in the prompt
   --all                 Run for all enabled repos in sync-helper/configs (gitissuer.enabled=true)
 
-Commands:
+Commands (typical flow order):
+  config <list|create|set|edit|delete|show|path>       Manage per-repo configs in sync-helper/configs
+  enable [--repo <owner/name>]                          Enable gitissuer automation for repo config
+  disable [--repo <owner/name>]                         Disable gitissuer automation for repo config
+  watch <enable|disable|list>                          Manage gitissuer.watch.enabled per repo (controls systemd watcher targets)
+  parent <set|show|clear> [--repo <owner/name>]        Manage gitissuer.hierarchy.parentIssueNumber in repo config
   generate [updates] [--repo <path|owner/name>]        Generate ISSUE_UPDATES.md from git log (defaults to current repo)
   prepare [--repo <owner/name>] [--config <path>]      Generate engine-input.json (defaults to current repo)
-  deploy [--repo <owner/name>] [--config <path>] --confirm
+  deploy [--repo <owner/name>] [--config <path>] --confirm [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
                                                        Execute GitHub writes (issues/project sync)
   registry:update [--repo <owner/name>] [--config <path>]
                                                        Update per-repo registry from engine input/output
+  link-hierarchy [--repo <owner/name>] [--parent-number <n>] [--metadata-file <path>] [--engine-output-file <path>] [--dry-run|--confirm] [--replace-parent] [--non-interactive]
+                                                       Link parent↔child hierarchy only (E2E stage 5)
   apply [--repo <owner/name>] [--config <path>] [--file <ISSUE_UPDATES.md>] [--dry-run|--confirm]
                                                        Apply bounded ISSUE_UPDATES actions using the registry
   e2e:run [--repo <owner/name>] [--config <path>] [--dry-run|--confirm] [--non-interactive]
                                                        Run E2E orchestrator (dry-run by default)
-  enable [--repo <owner/name>]                          Enable gitissuer automation for repo config
-  disable [--repo <owner/name>]                         Disable gitissuer automation for repo config
-  config <list|create|edit|show|path>                  Create/edit per-repo configs in sync-helper/configs
   check update [--repo <owner/name>] [--limit N] [--since <ISO-8601>]  List recently-updated issues in a repo (read-only)
-  watch <enable|disable|list>                          Manage gitissuer.watch.enabled per repo (controls systemd watcher targets)
-
-Examples:
-  gitissuer generate
-  gitissuer generate updates --repo /opt/aragon-app
-  gitissuer prepare --repo Axodus/AragonOSX
-  gitissuer deploy --repo Axodus/AragonOSX --confirm
-  gitissuer registry:update --repo Axodus/AragonOSX
-  gitissuer apply --repo Axodus/AragonOSX --dry-run
-  gitissuer apply --repo Axodus/AragonOSX --confirm
-  gitissuer enable --repo Axodus/AragonOSX
-  gitissuer disable --repo Axodus/AragonOSX
-  gitissuer config list --include-disabled
-  gitissuer config create --repo Axodus/new-repo --local-path ../new-repo
-  gitissuer config edit --repo Axodus/AragonOSX
-  gitissuer check update --repo Axodus/AragonOSX --limit 20 --since 2026-01-01T00:00:00Z
-  gitissuer watch enable --repo Axodus/AragonOSX
-  gitissuer watch disable --repo Axodus/AragonOSX
-  gitissuer watch list --include-disabled
 EOF
 }
 
@@ -126,6 +111,51 @@ require_cmd() {
   fi
 }
 
+is_interactive() {
+  # Avoid blocking in non-interactive contexts (systemd, CI, pipes, etc.)
+  if [[ "${GITISSUER_NONINTERACTIVE-}" == "1" ]]; then
+    return 1
+  fi
+  [[ -t 0 && -t 1 ]]
+}
+
+handle_disabled_repo_or_exit() {
+  # If repo is disabled, offer to enable it (interactive), or skip.
+  # Returns 0 to continue, 1 to skip.
+  local repo_full="$1"
+  local action_desc="$2"
+
+  echo "[WARN] Repo is disabled (gitissuer.enabled=false): $repo_full" >&2
+  echo "[HINT] You can enable it with: gitissuer enable --repo $repo_full" >&2
+
+  if ! is_interactive; then
+    return 1
+  fi
+
+  local answer
+  read -r -p "Repo is disabled. Choose: [c]ancel/[e]nable/[s]kip (default: cancel) for ${action_desc}: " answer
+  answer="$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+
+  case "$answer" in
+    ""|c|cancel)
+      echo "[INFO] Cancelled." >&2
+      exit 0
+      ;;
+    e|enable|y|yes)
+      set_repo_enabled_flag "$repo_full" true
+      return 0
+      ;;
+    s|skip|n|no)
+      echo "[INFO] Skipping disabled repo: $repo_full" >&2
+      return 1
+      ;;
+    *)
+      echo "[INFO] Cancelled." >&2
+      exit 0
+      ;;
+  esac
+}
+
 list_known_repos() {
   require_cmd jq
   if [[ ! -d "$CONFIGS_DIR" ]]; then
@@ -179,7 +209,7 @@ config_path_for_repo_full() {
 }
 
 default_local_path_for_repo_full() {
-  # If running inside the target repo, use a relative path from GitIssue-Manager root.
+  # If running inside the target repo, use an absolute localPath.
   local repo_root
   repo_root="$(infer_git_root_from_cwd)"
   if [[ -z "$repo_root" ]]; then
@@ -187,17 +217,15 @@ default_local_path_for_repo_full() {
     return 0
   fi
 
-  # Try to compute a relative path using Python if available; else fall back to absolute.
   if command -v python3 >/dev/null 2>&1; then
     python3 - <<'PY'
 import os
 import sys
-root = os.environ.get('GITISSUER_ROOT')
 repo = os.environ.get('GITISSUER_REPO_ROOT')
-if not root or not repo:
+if not repo:
   print('')
   sys.exit(0)
-print(os.path.relpath(repo, root))
+print(os.path.abspath(os.path.expanduser(repo)))
 PY
     return 0
   fi
@@ -205,10 +233,98 @@ PY
   echo "$repo_root"
 }
 
+abs_path() {
+  local input="$1"
+  if [[ -z "$input" ]]; then
+    echo ""
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$input" <<'PY'
+import os
+import sys
+p = sys.argv[1]
+print(os.path.abspath(os.path.expanduser(p)))
+PY
+    return 0
+  fi
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$input"
+    return 0
+  fi
+  if command -v readlink >/dev/null 2>&1; then
+    readlink -f "$input" 2>/dev/null || echo "$input"
+    return 0
+  fi
+  echo "$input"
+}
+
+canonical_dir_or_abs() {
+  local input="$1"
+  if [[ -z "$input" ]]; then
+    echo ""
+    return 0
+  fi
+  local normalized
+  normalized="$(abs_path "$input")"
+  if [[ -d "$normalized" ]]; then
+    (cd "$normalized" && pwd -P) 2>/dev/null || echo "$normalized"
+    return 0
+  fi
+  echo "$normalized"
+}
+
+prompt_bool() {
+  local prompt="$1"
+  local default_value="$2" # true|false
+
+  local suffix="[y/N]"
+  if [[ "$default_value" == "true" ]]; then
+    suffix="[Y/n]"
+  fi
+
+  local answer=""
+  read -r -p "$prompt $suffix: " answer
+  answer="$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+  if [[ -z "$answer" ]]; then
+    printf '%s' "$default_value"
+    return 0
+  fi
+  case "$answer" in
+    y|yes|true|1) printf '%s' "true" ;;
+    n|no|false|0) printf '%s' "false" ;;
+    *) printf '%s' "$default_value" ;;
+  esac
+}
+
+prompt_string() {
+  local prompt="$1"
+  local default_value="$2"
+  local answer=""
+  if [[ -n "$default_value" ]]; then
+    read -r -p "$prompt (default: $default_value): " answer
+  else
+    read -r -p "$prompt: " answer
+  fi
+  if [[ -z "$answer" ]]; then
+    printf '%s' "$default_value"
+  else
+    printf '%s' "$answer"
+  fi
+}
+
 create_or_update_config() {
   local repo_full="$1"
   local local_path="$2"
   local enabled_value="${3:-true}"
+  local enable_project_sync="${4:-false}"
+  local auto_deploy="${5:-false}"
+  local default_estimate_hours="${6:-1}"
+  local default_priority="${7:-NORMAL}"
+  local default_status="${8:-TODO}"
+  local default_start_date="${9:-TBD}"
+  local default_end_date="${10:-TBD}"
+  local default_labels_csv="${11:-plan}"
 
   require_cmd jq
 
@@ -225,6 +341,25 @@ create_or_update_config() {
   local tmp
   tmp="${cfg_path}.tmp-${$}"
 
+  # Normalize localPath to absolute.
+  local_path="$(abs_path "$local_path")"
+
+  local labels_json
+  if command -v python3 >/dev/null 2>&1; then
+    labels_json=$(LABELS_CSV="$default_labels_csv" python3 - <<'PY'
+import json
+import os
+csv = os.environ.get('LABELS_CSV','')
+labels = [x.strip() for x in csv.split(',') if x.strip()]
+if not labels:
+  labels = ['plan']
+print(json.dumps(labels))
+PY
+    )
+  else
+    labels_json=$(printf '%s' "$default_labels_csv" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length>0)) | if length==0 then ["plan"] else . end')
+  fi
+
   if [[ -f "$cfg_path" ]]; then
     # Preserve existing config, but ensure required fields exist.
     jq \
@@ -232,7 +367,29 @@ create_or_update_config() {
       --arg repo "$repo_full" \
       --arg localPath "$local_path" \
       --argjson enabled "$enabled_value" \
-      '.owner = ($owner) | .repo = ($repo) | .localPath = ($localPath) | (.gitissuer //= {}) | .gitissuer.enabled = $enabled' \
+      --argjson enableProjectSync "$enable_project_sync" \
+      --argjson autoDeploy "$auto_deploy" \
+      --argjson defaultEstimateHours "$default_estimate_hours" \
+      --arg defaultPriority "$default_priority" \
+      --arg defaultStatus "$default_status" \
+      --arg defaultStartDate "$default_start_date" \
+      --arg defaultEndDate "$default_end_date" \
+      --argjson defaultLabels "$labels_json" \
+      '.owner = ($owner)
+        | .repo = ($repo)
+        | .localPath = ($localPath)
+        | .enableProjectSync = $enableProjectSync
+        | (.gitissuer //= {})
+        | .gitissuer.enabled = $enabled
+        | .gitissuer.autoDeploy = $autoDeploy
+        | (.defaults //= {})
+        | .defaults.defaultEstimateHours = $defaultEstimateHours
+        | .defaults.defaultPriority = $defaultPriority
+        | .defaults.defaultStatus = $defaultStatus
+        | .defaults.defaultStartDate = $defaultStartDate
+        | .defaults.defaultEndDate = $defaultEndDate
+        | .defaults.defaultLabels = $defaultLabels
+      ' \
       "$cfg_path" >"$tmp"
   else
     # Minimal skeleton config.
@@ -241,19 +398,27 @@ create_or_update_config() {
       --arg repo "$repo_full" \
       --arg localPath "$local_path" \
       --argjson enabled "$enabled_value" \
+      --argjson enableProjectSync "$enable_project_sync" \
+      --argjson autoDeploy "$auto_deploy" \
+      --argjson defaultEstimateHours "$default_estimate_hours" \
+      --arg defaultPriority "$default_priority" \
+      --arg defaultStatus "$default_status" \
+      --arg defaultStartDate "$default_start_date" \
+      --arg defaultEndDate "$default_end_date" \
+      --argjson defaultLabels "$labels_json" \
       '{
         owner: $owner,
         repo: $repo,
         localPath: $localPath,
-        enableProjectSync: false,
-        gitissuer: { enabled: $enabled, autoDeploy: false },
+        enableProjectSync: $enableProjectSync,
+        gitissuer: { enabled: $enabled, autoDeploy: $autoDeploy },
         defaults: {
-          defaultEstimateHours: 1,
-          defaultPriority: "NORMAL",
-          defaultStatus: "TODO",
-          defaultStartDate: "TBD",
-          defaultEndDate: "TBD",
-          defaultLabels: ["plan"]
+          defaultEstimateHours: $defaultEstimateHours,
+          defaultPriority: $defaultPriority,
+          defaultStatus: $defaultStatus,
+          defaultStartDate: $defaultStartDate,
+          defaultEndDate: $defaultEndDate,
+          defaultLabels: $defaultLabels
         }
       }' >"$tmp"
   fi
@@ -269,8 +434,81 @@ open_in_editor_or_print() {
     "$EDITOR" "$file_path"
     return 0
   fi
+  if command -v nano >/dev/null 2>&1 && is_interactive; then
+    nano "$file_path"
+    return 0
+  fi
+  if command -v vi >/dev/null 2>&1 && is_interactive; then
+    vi "$file_path"
+    return 0
+  fi
   echo "[INFO] EDITOR is not set; open this file in your editor:" >&2
   echo "$file_path"
+}
+
+labels_csv_to_json() {
+  local csv="$1"
+  if command -v python3 >/dev/null 2>&1; then
+    LABELS_CSV="$csv" python3 - <<'PY'
+import json
+import os
+csv = os.environ.get('LABELS_CSV','')
+labels = [x.strip() for x in csv.split(',') if x.strip()]
+if not labels:
+  labels = ['plan']
+print(json.dumps(labels))
+PY
+    return 0
+  fi
+  printf '%s' "$csv" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length>0)) | if length==0 then ["plan"] else . end'
+}
+
+rename_config_for_repo_full() {
+  local old_repo_full="$1"
+  local new_repo_full="$2"
+  local force="${3:-false}"
+
+  local src
+  src="$(resolve_config_path_from_repo_full "$old_repo_full" || true)"
+  if [[ -z "$src" || ! -f "$src" ]]; then
+    echo "[ERROR] Config not found for: $old_repo_full" >&2
+    exit 2
+  fi
+
+  local dest
+  dest="$(config_filename_for_repo_full "$new_repo_full")"
+  if [[ -f "$dest" && "$force" != "true" ]]; then
+    echo "[ERROR] Target config already exists: $dest" >&2
+    echo "[HINT] Re-run with --force to overwrite." >&2
+    exit 2
+  fi
+
+  mkdir -p "$(dirname "$dest")"
+  mv -f "$src" "$dest"
+  echo "[OK] Renamed config file: $src -> $dest"
+}
+
+rename_config_file_to_repo_full() {
+  local src="$1"
+  local new_repo_full="$2"
+  local force="${3:-false}"
+
+  if [[ -z "$src" || ! -f "$src" ]]; then
+    echo "[ERROR] Config file not found: $src" >&2
+    exit 2
+  fi
+
+  local dest
+  dest="$(config_filename_for_repo_full "$new_repo_full")"
+  if [[ -f "$dest" && "$force" != "true" ]]; then
+    echo "[ERROR] Target config already exists: $dest" >&2
+    echo "[HINT] Re-run with --force to overwrite." >&2
+    exit 2
+  fi
+
+  mkdir -p "$(dirname "$dest")"
+  mv -f "$src" "$dest"
+  echo "[OK] Renamed config file: $src -> $dest"
 }
 
 parse_repo_from_args_for_config() {
@@ -708,6 +946,61 @@ set_repo_enabled_flag() {
   echo "[OK] Updated $cfg: gitissuer.enabled=$enabled_value"
 }
 
+set_repo_parent_issue_number() {
+  require_cmd jq
+  local repo_full="$1"
+  local parent_number="$2"
+
+  if [[ -z "$parent_number" || ! "$parent_number" =~ ^[0-9]+$ ]]; then
+    echo "[ERROR] --number must be a positive integer" >&2
+    exit 2
+  fi
+
+  local cfg
+  cfg="$(find_config_for_repo_full "$repo_full")"
+  if [[ -z "$cfg" || ! -f "$cfg" ]]; then
+    echo "[ERROR] Could not find config for repo: $repo_full" >&2
+    echo "[HINT] Expected a file in $CONFIGS_DIR with .repo == '$repo_full'" >&2
+    exit 2
+  fi
+
+  local tmp
+  tmp="${cfg}.tmp-${$}"
+  jq --argjson v "$parent_number" '.gitissuer.hierarchy.parentIssueNumber = $v' "$cfg" >"$tmp"
+  mv "$tmp" "$cfg"
+  echo "[OK] Updated $cfg: gitissuer.hierarchy.parentIssueNumber=$parent_number"
+}
+
+clear_repo_parent_issue_number() {
+  require_cmd jq
+  local repo_full="$1"
+
+  local cfg
+  cfg="$(find_config_for_repo_full "$repo_full")"
+  if [[ -z "$cfg" || ! -f "$cfg" ]]; then
+    echo "[ERROR] Could not find config for repo: $repo_full" >&2
+    echo "[HINT] Expected a file in $CONFIGS_DIR with .repo == '$repo_full'" >&2
+    exit 2
+  fi
+
+  local tmp
+  tmp="${cfg}.tmp-${$}"
+  jq 'if .gitissuer == null then . else (.gitissuer.hierarchy.parentIssueNumber = null) end' "$cfg" >"$tmp"
+  mv "$tmp" "$cfg"
+  echo "[OK] Updated $cfg: gitissuer.hierarchy.parentIssueNumber cleared"
+}
+
+get_repo_parent_issue_number() {
+  require_cmd jq
+  local repo_full="$1"
+  local cfg
+  cfg="$(find_config_for_repo_full "$repo_full")"
+  if [[ -z "$cfg" || ! -f "$cfg" ]]; then
+    return 0
+  fi
+  jq -r '.gitissuer.hierarchy.parentIssueNumber // empty' "$cfg" 2>/dev/null || true
+}
+
 extract_repo_flag_or_infer() {
   local repo_full=""
   local want_select="false"
@@ -822,8 +1115,11 @@ run_for_targets() {
     local enabled
     enabled="$(is_repo_enabled_in_config "$t")"
     if [[ "$enabled" != "true" ]]; then
-      echo "[INFO] Skipping disabled repo: $t" >&2
-      continue
+      if handle_disabled_repo_or_exit "$t" "$subcmd"; then
+        :
+      else
+        continue
+      fi
     fi
     echo "[INFO] Running $subcmd for $t" >&2
     /bin/bash "$ROOT/scripts/gitissuer.sh" "$subcmd" --repo "$t" "${passthrough[@]}" || rc=$?
@@ -850,6 +1146,10 @@ cmd_apply() {
 
 cmd_e2e_run() {
   run_for_targets e2e:run "$@"
+}
+
+cmd_link_hierarchy() {
+  run_for_targets link:hierarchy "$@"
 }
 
 cmd_enable() {
@@ -938,8 +1238,11 @@ cmd_generate() {
       local enabled
       enabled="$(is_repo_enabled_in_config "$arg")"
       if [[ "$enabled" != "true" ]]; then
-        echo "[INFO] Skipping generate because gitissuer.enabled=false for $arg"
-        return 0
+        if handle_disabled_repo_or_exit "$arg" "generate"; then
+          :
+        else
+          return 0
+        fi
       fi
     fi
 
@@ -1009,8 +1312,11 @@ cmd_generate() {
   local enabled
   enabled="$(is_repo_enabled_in_config "$repo_full")"
   if [[ "$enabled" != "true" ]]; then
-    echo "[INFO] Skipping generate because gitissuer.enabled=false for $repo_full"
-    return 0
+    if handle_disabled_repo_or_exit "$repo_full" "generate"; then
+      :
+    else
+      return 0
+    fi
   fi
 
   generate_for_repo "$repo_root"
@@ -1085,10 +1391,31 @@ cmd_config() {
       local want_select="false"
       local include_disabled="true" # config mgmt should be able to target disabled
 
+      local repo_was_inferred="false"
+
+      local enable_project_sync=""
+      local auto_deploy=""
+      local default_estimate_hours=""
+      local default_priority=""
+      local default_status=""
+      local default_start_date=""
+      local default_end_date=""
+      local default_labels_csv=""
+
       while [[ $# -gt 0 ]]; do
         case "$1" in
           --repo) repo_full="$2"; shift 2 ;;
           --local-path) local_path="$2"; shift 2 ;;
+          --enable-project-sync) enable_project_sync="true"; shift ;;
+          --disable-project-sync) enable_project_sync="false"; shift ;;
+          --auto-deploy) auto_deploy="true"; shift ;;
+          --no-auto-deploy) auto_deploy="false"; shift ;;
+          --default-estimate-hours) default_estimate_hours="$2"; shift 2 ;;
+          --default-priority) default_priority="$2"; shift 2 ;;
+          --default-status) default_status="$2"; shift 2 ;;
+          --default-start-date) default_start_date="$2"; shift 2 ;;
+          --default-end-date) default_end_date="$2"; shift 2 ;;
+          --default-labels) default_labels_csv="$2"; shift 2 ;;
           --select) want_select="true"; shift ;;
           --all) echo "[ERROR] Refusing config create with --all (too risky). Use --select or --repo." >&2; exit 2 ;;
           --include-disabled) include_disabled="true"; shift ;;
@@ -1108,6 +1435,7 @@ cmd_config() {
           # Default to current repo if possible; else prompt selection.
           if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
             repo_full="$(infer_repo_full_from_cwd)"
+            repo_was_inferred="true"
           else
             mapfile -t picked < <(prompt_select_repo_slugs --include-disabled)
             if (( ${#picked[@]} > 0 )) && [[ "${picked[0]}" == "__CANCEL__" ]]; then
@@ -1131,7 +1459,459 @@ cmd_config() {
         fi
       fi
 
-      create_or_update_config "$repo_full" "$local_path" true
+      # Interactive prompts for missing values.
+      if is_interactive; then
+        if [[ "$repo_was_inferred" == "true" ]]; then
+          repo_full="$(prompt_string "GitHub repo (owner/name)" "$repo_full")"
+        fi
+
+        local cfg_path
+        cfg_path="$(config_path_for_repo_full "$repo_full")"
+
+        local current_abs
+        current_abs=""
+        if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          current_abs="$(infer_git_root_from_cwd)"
+        fi
+
+        if [[ -z "$local_path" ]]; then
+          echo "[INFO] localPath should be an absolute path. Prefer /opt/<REPO> when possible." >&2
+          local_path="$(prompt_string "localPath" "${current_abs:-/opt/${repo_full##*/}}")"
+        fi
+
+        local_path="$(abs_path "$local_path")"
+        if [[ ! -d "$local_path" ]]; then
+          echo "[WARN] localPath does not exist: $local_path" >&2
+        fi
+
+        local existing_enable_project_sync="false"
+        local existing_auto_deploy="false"
+        local existing_default_estimate_hours="1"
+        local existing_default_priority="NORMAL"
+        local existing_default_status="TODO"
+        local existing_default_start_date="TBD"
+        local existing_default_end_date="TBD"
+        local existing_default_labels_csv="plan"
+
+        if [[ -f "$cfg_path" ]]; then
+          existing_enable_project_sync="$(jq -r 'if .enableProjectSync == null then false else .enableProjectSync end' "$cfg_path" 2>/dev/null || echo false)"
+          existing_auto_deploy="$(jq -r 'if .gitissuer.autoDeploy == null then false else .gitissuer.autoDeploy end' "$cfg_path" 2>/dev/null || echo false)"
+          existing_default_estimate_hours="$(jq -r '.defaults.defaultEstimateHours // 1' "$cfg_path" 2>/dev/null || echo 1)"
+          existing_default_priority="$(jq -r '.defaults.defaultPriority // "NORMAL"' "$cfg_path" 2>/dev/null || echo NORMAL)"
+          existing_default_status="$(jq -r '.defaults.defaultStatus // "TODO"' "$cfg_path" 2>/dev/null || echo TODO)"
+          existing_default_start_date="$(jq -r '.defaults.defaultStartDate // "TBD"' "$cfg_path" 2>/dev/null || echo TBD)"
+          existing_default_end_date="$(jq -r '.defaults.defaultEndDate // "TBD"' "$cfg_path" 2>/dev/null || echo TBD)"
+          existing_default_labels_csv="$(jq -r '.defaults.defaultLabels // ["plan"] | join(",")' "$cfg_path" 2>/dev/null || echo plan)"
+        fi
+
+        if [[ -z "$enable_project_sync" ]]; then
+          enable_project_sync="$(prompt_bool "Enable ProjectV2 sync?" "$existing_enable_project_sync")"
+        fi
+        if [[ -z "$auto_deploy" ]]; then
+          auto_deploy="$(prompt_bool "Enable autoDeploy?" "$existing_auto_deploy")"
+        fi
+
+        if [[ -z "$default_estimate_hours" ]]; then
+          default_estimate_hours="$(prompt_string "Default estimate hours" "$existing_default_estimate_hours")"
+        fi
+        if [[ -z "$default_priority" ]]; then
+          default_priority="$(prompt_string "Default priority" "$existing_default_priority")"
+        fi
+        if [[ -z "$default_status" ]]; then
+          default_status="$(prompt_string "Default status" "$existing_default_status")"
+        fi
+        if [[ -z "$default_start_date" ]]; then
+          default_start_date="$(prompt_string "Default start date" "$existing_default_start_date")"
+        fi
+        if [[ -z "$default_end_date" ]]; then
+          default_end_date="$(prompt_string "Default end date" "$existing_default_end_date")"
+        fi
+        if [[ -z "$default_labels_csv" ]]; then
+          default_labels_csv="$(prompt_string "Default labels (comma-separated)" "$existing_default_labels_csv")"
+        fi
+      fi
+
+      # Non-interactive fallbacks.
+      [[ -z "$enable_project_sync" ]] && enable_project_sync="false"
+      [[ -z "$auto_deploy" ]] && auto_deploy="false"
+      [[ -z "$default_estimate_hours" ]] && default_estimate_hours="1"
+      [[ -z "$default_priority" ]] && default_priority="NORMAL"
+      [[ -z "$default_status" ]] && default_status="TODO"
+      [[ -z "$default_start_date" ]] && default_start_date="TBD"
+      [[ -z "$default_end_date" ]] && default_end_date="TBD"
+      [[ -z "$default_labels_csv" ]] && default_labels_csv="plan"
+
+      create_or_update_config "$repo_full" "$local_path" true \
+        "$enable_project_sync" \
+        "$auto_deploy" \
+        "$default_estimate_hours" \
+        "$default_priority" \
+        "$default_status" \
+        "$default_start_date" \
+        "$default_end_date" \
+        "$default_labels_csv"
+      ;;
+
+    set)
+      require_cmd jq
+
+      mapfile -t parsed < <(parse_repo_from_args_for_config --include-disabled "$@")
+      local mode="${parsed[0]}"
+      local repo_full="${parsed[1]}"
+      local include_disabled="${parsed[2]}"
+      local rest=("${parsed[@]:3}")
+
+      local new_repo_full=""
+      local local_path=""
+      local enable_project_sync=""
+      local enabled_value=""
+      local watch_enabled=""
+      local auto_deploy=""
+      local parent_issue_number=""
+
+      local default_estimate_hours=""
+      local default_priority=""
+      local default_status=""
+      local default_start_date=""
+      local default_end_date=""
+      local default_labels_csv=""
+
+      local force="false"
+
+      local i=0
+      while [[ $i -lt ${#rest[@]} ]]; do
+        case "${rest[$i]}" in
+          --set-repo)
+            new_repo_full="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --local-path)
+            local_path="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --enable-project-sync)
+            enable_project_sync="true"; i=$((i+1))
+            ;;
+          --disable-project-sync)
+            enable_project_sync="false"; i=$((i+1))
+            ;;
+          --enabled)
+            enabled_value="true"; i=$((i+1))
+            ;;
+          --disabled)
+            enabled_value="false"; i=$((i+1))
+            ;;
+          --watch-enabled)
+            watch_enabled="true"; i=$((i+1))
+            ;;
+          --watch-disabled)
+            watch_enabled="false"; i=$((i+1))
+            ;;
+          --auto-deploy)
+            auto_deploy="true"; i=$((i+1))
+            ;;
+          --no-auto-deploy)
+            auto_deploy="false"; i=$((i+1))
+            ;;
+          --parent-number)
+            parent_issue_number="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --clear-parent)
+            parent_issue_number="__CLEAR__"; i=$((i+1))
+            ;;
+          --default-estimate-hours)
+            default_estimate_hours="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --default-priority)
+            default_priority="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --default-status)
+            default_status="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --default-start-date)
+            default_start_date="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --default-end-date)
+            default_end_date="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --default-labels)
+            default_labels_csv="${rest[$((i+1))]}"; i=$((i+2))
+            ;;
+          --force)
+            force="true"; i=$((i+1))
+            ;;
+          -h|--help)
+            usage; exit 0
+            ;;
+          *)
+            echo "[ERROR] Unknown arg: ${rest[$i]}" >&2
+            usage
+            exit 1
+            ;;
+        esac
+      done
+
+      mapfile -t targets < <(targets_for_mode "$mode" "$repo_full" "$include_disabled" || true)
+      if (( ${#targets[@]} == 0 )); then
+        exit 0
+      fi
+      if (( ${#targets[@]} > 1 )); then
+        echo "[ERROR] config set supports a single target. Use --repo or select exactly one." >&2
+        exit 2
+      fi
+
+      local t="${targets[0]}"
+      local cfg
+      cfg="$(resolve_config_path_from_repo_full "$t" || true)"
+      if [[ -z "$cfg" || ! -f "$cfg" ]]; then
+        echo "[ERROR] Missing config for $t" >&2
+        echo "[HINT] Create it first: gitissuer config create --repo $t --local-path <path>" >&2
+        exit 2
+      fi
+
+      local tmp
+      tmp="${cfg}.tmp-${$}"
+
+      local effective_repo_full="$t"
+      if [[ -n "$new_repo_full" ]]; then
+        effective_repo_full="$new_repo_full"
+      fi
+      local effective_owner="${effective_repo_full%%/*}"
+
+      local effective_local_path=""
+      if [[ -n "$local_path" ]]; then
+        effective_local_path="$(abs_path "$local_path")"
+      fi
+
+      local labels_json=""
+      if [[ -n "$default_labels_csv" ]]; then
+        labels_json="$(labels_csv_to_json "$default_labels_csv")"
+      fi
+
+      jq \
+        --arg repo "$effective_repo_full" \
+        --arg owner "$effective_owner" \
+        --arg localPath "$effective_local_path" \
+        --argjson hasLocalPath "$( [[ -n "$effective_local_path" ]] && echo true || echo false )" \
+        --argjson enableProjectSync "${enable_project_sync:-null}" \
+        --argjson hasEnableProjectSync "$( [[ -n "$enable_project_sync" ]] && echo true || echo false )" \
+        --argjson enabled "${enabled_value:-null}" \
+        --argjson hasEnabled "$( [[ -n "$enabled_value" ]] && echo true || echo false )" \
+        --argjson watchEnabled "${watch_enabled:-null}" \
+        --argjson hasWatchEnabled "$( [[ -n "$watch_enabled" ]] && echo true || echo false )" \
+        --argjson autoDeploy "${auto_deploy:-null}" \
+        --argjson hasAutoDeploy "$( [[ -n "$auto_deploy" ]] && echo true || echo false )" \
+        --arg parentNumber "${parent_issue_number:-}" \
+        --argjson hasParentNumber "$( [[ -n "$parent_issue_number" ]] && echo true || echo false )" \
+        --argjson defaultEstimateHours "${default_estimate_hours:-null}" \
+        --argjson hasDefaultEstimateHours "$( [[ -n "$default_estimate_hours" ]] && echo true || echo false )" \
+        --arg defaultPriority "${default_priority:-}" \
+        --argjson hasDefaultPriority "$( [[ -n "$default_priority" ]] && echo true || echo false )" \
+        --arg defaultStatus "${default_status:-}" \
+        --argjson hasDefaultStatus "$( [[ -n "$default_status" ]] && echo true || echo false )" \
+        --arg defaultStartDate "${default_start_date:-}" \
+        --argjson hasDefaultStartDate "$( [[ -n "$default_start_date" ]] && echo true || echo false )" \
+        --arg defaultEndDate "${default_end_date:-}" \
+        --argjson hasDefaultEndDate "$( [[ -n "$default_end_date" ]] && echo true || echo false )" \
+        --argjson defaultLabels "${labels_json:-null}" \
+        --argjson hasDefaultLabels "$( [[ -n "$labels_json" ]] && echo true || echo false )" \
+        '.
+        | .repo = $repo
+        | .owner = $owner
+        | (if $hasLocalPath then .localPath = $localPath else . end)
+        | (if $hasEnableProjectSync then .enableProjectSync = $enableProjectSync else . end)
+        | (.gitissuer //= {})
+        | (if $hasEnabled then .gitissuer.enabled = $enabled else . end)
+        | (if $hasAutoDeploy then .gitissuer.autoDeploy = $autoDeploy else . end)
+        | (.gitissuer.watch //= {})
+        | (if $hasWatchEnabled then .gitissuer.watch.enabled = $watchEnabled else . end)
+        | (if $hasParentNumber then
+            if $parentNumber == "__CLEAR__" then
+              (.gitissuer.hierarchy.parentIssueNumber = null)
+            else
+              (.gitissuer.hierarchy.parentIssueNumber = ($parentNumber|tonumber))
+            end
+          else . end)
+        | (.defaults //= {})
+        | (if $hasDefaultEstimateHours then .defaults.defaultEstimateHours = $defaultEstimateHours else . end)
+        | (if $hasDefaultPriority then .defaults.defaultPriority = $defaultPriority else . end)
+        | (if $hasDefaultStatus then .defaults.defaultStatus = $defaultStatus else . end)
+        | (if $hasDefaultStartDate then .defaults.defaultStartDate = $defaultStartDate else . end)
+        | (if $hasDefaultEndDate then .defaults.defaultEndDate = $defaultEndDate else . end)
+        | (if $hasDefaultLabels then .defaults.defaultLabels = $defaultLabels else . end)
+        ' \
+        "$cfg" >"$tmp"
+
+      mv "$tmp" "$cfg"
+      echo "[OK] Updated config: $cfg"
+
+      if [[ -n "$new_repo_full" ]]; then
+        rename_config_file_to_repo_full "$cfg" "$new_repo_full" "$force"
+      fi
+      ;;
+
+    delete|rm|remove)
+      require_cmd jq
+
+      mapfile -t parsed < <(parse_repo_from_args_for_config --include-disabled "$@")
+      local mode="${parsed[0]}"
+      local repo_full="${parsed[1]}"
+      local include_disabled="${parsed[2]}"
+
+      local rest=("${parsed[@]:3}")
+      local confirm="false"
+      local force="false"
+      local j=0
+      while [[ $j -lt ${#rest[@]} ]]; do
+        case "${rest[$j]}" in
+          --confirm) confirm="true"; j=$((j+1)) ;;
+          --force) force="true"; j=$((j+1)) ;;
+          -h|--help) usage; exit 0 ;;
+          *)
+            echo "[ERROR] Unknown arg: ${rest[$j]}" >&2
+            usage
+            exit 1
+            ;;
+        esac
+      done
+
+      mapfile -t targets < <(targets_for_mode "$mode" "$repo_full" "$include_disabled" || true)
+      if (( ${#targets[@]} == 0 )); then
+        exit 0
+      fi
+
+      if [[ "$confirm" != "true" && "$force" != "true" ]]; then
+        if is_interactive; then
+          echo "About to delete ${#targets[@]} config(s):" >&2
+          local t
+          for t in "${targets[@]}"; do
+            echo "  - $t" >&2
+          done
+          local ans
+          read -r -p "Type 'delete' to confirm: " ans
+          if [[ "$ans" != "delete" ]]; then
+            echo "[INFO] Cancelled." >&2
+            exit 0
+          fi
+        else
+          echo "[ERROR] Refusing to delete configs without --confirm in non-interactive mode." >&2
+          exit 2
+        fi
+      fi
+
+      local t
+      for t in "${targets[@]}"; do
+        local cfg
+        cfg="$(resolve_config_path_from_repo_full "$t" || true)"
+        if [[ -z "$cfg" || ! -f "$cfg" ]]; then
+          echo "[WARN] Config not found for $t" >&2
+          continue
+        fi
+        rm -f "$cfg"
+        echo "[OK] Deleted config: $cfg"
+      done
+      ;;
+
+    dedupe|dedup|duplicates)
+      require_cmd jq
+
+      local include_disabled="false"
+      local by="both" # repo|path|both
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --include-disabled) include_disabled="true"; shift ;;
+          --by) by="$2"; shift 2 ;;
+          -h|--help) usage; exit 0 ;;
+          *) echo "[ERROR] Unknown arg: $1" >&2; usage; exit 1 ;;
+        esac
+      done
+
+      if [[ ! -d "$CONFIGS_DIR" ]]; then
+        echo "[ERROR] Configs dir not found: $CONFIGS_DIR" >&2
+        exit 2
+      fi
+
+      # Build a TSV inventory:
+      # repo<TAB>enabled<TAB>watch<TAB>localPath<TAB>canonicalLocalPath<TAB>file
+      local inventory
+      inventory="$(
+        shopt -s nullglob
+        local cfg
+        for cfg in "$CONFIGS_DIR"/*.json; do
+          local repo
+          repo="$(jq -r '.repo // empty' "$cfg" 2>/dev/null || true)"
+          [[ -z "$repo" ]] && continue
+          local enabled
+          enabled="$(jq -r 'if .gitissuer.enabled == null then true else .gitissuer.enabled end' "$cfg" 2>/dev/null || echo true)"
+          local watch
+          watch="$(jq -r 'if .gitissuer.watch.enabled == null then false else .gitissuer.watch.enabled end' "$cfg" 2>/dev/null || echo false)"
+          local local_path
+          local_path="$(jq -r '.localPath // empty' "$cfg" 2>/dev/null || true)"
+          if [[ "$include_disabled" != "true" && "$enabled" != "true" ]]; then
+            continue
+          fi
+          local canonical
+          canonical="$(canonical_dir_or_abs "$local_path")"
+          printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$repo" "$enabled" "$watch" "$local_path" "$canonical" "$cfg"
+        done
+      )"
+
+      if [[ -z "$inventory" ]]; then
+        echo "[INFO] No configs found." >&2
+        exit 0
+      fi
+
+      local found="false"
+
+      if [[ "$by" == "repo" || "$by" == "both" ]]; then
+        # Duplicate repo slugs (case-insensitive)
+        local dup_repos
+        dup_repos="$(
+          printf '%s\n' "$inventory" \
+            | awk -F'\t' '{ key=tolower($1); count[key]++; raw[key]=$1 } END { for (k in count) if (count[k] > 1) print raw[k] }' \
+            | sort
+        )"
+
+        if [[ -n "$dup_repos" ]]; then
+          found="true"
+          echo "[DUPLICATE] repo (multiple config files share the same .repo):" >&2
+          local r
+          while IFS= read -r r; do
+            [[ -z "$r" ]] && continue
+            echo "  - $r" >&2
+            printf '%s\n' "$inventory" | awk -F'\t' -v want="$(printf '%s' "$r" | tr '[:upper:]' '[:lower:]')" '{ if (tolower($1)==want) printf "      file=%s enabled=%s watch=%s localPath=%s\n", $6, $2, $3, $4 }'
+          done <<<"$dup_repos"
+          echo "" >&2
+        fi
+      fi
+
+      if [[ "$by" == "path" || "$by" == "both" ]]; then
+        # Duplicate canonicalLocalPath (case-insensitive). Skip empty paths.
+        local dup_paths
+        dup_paths="$(
+          printf '%s\n' "$inventory" \
+            | awk -F'\t' '$5 != "" { key=tolower($5); count[key]++; raw[key]=$5 } END { for (k in count) if (count[k] > 1) print raw[k] }' \
+            | sort
+        )"
+
+        if [[ -n "$dup_paths" ]]; then
+          found="true"
+          echo "[DUPLICATE] localPath (multiple repos point to the same directory):" >&2
+          local p
+          while IFS= read -r p; do
+            [[ -z "$p" ]] && continue
+            echo "  - $p" >&2
+            printf '%s\n' "$inventory" | awk -F'\t' -v want="$(printf '%s' "$p" | tr '[:upper:]' '[:lower:]')" '{ if (tolower($5)==want) printf "      repo=%s enabled=%s watch=%s file=%s\n", $1, $2, $3, $6 }'
+          done <<<"$dup_paths"
+          echo "" >&2
+        fi
+      fi
+
+      if [[ "$found" != "true" ]]; then
+        echo "[OK] No duplicates detected." >&2
+        exit 0
+      fi
+
+      echo "[HINT] Delete an unwanted config with: gitissuer config delete --repo <owner/name> --confirm" >&2
+      echo "[HINT] Change a repo slug with: gitissuer config set --repo <old> --set-repo <new>" >&2
       ;;
 
     edit)
@@ -1221,8 +2001,11 @@ cmd_check() {
         local enabled
         enabled="$(is_repo_enabled_in_config "$t")"
         if [[ "$enabled" != "true" ]]; then
-          echo "[INFO] Skipping disabled repo: $t" >&2
-          continue
+          if handle_disabled_repo_or_exit "$t" "check update"; then
+            :
+          else
+            continue
+          fi
         fi
 
         local owner="${t%%/*}"
@@ -1313,6 +2096,15 @@ cmd_watch() {
       fi
       local t
       for t in "${targets[@]}"; do
+        local enabled
+        enabled="$(is_repo_enabled_in_config "$t")"
+        if [[ "$enabled" != "true" ]]; then
+          if handle_disabled_repo_or_exit "$t" "watch enable"; then
+            :
+          else
+            continue
+          fi
+        fi
         set_repo_watch_flag "$t" true
       done
       ;;
@@ -1345,6 +2137,102 @@ cmd_watch() {
   esac
 }
 
+cmd_parent() {
+  local sub="${1-}"
+  shift || true
+
+  case "$sub" in
+    show)
+      local repo_full=""
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --repo) repo_full="$2"; shift 2 ;;
+          -h|--help) usage; exit 0 ;;
+          *) echo "[ERROR] Unknown arg: $1" >&2; usage; exit 1 ;;
+        esac
+      done
+
+      if [[ -z "$repo_full" ]]; then
+        if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          repo_full="$(infer_repo_full_from_cwd)"
+        else
+          echo "[ERROR] --repo is required (or run inside the target git repo)." >&2
+          exit 2
+        fi
+      fi
+
+      local n
+      n="$(get_repo_parent_issue_number "$repo_full")"
+      if [[ -z "$n" ]]; then
+        echo "$repo_full	parentIssueNumber=(unset)"
+      else
+        echo "$repo_full	parentIssueNumber=$n"
+      fi
+      ;;
+
+    set)
+      local repo_full=""
+      local number=""
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --repo) repo_full="$2"; shift 2 ;;
+          --number) number="$2"; shift 2 ;;
+          -h|--help) usage; exit 0 ;;
+          *) echo "[ERROR] Unknown arg: $1" >&2; usage; exit 1 ;;
+        esac
+      done
+
+      if [[ -z "$repo_full" ]]; then
+        if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          repo_full="$(infer_repo_full_from_cwd)"
+        else
+          echo "[ERROR] --repo is required (or run inside the target git repo)." >&2
+          exit 2
+        fi
+      fi
+
+      if [[ -z "$number" ]]; then
+        echo "[ERROR] --number <n> is required" >&2
+        exit 2
+      fi
+
+      set_repo_parent_issue_number "$repo_full" "$number"
+      ;;
+
+    clear)
+      local repo_full=""
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --repo) repo_full="$2"; shift 2 ;;
+          -h|--help) usage; exit 0 ;;
+          *) echo "[ERROR] Unknown arg: $1" >&2; usage; exit 1 ;;
+        esac
+      done
+
+      if [[ -z "$repo_full" ]]; then
+        if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          repo_full="$(infer_repo_full_from_cwd)"
+        else
+          echo "[ERROR] --repo is required (or run inside the target git repo)." >&2
+          exit 2
+        fi
+      fi
+
+      clear_repo_parent_issue_number "$repo_full"
+      ;;
+
+    ""|help|-h|--help)
+      usage
+      ;;
+
+    *)
+      echo "[ERROR] Unknown parent subcommand: $sub" >&2
+      usage
+      exit 1
+      ;;
+  esac
+}
+
 main() {
   local cmd_raw="${1-}"
   shift || true
@@ -1355,6 +2243,7 @@ main() {
   case "$cmd" in
     registryupdate|registry-update|registry_update) cmd="registry:update" ;;
     e2erun|e2e-run|e2e_run) cmd="e2e:run" ;;
+    linkhierarchy|link-hierarchy|link_hierarchy|link:hierarchy) cmd="link:hierarchy" ;;
   esac
 
   case "$cmd" in
@@ -1364,12 +2253,14 @@ main() {
     registry:update) cmd_registry_update "$@" ;;
     apply) cmd_apply "$@" ;;
     e2e:run) cmd_e2e_run "$@" ;;
+    link:hierarchy) cmd_link_hierarchy "$@" ;;
     enable|activate) cmd_enable "$@" ;;
     disable|deactivate) cmd_disable "$@" ;;
     config) cmd_config "$@" ;;
     check) cmd_check "$@" ;;
     watch) cmd_watch "$@" ;;
-    "") usage; exit 1 ;;
+    parent) cmd_parent "$@" ;;
+    ""|help|-h|--help) usage; exit 0 ;;
     *) echo "[ERROR] Unknown command: $cmd"; usage; exit 1 ;;
   esac
 }

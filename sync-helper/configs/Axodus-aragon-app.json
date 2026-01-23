@@ -1,7 +1,7 @@
 {
   "owner": "Axodus",
   "repo": "Axodus/aragon-app",
-  "localPath": "../aragon-app",
+  "localPath": "/opt/aragon-app",
   "enableProjectSync": true,
   "gitissuer": {
     "enabled": true,

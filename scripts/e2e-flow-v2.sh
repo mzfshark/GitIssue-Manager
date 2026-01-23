@@ -33,6 +33,7 @@ PROJECT_NUMBER=""
 METADATA_FILE=""
 METADATA_REQUIRED=true
 METADATA_JSON="{}"
+ENGINE_OUTPUT_FILE_OVERRIDE=""
 ENFORCE_LABEL_ALLOWLIST=false
 TIMING_AFTER_PAI=0
 TIMING_AFTER_CHILDREN=0
@@ -883,29 +884,59 @@ stage_link_hierarchy() {
     [[ -n "$PARENT_ISSUE_NUMBER" ]] && pai_number="$PARENT_ISSUE_NUMBER"
     [[ -z "$pai_number" ]] && { log_error "PAI number missing. Provide --parent-number or complete STAGE 3."; return 1; }
 
-    local children_data
-    children_data=$(get_stage_data "4")
-    [[ $(echo "$children_data" | jq -r '.completed // false') != "true" ]] && {
-        log_error "STAGE 4 not completed. Stage 5 requires executor output (engine-output.json)."
-        return 1
-    }
+    local stage4_data
+    stage4_data=$(get_stage_data "4")
+    local stage2_data
+    stage2_data=$(get_stage_data "2")
 
-    local engine_output_path
-    engine_output_path=$(echo "$children_data" | jq -r '.engineOutputPath // empty')
-    local metadata_file
-    metadata_file=$(echo "$children_data" | jq -r '.metadataFile // empty')
+    local engine_output_path=""
+    local metadata_file=""
 
-    # Allow explicit override via --metadata-file
+    # Engine output resolution priority:
+    # 1) explicit CLI override
+    # 2) stage 4 state (executor)
+    # 3) stage 2 state (prepare)
+    # 4) sync-helper config outputs.engineOutputPath
+    if [[ -n "$ENGINE_OUTPUT_FILE_OVERRIDE" ]]; then
+        engine_output_path="$ENGINE_OUTPUT_FILE_OVERRIDE"
+    else
+        engine_output_path=$(echo "$stage4_data" | jq -r '.engineOutputPath // empty')
+        if [[ -z "$engine_output_path" || "$engine_output_path" == "null" ]]; then
+            engine_output_path=$(echo "$stage2_data" | jq -r '.engineOutputPath // empty')
+        fi
+        if [[ -z "$engine_output_path" || "$engine_output_path" == "null" ]]; then
+            local cfg
+            cfg=$(resolve_sync_config_for_repo "$repo_full" || true)
+            if [[ -n "$cfg" && -f "$cfg" ]]; then
+                engine_output_path=$(jq -r '.outputs.engineOutputPath // empty' "$cfg" 2>/dev/null || true)
+            fi
+        fi
+    fi
+
+    # Metadata resolution priority:
+    # 1) explicit CLI override
+    # 2) stage 4 state
+    # 3) stage 2 state
+    # 4) resolve_metadata_file() candidates
     if [[ -n "$METADATA_FILE" ]]; then
         metadata_file="$METADATA_FILE"
+    else
+        metadata_file=$(echo "$stage4_data" | jq -r '.metadataFile // empty')
+        if [[ -z "$metadata_file" || "$metadata_file" == "null" ]]; then
+            metadata_file=$(echo "$stage2_data" | jq -r '.metadataFile // empty')
+        fi
+        if [[ -z "$metadata_file" || "$metadata_file" == "null" ]]; then
+            resolve_metadata_file || true
+            metadata_file="$METADATA_FILE"
+        fi
     fi
 
-    if [[ -z "$metadata_file" || ! -f "$metadata_file" ]]; then
-        log_error "metadata.json not found. Run STAGE 2 (prepare) or provide --metadata-file."
+    if [[ -z "$metadata_file" || "$metadata_file" == "null" || ! -f "$metadata_file" ]]; then
+        log_error "metadata.json not found. Provide --metadata-file or ensure it exists under tmp/<repo>/metadata.json."
         return 1
     fi
-    if [[ -z "$engine_output_path" || ! -f "$engine_output_path" ]]; then
-        log_error "engine-output.json not found. Run STAGE 4 (executor)."
+    if [[ -z "$engine_output_path" || "$engine_output_path" == "null" || ! -f "$engine_output_path" ]]; then
+        log_error "engine-output.json not found. Provide --engine-output-file or ensure outputs.engineOutputPath exists in sync-helper config."
         return 1
     fi
 
@@ -1551,6 +1582,7 @@ EOF
                         --project-id) PROJECT_ID="$2"; shift 2 ;;
                         --enable-project-sync) ENABLE_PROJECT_SYNC=true; shift ;;
                         --metadata-file) METADATA_FILE="$2"; shift 2 ;;
+                        --engine-output-file) ENGINE_OUTPUT_FILE_OVERRIDE="$2"; shift 2 ;;
                         --allow-missing-metadata) METADATA_REQUIRED=false; shift ;;
             --config) CONFIG_FILE="$2"; shift 2 ;;
             --dry-run) DRY_RUN=true; shift ;;
@@ -1571,6 +1603,7 @@ Inputs:
     --parent-number <n>            Use existing parent issue instead of creating one
     --children-file <path>         JSON array file: [{"number":123}, ...] (enables standalone Stage 5/6)
     --metadata-file <path>         Path to metadata.json produced by sync-helper
+    --engine-output-file <path>     Path to engine-output.json (for standalone Stage 5)
     --allow-missing-metadata        Continue without metadata validations
 
 Sub-issues:
