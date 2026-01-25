@@ -154,13 +154,14 @@ function parseTags(text) {
   return out;
 }
 
-function parseChecklistWithIndent(content) {
+function parseChecklistWithIndent(content, fileHint) {
   const lines = content.split(/\r?\n/);
   const items = [];
   const headingParents = [];
   const parentPattern = /\b[A-Z]+-\d+\b/;
 
-  let currentHeading = null;
+  const headings = []; // candidates
+  const headingStack = []; // { stableId, level, usedAsParent }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -168,31 +169,38 @@ function parseChecklistWithIndent(content) {
     if (headingMatch) {
       const headingLevel = headingMatch[1].length;
       const headingText = headingMatch[2].trim();
-      if (parentPattern.test(headingText)) {
-        const tags = parseTags(headingText);
-        const canonicalKey = tags.key || null;
-        const stableId = canonicalKey ? sha1(`key:${canonicalKey}`) : sha1(`${i + 1}:${tags.cleaned}`);
-        headingParents.push({
-          stableId,
-          canonicalKey,
-          line: i + 1,
-          text: tags.cleaned,
-          rawText: headingText,
-          level: headingLevel,
-          meta: {
-            estimateHours: tags.estimateHours,
-            priority: tags.priority,
-            status: tags.status,
-            startDate: tags.startDate,
-            endDate: tags.endDate,
-            labels: tags.labels,
-            key: canonicalKey,
-          },
-        });
-        currentHeading = { stableId, level: headingLevel };
-      } else if (currentHeading && headingLevel <= currentHeading.level) {
-        currentHeading = null;
+      while (headingStack.length && headingStack[headingStack.length - 1].level >= headingLevel) {
+        headingStack.pop();
       }
+
+      const tags = parseTags(headingText);
+      const canonicalKey = tags.key || null;
+      const stableId = canonicalKey
+        ? sha1(`key:${canonicalKey}`)
+        : sha1(`heading:${fileHint || ''}:${headingLevel}:${tags.cleaned}`);
+
+      const h = {
+        stableId,
+        canonicalKey,
+        line: i + 1,
+        text: tags.cleaned,
+        rawText: headingText,
+        level: headingLevel,
+        usedAsParent: false,
+        isExplicitParent: parentPattern.test(headingText),
+        meta: {
+          estimateHours: tags.estimateHours,
+          priority: tags.priority,
+          status: tags.status,
+          startDate: tags.startDate,
+          endDate: tags.endDate,
+          labels: tags.labels,
+          key: canonicalKey,
+        },
+      };
+
+      headings.push(h);
+      headingStack.push({ stableId: h.stableId, level: headingLevel, ref: h });
       continue;
     }
 
@@ -202,6 +210,17 @@ function parseChecklistWithIndent(content) {
     const checked = m[2].toLowerCase() === 'x';
     const rawText = m[3].trim();
     const tags = parseTags(rawText);
+
+    const currentHeading = headingStack.length ? headingStack[headingStack.length - 1].ref : null;
+    if (indent === 0 && currentHeading) {
+      // Be conservative: only create parent issues for headings that are clearly intended as issue headers.
+      // - Explicit IDs like EPIC-001 / TASK-12
+      // - Or headings carrying a canonical [key:...] tag
+      if (currentHeading.isExplicitParent || currentHeading.canonicalKey) {
+        currentHeading.usedAsParent = true;
+      }
+    }
+
     items.push({
       indent,
       checked,
@@ -218,6 +237,19 @@ function parseChecklistWithIndent(content) {
         labels: tags.labels,
         key: tags.key || null,
       },
+    });
+  }
+
+  for (const h of headings) {
+    if (!h.usedAsParent && !h.isExplicitParent) continue;
+    headingParents.push({
+      stableId: h.stableId,
+      canonicalKey: h.canonicalKey,
+      line: h.line,
+      text: h.text,
+      rawText: h.rawText,
+      level: h.level,
+      meta: h.meta,
     });
   }
 
@@ -427,14 +459,14 @@ function main() {
     let subtasks = [];
 
     for (const f of mdFiles) {
-      const content = fs.readFileSync(f, 'utf8');
-      const parsed = parseChecklistWithIndent(content);
-      if (!parsed.items.length && (!parsed.headingParents || !parsed.headingParents.length)) continue;
       const relFile = path.relative(absRoot, f).replace(/\\/g, '/');
+      const content = fs.readFileSync(f, 'utf8');
+      const parsed = parseChecklistWithIndent(content, relFile);
+      if (!parsed.items.length && (!parsed.headingParents || !parsed.headingParents.length)) continue;
       const built = buildHierarchy(relFile, parsed.items, defaults, parsed.headingParents);
       tasks = tasks.concat(built.tasks);
       subtasks = subtasks.concat(built.subtasks);
-      if (built.tasks.length && built.subtasks.length === 0) {
+      if (built.tasks.length && built.subtasks.length === 0 && parsed.headingParents && parsed.headingParents.length) {
         console.warn('No subtasks detected for:', relFile);
         console.warn('Tip: Use headings like EPIC-001 and list checkboxes under them, or indent subtasks with 2 spaces.');
       }

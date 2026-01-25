@@ -73,6 +73,571 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "Archive sync-md labels (confirm)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"./scripts/archive-sync-md-issues-axodus.sh",
+				"--confirm"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Check archive process",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"ps -ef | grep -E \"archive-sync-md-issues-axodus\\.sh\" | grep -v grep || true"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check archive process (fixed)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-c",
+				"ps -ef | grep -E archive-sync-md-issues-axodus\\.sh | grep -v grep || true"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check archive process via wsl",
+			"type": "shell",
+			"command": "C:\\\\WINDOWS\\\\System32\\\\wsl.exe",
+			"args": [
+				"-d",
+				"Ubuntu-24.04",
+				"--",
+				"bash",
+				"-lc",
+				"ps -ef | grep -E \"archive-sync-md-issues-axodus\\\\.sh\" | grep -v grep || true"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check archive process (no quotes)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"ps -ef | grep archive-sync-md-issues-axodus.sh | grep -v grep || true"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Find lock holder (lsof)",
+			"type": "shell",
+			"command": "lsof",
+			"args": [
+				"/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/archive-sync-md-issues-axodus.lock"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Kill stuck archive job",
+			"type": "shell",
+			"command": "kill",
+			"args": [
+				"-TERM",
+				"357783",
+				"361220"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Find lock holder (lsof) after kill",
+			"type": "shell",
+			"command": "lsof",
+			"args": [
+				"/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/archive-sync-md-issues-axodus.lock"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Archive sync-md labels (confirm, fast)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"COOLDOWN_SECONDS=0.2 GH_TIMEOUT_SECONDS=30 ./scripts/archive-sync-md-issues-axodus.sh --confirm"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Archive sync-md labels (confirm, env)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"COOLDOWN_SECONDS=0.2",
+				"GH_TIMEOUT_SECONDS=30",
+				"bash",
+				"./scripts/archive-sync-md-issues-axodus.sh",
+				"--confirm"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Find lock holder (lsof) while running",
+			"type": "shell",
+			"command": "lsof",
+			"args": [
+				"/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/archive-sync-md-issues-axodus.lock"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Wait 15s",
+			"type": "shell",
+			"command": "sleep",
+			"args": [
+				"15"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Find lock holder (lsof) poll",
+			"type": "shell",
+			"command": "lsof",
+			"args": [
+				"/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/archive-sync-md-issues-axodus.lock"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Wait 30s",
+			"type": "shell",
+			"command": "sleep",
+			"args": [
+				"30"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Find lock holder (lsof) poll 2",
+			"type": "shell",
+			"command": "lsof",
+			"args": [
+				"/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/archive-sync-md-issues-axodus.lock"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Wait 60s",
+			"type": "shell",
+			"command": "sleep",
+			"args": [
+				"60"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Find lock holder (lsof) poll 3",
+			"type": "shell",
+			"command": "lsof",
+			"args": [
+				"/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/archive-sync-md-issues-axodus.lock"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Wait 90s",
+			"type": "shell",
+			"command": "sleep",
+			"args": [
+				"90"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Find lock holder (lsof) poll 4",
+			"type": "shell",
+			"command": "lsof",
+			"args": [
+				"/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/archive-sync-md-issues-axodus.lock"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check remaining sync-md (AragonOSX)",
+			"type": "shell",
+			"command": "gh",
+			"args": [
+				"api",
+				"repos/Axodus/AragonOSX/issues",
+				"-f",
+				"state=all",
+				"-f",
+				"labels=sync-md",
+				"-f",
+				"per_page=1",
+				"-f",
+				"page=1",
+				"--jq",
+				"length"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check remaining sync-md (AragonOSX) GET",
+			"type": "shell",
+			"command": "gh",
+			"args": [
+				"api",
+				"repos/Axodus/AragonOSX/issues",
+				"-X",
+				"GET",
+				"-f",
+				"state=all",
+				"-f",
+				"labels=sync-md",
+				"-f",
+				"per_page=1",
+				"-f",
+				"page=1",
+				"--jq",
+				"length"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check remaining sync-md (aragon-app)",
+			"type": "shell",
+			"command": "gh",
+			"args": [
+				"api",
+				"repos/Axodus/aragon-app/issues",
+				"-X",
+				"GET",
+				"-f",
+				"state=all",
+				"-f",
+				"labels=sync-md",
+				"-f",
+				"per_page=1",
+				"-f",
+				"page=1",
+				"--jq",
+				"length"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check remaining sync-md (backend)",
+			"type": "shell",
+			"command": "gh",
+			"args": [
+				"api",
+				"repos/Axodus/Aragon-app-backend/issues",
+				"-X",
+				"GET",
+				"-f",
+				"state=all",
+				"-f",
+				"labels=sync-md",
+				"-f",
+				"per_page=1",
+				"-f",
+				"page=1",
+				"--jq",
+				"length"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Remaining sync-md count page1 (AragonOSX)",
+			"type": "shell",
+			"command": "gh",
+			"args": [
+				"api",
+				"repos/Axodus/AragonOSX/issues",
+				"-X",
+				"GET",
+				"-f",
+				"state=all",
+				"-f",
+				"labels=sync-md",
+				"-f",
+				"per_page=100",
+				"-f",
+				"page=1",
+				"--jq",
+				"length"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Find archive lock holder (lsof)",
+			"type": "shell",
+			"command": "lsof",
+			"args": [
+				"/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/archive-sync-md-issues-axodus.lock"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "List tmp locks",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"ls -la tmp | sed -n '1,200p'"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "List tmp (no sed)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"ls -la tmp"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "List tmp dir (direct)",
+			"type": "shell",
+			"command": "ls",
+			"args": [
+				"-la",
+				"tmp"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check archive lock file exists",
+			"type": "shell",
+			"command": "ls",
+			"args": [
+				"-la",
+				"tmp/archive-sync-md-issues-axodus.lock"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Sync Axodus/AragonOSX (confirm)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"GITISSUER_GH_MIN_DELAY_MS=300",
+				"GITISSUER_USE_SEARCH_FALLBACK=0",
+				"./bin/gitissuer",
+				"sync",
+				"--repo",
+				"Axodus/AragonOSX",
+				"--confirm"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Sync Axodus/aragon-app (confirm)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"GITISSUER_GH_MIN_DELAY_MS=300",
+				"GITISSUER_USE_SEARCH_FALLBACK=0",
+				"./bin/gitissuer",
+				"sync",
+				"--repo",
+				"Axodus/aragon-app",
+				"--confirm"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Sync Axodus/Aragon-app-backend (confirm)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"GITISSUER_GH_MIN_DELAY_MS=300",
+				"GITISSUER_USE_SEARCH_FALLBACK=0",
+				"./bin/gitissuer",
+				"sync",
+				"--repo",
+				"Axodus/Aragon-app-backend",
+				"--confirm"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Verify aragon-app engine-output exists",
+			"type": "shell",
+			"command": "ls",
+			"args": [
+				"-la",
+				"tmp/Axodus-aragon-app/engine-output.json"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Sync dry-run Axodus (validate idempotency)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"GITISSUER_GH_MIN_DELAY_MS=300",
+				"GITISSUER_USE_SEARCH_FALLBACK=0",
+				"bash",
+				"./scripts/sync-dryrun-axodus.sh"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Prepare Axodus/aragon-app (dry-run via sync)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"GITISSUER_GH_MIN_DELAY_MS=200",
+				"GITISSUER_USE_SEARCH_FALLBACK=0",
+				"./bin/gitissuer",
+				"sync",
+				"--repo",
+				"Axodus/aragon-app",
+				"--dry-run"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Prepare Axodus/AragonOSX (dry-run via sync)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"GITISSUER_GH_MIN_DELAY_MS=200",
+				"GITISSUER_USE_SEARCH_FALLBACK=0",
+				"./bin/gitissuer",
+				"sync",
+				"--repo",
+				"Axodus/AragonOSX",
+				"--dry-run"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Prepare Axodus/Aragon-app-backend (dry-run via sync)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"GITISSUER_GH_MIN_DELAY_MS=200",
+				"GITISSUER_USE_SEARCH_FALLBACK=0",
+				"./bin/gitissuer",
+				"sync",
+				"--repo",
+				"Axodus/Aragon-app-backend",
+				"--dry-run"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Check prepare warnings in latest dry-run log (aragon-app)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"grep -n \"No subtasks detected\" -n tmp/sync-dryrun-logs/Axodus_aragon-app.log || true"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check prepare warnings in latest dry-run log (aragon-app) direct",
+			"type": "shell",
+			"command": "grep",
+			"args": [
+				"-n",
+				"No subtasks detected",
+				"tmp/sync-dryrun-logs/Axodus_aragon-app.log"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Check prepare warnings in latest dry-run log (aragon-app) via bash -c",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-c",
+				"grep -n \"No subtasks detected\" tmp/sync-dryrun-logs/Axodus_aragon-app.log || true"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run Axodus sync dry-run logs (post-parser)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"GITISSUER_GH_MIN_DELAY_MS=200",
+				"GITISSUER_USE_SEARCH_FALLBACK=0",
+				"bash",
+				"./scripts/sync-dryrun-axodus.sh"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run Axodus sync dry-run logs (post-parser tweak)",
+			"type": "shell",
+			"command": "env",
+			"args": [
+				"GITISSUER_GH_MIN_DELAY_MS=200",
+				"GITISSUER_USE_SEARCH_FALLBACK=0",
+				"bash",
+				"./scripts/sync-dryrun-axodus.sh"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }
