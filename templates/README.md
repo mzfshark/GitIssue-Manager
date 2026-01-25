@@ -12,6 +12,29 @@ Each template follows the same structure:
 4. Subtasks (Linked) section with checklists under headings that include an ID (e.g., `FEATURE-001`)
 5. Milestones section at the end
 
+### Canonical identity (recommended)
+
+To prevent duplicate GitHub issues when checklist items are moved or edited, add a canonical key tag to every checklist item you expect to sync:
+
+- Example: `- [ ] Do something [key:01J0ABCDE...] [labels:...] [status:TODO] ...`
+
+Recommended format: ULID (26 chars, time-sortable).
+
+You can auto-inject missing keys safely:
+
+- Preview: `gitissuer rekey --repo <owner/name> --dry-run`
+- Apply: `gitissuer rekey --repo <owner/name> --confirm`
+
+When present, GitIssue-Manager derives a stable `StableId` from `key`, and also writes `Key: ...` into the GitHub issue body.
+
+### GitHub issue title format
+
+GitIssue-Manager creates GitHub issues using a breadcrumb title format (no `-NNN` numbering in the GitHub title):
+
+- Example: `[PLAN / EPIC / TASK] - Title`
+
+The `TYPE-NNN` numbering remains in Markdown to keep the document structured and searchable.
+
 ## Files
 
 - `.gitissue/metadata.config.json`: Default metadata and allowed values.

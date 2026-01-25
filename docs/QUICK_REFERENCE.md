@@ -267,22 +267,18 @@ All feed into → GitIssue-Manager → GitHub ProjectV2
 ### Dry-Run (Safe, No Writes)
 ```bash
 cd GitIssue-Manager
-yarn prepare --repos aragon-osx,aragon-app,aragon-app-backend --dry-run
+# Full preview (prepare + deploy in dry-run mode + registry update)
+gitissuer sync --repo "mzfshark/AragonOSX" --dry-run
 ```
 
 ### Execute (Needs Approval)
 ```bash
-GITHUB_TOKEN=<token> yarn prepare --repos aragon-osx,aragon-app,aragon-app-backend --execute
+GITHUB_TOKEN=<token> gitissuer sync --repo "mzfshark/AragonOSX" --confirm
 ```
 
-### Update Single Issue
+### List Issues (Read-only)
 ```bash
-yarn update-issue --repo "Axodus/AragonOSX" --issue-number <N> --sprint-file ../AragonOSX/SPRINT.md --execute
-```
-
-### Generate Status Report
-```bash
-yarn status-report --repos aragon-osx,aragon-app,aragon-app-backend --output REPORT.md
+gitissuer issues list --repo "mzfshark/AragonOSX" --state open --limit 50
 ```
 
 ### View Audit Log
@@ -301,7 +297,7 @@ A: No. PLAN.md stays internal (long-term reference). Only SPRINT.md syncs.
 A: BUG.md is internal reference. Not synced automatically. Can be manually linked in issue.
 
 **Q: How often should I update?**  
-A: Weekly recommended. Bi-weekly minimum. Update via `yarn update-issue`.
+A: Weekly recommended. Bi-weekly minimum. Update via `gitissuer apply --confirm` (for bounded updates) or re-run `gitissuer sync --confirm` when appropriate.
 
 **Q: What if I change an item ID?**  
 A: Don't. IDs are stable. If you need to rename, create new ID and mark old as duplicate.

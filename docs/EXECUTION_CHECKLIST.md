@@ -135,10 +135,7 @@ cat config.json | jq '.repositories | length'
 ### 2.1 Prepare Engine Input
 - [ ] Run prepare script:
 ```bash
-npm run prepare -- \
-  --config config.json \
-  --output tmp/engine-input.json \
-  --repos AragonOSX,aragon-app,Aragon-app-backend 2>&1 | tee tmp/prepare.log
+gitissuer prepare --all 2>&1 | tee tmp/prepare.log
 ```
 
 **Expected Output:**

@@ -327,7 +327,7 @@ Before executing any commands:
 1. **Review dry-run output:**
    ```bash
    cd GitIssue-Manager
-   node client/prepare.js --repos "aragon-osx,aragon-app,aragon-app-backend" --dry-run > /tmp/preview.json
+  gitissuer sync --repo "mzfshark/AragonOSX" --dry-run
    ```
 
 2. **Approve in this document:**
@@ -336,7 +336,7 @@ Before executing any commands:
 
 3. **Execute batch sync:**
    ```bash
-   GITHUB_TOKEN=<token> node scripts/prepare.sh --repos "..." --execute
+  GITHUB_TOKEN=<token> gitissuer sync --repo "mzfshark/AragonOSX" --confirm
    ```
 
 4. **Verify in GitHub:**

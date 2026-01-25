@@ -20,8 +20,8 @@ Use headings that include an ID (e.g., EPIC-001). Checklist items under these he
 
 ### EPIC-001: <Epic Milestone>
 
-- [ ] <Subtask title> [labels:type:feature, area:<area>] [status:TODO] [priority:HIGH] [estimate:6h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
-- [ ] <Subtask title> [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] <Subtask title> [key:<canonical-key>] [labels:type:feature, area:<area>] [status:TODO] [priority:HIGH] [estimate:6h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] <Subtask title> [key:<canonical-key>] [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
 
 ---
 
@@ -37,8 +37,10 @@ Use headings that include an ID (e.g., EPIC-001). Checklist items under these he
 1. Use the `#EPIC-001` format in the title.
 2. Keep the technical info block at the top.
 3. Put checklists only inside “Subtasks (Linked)”.
-7. **Mark progress** as features complete
-8. **Sync to GitHub** via GitIssue-Manager (optional)
+4. Add `[key:<canonical-key>]` to every checklist item to keep identity stable across moves/edits.
+5. GitHub issue titles are generated as breadcrumbs (no `-NNN` numbering in GitHub titles), e.g. `[PLAN / EPIC] - Title`.
+6. **Mark progress** as features complete.
+7. **Sync to GitHub** via GitIssue-Manager (optional).
 
 ### Epic Structure
 

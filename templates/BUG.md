@@ -20,8 +20,8 @@ Use headings that include an ID (e.g., BUG-001). Checklist items under these hea
 
 ### BUG-001: <Bug Fix Milestone>
 
-- [ ] <Subtask title> [labels:type:bug, area:<area>] [status:TODO] [priority:HIGH] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
-- [ ] <Subtask title> [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:2h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] <Subtask title> [key:<canonical-key>] [labels:type:bug, area:<area>] [status:TODO] [priority:HIGH] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] <Subtask title> [key:<canonical-key>] [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:2h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
 
 ---
 
@@ -37,3 +37,5 @@ Use headings that include an ID (e.g., BUG-001). Checklist items under these hea
 1. Use the `#BUG-001` format in the title.
 2. Keep the technical info block at the top.
 3. Put checklists only inside “Subtasks (Linked)”.
+4. Add `[key:<canonical-key>]` to every checklist item to keep identity stable across moves/edits.
+5. GitHub issue titles are generated as breadcrumbs (no `-NNN` numbering in GitHub titles), e.g. `[PLAN / EPIC / BUG] - Title`.

@@ -366,7 +366,7 @@ class EngineInputGenerator {
 
 **Command:**
 ```bash
-npm run prepare -- \
+npm run engine:prepare -- \
   --config config.json \
   --markdown-dirs AragonOSX,aragon-app,Aragon-app-backend \
   --output tmp/engine-input.json
@@ -1153,7 +1153,7 @@ npm run test:e2e
 npm run setup -- --config config.json
 
 # Prepare
-npm run prepare -- --config config.json --output tmp/engine-input.json
+gitissuer prepare --all
 
 # Create (manual UI step)
 npm run create:parents -- --input tmp/engine-input.json --owner Axodus

@@ -10,23 +10,97 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
+const GH_MIN_DELAY_MS = Number.parseInt(process.env.GITISSUER_GH_MIN_DELAY_MS || '250', 10);
+const USE_SEARCH_FALLBACK = process.env.GITISSUER_USE_SEARCH_FALLBACK === '1';
+let lastGhCallAtMs = 0;
+
 function readJson(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); } // nosemgrep
 function writeJson(p, obj) { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2)); } // nosemgrep
 
-function ghApi(args) {
-	try {
-		const out = execFileSync('gh', ['api', ...args], { encoding: 'utf8' });
-		return JSON.parse(out);
-	} catch (e) {
-		if (e.stdout) {
-			try { return JSON.parse(e.stdout.toString()); } catch (_) {}
-		}
-		throw e;
+function isRateLimitError(err) {
+	const msg = String((err && err.message) || '');
+	const stderr = String((err && err.stderr) || '');
+	const combined = `${msg}\n${stderr}`.toLowerCase();
+	return (
+		combined.includes('api rate limit exceeded') ||
+		combined.includes('secondary rate limit') ||
+		combined.includes('abuse detection') ||
+		(combined.includes('http 403') && combined.includes('rate limit'))
+	);
+}
+
+function toRateLimitError(err) {
+	const msg = String((err && err.message) || 'rate-limited');
+	const oneLine = msg.replace(/\s+/g, ' ').trim().slice(0, 240);
+	const e = new Error(`RATE_LIMIT: ${oneLine}`);
+	e.cause = err;
+	return e;
+}
+
+function throttleGh() {
+	if (!Number.isFinite(GH_MIN_DELAY_MS) || GH_MIN_DELAY_MS <= 0) return;
+	const now = Date.now();
+	const elapsed = now - lastGhCallAtMs;
+	if (elapsed < GH_MIN_DELAY_MS) {
+		sleepMs(GH_MIN_DELAY_MS - elapsed);
 	}
+	lastGhCallAtMs = Date.now();
+}
+
+function ghApiWithRetry(args, opts = {}) {
+	const maxAttempts = typeof opts.maxAttempts === 'number' ? opts.maxAttempts : 6;
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		try {
+			throttleGh();
+			const out = execFileSync('gh', ['api', ...args], { encoding: 'utf8' });
+			return JSON.parse(out);
+		} catch (e) {
+			if (e && e.stdout) {
+				try { return JSON.parse(e.stdout.toString()); } catch (_) {}
+			}
+			if (isRateLimitError(e) && attempt < maxAttempts) {
+				const backoffMs = Math.min(60000, 1500 * (2 ** (attempt - 1)));
+				console.warn(`[WARN] gh api rate-limited (attempt ${attempt}/${maxAttempts}); backing off ${backoffMs}ms...`);
+				sleepMs(backoffMs);
+				continue;
+			}
+			if (isRateLimitError(e)) {
+				throw toRateLimitError(e);
+			}
+			throw e;
+		}
+	}
+	throw new Error('Unreachable');
+}
+
+function ghExecWithRetry(args, opts = {}) {
+	const maxAttempts = typeof opts.maxAttempts === 'number' ? opts.maxAttempts : 6;
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		try {
+			throttleGh();
+			return execFileSync('gh', ['api', ...args], { encoding: 'utf8' });
+		} catch (e) {
+			if (isRateLimitError(e) && attempt < maxAttempts) {
+				const backoffMs = Math.min(60000, 1500 * (2 ** (attempt - 1)));
+				console.warn(`[WARN] gh api rate-limited (attempt ${attempt}/${maxAttempts}); backing off ${backoffMs}ms...`);
+				sleepMs(backoffMs);
+				continue;
+			}
+			if (isRateLimitError(e)) {
+				throw toRateLimitError(e);
+			}
+			throw e;
+		}
+	}
+	throw new Error('Unreachable');
+}
+
+function ghApi(args) {
+	return ghApiWithRetry(args);
 }
 
 function ghExec(args) {
-	return execFileSync('gh', ['api', ...args], { encoding: 'utf8' });
+	return ghExecWithRetry(args);
 }
 
 function sleepMs(ms) {
@@ -80,6 +154,61 @@ function stripInlineShortcodes(originalText) {
 		.trim();
 }
 
+function findTypeFromItem(item) {
+	const explicitId = item && item.explicitId ? String(item.explicitId) : findExplicitId(item && item.text);
+	if (explicitId) return explicitId.split('-')[0].toUpperCase();
+	const labels = Array.isArray(item && item.labels) ? item.labels : [];
+	for (const l of labels) {
+		const m = String(l).match(/^type:(.+)$/i);
+		if (!m) continue;
+		const t = String(m[1]).trim().toUpperCase();
+		if (t === 'BUG' || t === 'FEATURE' || t === 'HOTFIX' || t === 'TASK') return t;
+	}
+	return 'TASK';
+}
+
+function getBreadcrumbSegments(item, byStableId) {
+	const segments = [];
+	const visited = new Set();
+	let cur = item;
+	let depth = 0;
+	while (cur && depth < 20) {
+		const sid = cur.stableId;
+		if (!sid || visited.has(sid)) break;
+		visited.add(sid);
+		segments.push(cur);
+		cur = (cur.parentStableId && byStableId && byStableId[cur.parentStableId]) ? byStableId[cur.parentStableId] : null;
+		depth += 1;
+	}
+	segments.reverse();
+	const context = [];
+	for (const s of segments) {
+		const t = findTypeFromItem(s);
+		if (t === 'PLAN' || t === 'EPIC' || t === 'SPRINT') {
+			if (!context.length || context[context.length - 1] !== t) context.push(t);
+		}
+	}
+	const leafType = findTypeFromItem(item);
+	if (leafType === 'PLAN' || leafType === 'EPIC' || leafType === 'SPRINT') return [leafType];
+	return context.length ? context.concat([leafType]) : [leafType];
+}
+
+function buildBreadcrumbTitle(item, byStableId) {
+	const segments = getBreadcrumbSegments(item, byStableId);
+	const rest = stripInlineShortcodes(stripLeadingId(item && item.text ? item.text : ''));
+	const combined = rest ? `[${segments.join(' / ')}] - ${rest}` : `[${segments.join(' / ')}]`;
+	return combined.trim();
+}
+
+function buildIssueBody(item) {
+	const lines = [`Source: ${item.file}#L${item.line}`];
+	if (item.canonicalKey) lines.push(`Key: ${item.canonicalKey}`);
+	lines.push(`StableId: ${item.stableId}`);
+	lines.push('');
+	lines.push(item.text || '');
+	return lines.join('\n');
+}
+
 function buildIssueTitle(fullRepo, originalText) {
 	const repo = getRepoName(fullRepo);
 	const explicitId = findExplicitId(originalText);
@@ -95,11 +224,19 @@ function extractStableIdFromBody(body) {
 	return m ? m[1] : null;
 }
 
+function extractCanonicalKeyFromBody(body) {
+	if (!body) return null;
+	const m = String(body).match(/\bKey\s*:\s*([^\s]+)\b/i);
+	return m ? m[1] : null;
+}
+
+// Cache issue lookup indices by repo to reduce Search API calls.
+// Shape: { [repo]: { byStableId: Record<string, Issue>, byKey: Record<string, Issue> } }
 const stableIdIndexCache = {};
 
 function loadStableIdIndex(repo) {
 	if (stableIdIndexCache[repo]) return stableIdIndexCache[repo];
-	const index = {};
+	const index = { byStableId: {}, byKey: {} };
 	let page = 1;
 	let hasMore = true;
 	while (hasMore) {
@@ -120,8 +257,11 @@ function loadStableIdIndex(repo) {
 				`page=${page}`,
 			]);
 		} catch (e) {
-			// Fall back to empty index; callers may still use Search as last resort.
-			console.warn('[WARN] could not pre-load issues for stableId index:', e.message.substring(0, 120));
+			// Fail-closed on rate limits; returning an empty index risks duplicate creation.
+			if (String(e && e.message || '').includes('RATE_LIMIT') || isRateLimitError(e)) {
+				throw (String(e && e.message || '').includes('RATE_LIMIT') ? e : toRateLimitError(e));
+			}
+			console.warn('[WARN] could not pre-load issues for stableId index:', String(e && e.message || '').substring(0, 120));
 			break;
 		}
 		if (!Array.isArray(items) || items.length === 0) break;
@@ -129,28 +269,68 @@ function loadStableIdIndex(repo) {
 			// Skip PRs returned by the issues endpoint.
 			if (issue && issue.pull_request) continue;
 			const stableId = extractStableIdFromBody(issue.body);
-			if (!stableId) continue;
-			index[stableId] = issue;
+			if (stableId) index.byStableId[stableId] = issue;
+			const key = extractCanonicalKeyFromBody(issue.body);
+			if (key) index.byKey[key] = issue;
 		}
 		if (items.length < 100) {
 			hasMore = false;
 			break;
 		}
 		page += 1;
+		sleepMs(150);
 	}
 	stableIdIndexCache[repo] = index;
 	return index;
 }
 
+function findIssueByCanonicalKey(repo, canonicalKey) {
+	if (!canonicalKey) return null;
+	const idx = loadStableIdIndex(repo);
+	if (idx && idx.byKey && idx.byKey[canonicalKey]) {
+		const hit = idx.byKey[canonicalKey];
+		console.log('[DEBUG] Found existing issue (index):', hit.number, 'for key', String(canonicalKey).substring(0, 12));
+		return hit;
+	}
+
+	if (!USE_SEARCH_FALLBACK) return null;
+
+	// Last resort (opt-in): Search API. This may hit secondary rate limits; keep it disabled by default.
+	// Quote the token to avoid parsing as search syntax.
+	const q = `repo:${repo} "Key: ${canonicalKey}"`;
+	for (let attempt = 1; attempt <= 2; attempt++) {
+		try {
+			const res = ghApi(['search/issues', '-X', 'GET', '-f', `q=${q}`]);
+			if (res && res.total_count && res.items && res.items.length) {
+				console.log('[DEBUG] Found existing issue (search):', res.items[0].number, 'for key', String(canonicalKey).substring(0, 12));
+				return res.items[0];
+			}
+			return null;
+		} catch (e) {
+			const msg = String(e && e.message || '');
+			if (msg.includes('RATE_LIMIT') || isRateLimitError(e)) {
+				throw (msg.includes('RATE_LIMIT') ? e : toRateLimitError(e));
+			}
+			if (!msg.includes('HTTP 404')) {
+				console.warn('[WARN] search issues failed:', msg.substring(0, 120));
+			}
+			return null;
+		}
+	}
+	return null;
+}
+
 function findIssueByStableId(repo, stableId) {
 	const idx = loadStableIdIndex(repo);
-	if (idx && idx[stableId]) {
-		const hit = idx[stableId];
+	if (idx && idx.byStableId && idx.byStableId[stableId]) {
+		const hit = idx.byStableId[stableId];
 		console.log('[DEBUG] Found existing issue (index):', hit.number, 'for', stableId.substring(0, 10));
 		return hit;
 	}
 
-	// Last resort: Search API. This may hit secondary rate limits; backoff and retry once.
+	if (!USE_SEARCH_FALLBACK) return null;
+
+	// Last resort (opt-in): Search API. This may hit secondary rate limits; keep it disabled by default.
 	const q = `repo:${repo} StableId:${stableId}`;
 	for (let attempt = 1; attempt <= 2; attempt++) {
 		try {
@@ -161,11 +341,9 @@ function findIssueByStableId(repo, stableId) {
 			}
 			return null;
 		} catch (e) {
-			const msg = String(e.message || '');
-			if (msg.includes('rate limit') || msg.includes('secondary rate limit') || msg.includes('HTTP 403')) {
-				console.warn('[WARN] Search rate-limited; backing off before retry.');
-				sleepMs(1500 * attempt);
-				continue;
+			const msg = String(e && e.message || '');
+			if (msg.includes('RATE_LIMIT') || isRateLimitError(e)) {
+				throw (msg.includes('RATE_LIMIT') ? e : toRateLimitError(e));
 			}
 			if (!msg.includes('HTTP 404')) {
 				console.warn('[WARN] search issues failed:', msg.substring(0, 120));
@@ -637,11 +815,16 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 		// Build a stableId index once per repo to avoid Search API rate limits.
 		loadStableIdIndex(fullRepo);
 
+		// Build a local parent map (tasks + subtasks) for breadcrumb titles.
+		const byStableId = {};
+		for (const x of (t.tasks || [])) { if (x && x.stableId) byStableId[x.stableId] = x; }
+		for (const x of (t.subtasks || [])) { if (x && x.stableId) byStableId[x.stableId] = x; }
+
 		for (const task of t.tasks || []) {
 			try {
-				let rawTitle = buildIssueTitle(fullRepo, task.text);
+				let rawTitle = buildBreadcrumbTitle(task, byStableId);
 				const title = rawTitle.length > 120 ? rawTitle.slice(0, 117) + '...' : rawTitle;
-				const body = `Source: ${task.file}#L${task.line}\n\nStableId: ${task.stableId}\n\n${task.text}`;
+				const body = buildIssueBody(task);
 								// Normalize labels and include priority
 								const labels = normalizeLabels(task.labels, ['sync-md']);
 								if (task.priority) labels.push(task.priority);
@@ -654,7 +837,8 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 					else labels.push('type:task');
 				}
 
-				let issue = findIssueByStableId(fullRepo, task.stableId);
+				let issue = task.canonicalKey ? findIssueByCanonicalKey(fullRepo, task.canonicalKey) : null;
+				if (!issue) issue = findIssueByStableId(fullRepo, task.stableId);
 				let created = false;
 				let wouldCreate = false;
 				let wouldUpdate = false;
@@ -788,9 +972,9 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 			try {
 				const parentIssue = repoResult.tasks.find(x => x.stableId === s.parentStableId);
 				const parentNumber = parentIssue && parentIssue.issueNumber;
-				let subRawTitle = buildIssueTitle(fullRepo, s.text);
+				let subRawTitle = buildBreadcrumbTitle(s, byStableId);
 				const title = subRawTitle.length > 120 ? subRawTitle.slice(0, 117) + '...' : subRawTitle;
-				let body = `Source: ${s.file}#L${s.line}\n\nStableId: ${s.stableId}\n\n${s.text}`;
+				let body = buildIssueBody(s);
 				if (parentNumber) body = `Parent: #${parentNumber}\n\n` + body;
 				const labels = normalizeLabels(s.labels, ['subtask', 'sync-md']);
 				if (s.priority) labels.push(s.priority);
@@ -802,7 +986,8 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 					else if (stxt.includes('feature')) subLabels.push('type:feature');
 					else subLabels.push('type:task');
 				}
-				let issue = findIssueByStableId(fullRepo, s.stableId);
+				let issue = s.canonicalKey ? findIssueByCanonicalKey(fullRepo, s.canonicalKey) : null;
+				if (!issue) issue = findIssueByStableId(fullRepo, s.stableId);
 				let created = false;
 				let wouldCreate = false;
 				let wouldUpdate = false;

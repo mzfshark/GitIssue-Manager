@@ -20,8 +20,8 @@ Use headings that include an ID (e.g., FEATURE-001). Checklist items under these
 
 ### FEATURE-001: <Feature Milestone>
 
-- [ ] <Subtask title> [labels:type:feature, area:<area>] [status:TODO] [priority:HIGH] [estimate:6h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
-- [ ] <Subtask title> [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] <Subtask title> [key:<canonical-key>] [labels:type:feature, area:<area>] [status:TODO] [priority:HIGH] [estimate:6h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] <Subtask title> [key:<canonical-key>] [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
 
 ---
 
@@ -37,6 +37,8 @@ Use headings that include an ID (e.g., FEATURE-001). Checklist items under these
 1. Use the `#FEATURE-001` format in the title.
 2. Keep the technical info block at the top.
 3. Put checklists only inside “Subtasks (Linked)”.
+4. Add `[key:<canonical-key>]` to every checklist item to keep identity stable across moves/edits.
+5. GitHub issue titles are generated as breadcrumbs (no `-NNN` numbering in GitHub titles), e.g. `[PLAN / EPIC / FEATURE] - Title`.
 
 ---
 

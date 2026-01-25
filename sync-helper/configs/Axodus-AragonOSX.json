@@ -1,7 +1,7 @@
 {
   "owner": "Axodus",
   "repo": "Axodus/AragonOSX",
-  "localPath": "/opt/AragonOSX",
+  "localPath": "../AragonOSX",
   "enableProjectSync": true,
   "gitissuer": {
     "enabled": true,
@@ -23,9 +23,9 @@
     ]
   },
   "outputs": {
-    "tasksPath": "/opt/AragonOSX/tmp/tasks.json",
-    "subtasksPath": "/opt/AragonOSX/tmp/subtasks.json",
-    "engineInputPath": "/opt/AragonOSX/tmp/engine-input.json",
-    "engineOutputPath": "/opt/AragonOSX/tmp/engine-output.json"
+    "tasksPath": "./tmp/Axodus-AragonOSX/tasks.json",
+    "subtasksPath": "./tmp/Axodus-AragonOSX/subtasks.json",
+    "engineInputPath": "./tmp/Axodus-AragonOSX/engine-input.json",
+    "engineOutputPath": "./tmp/Axodus-AragonOSX/engine-output.json"
   }
 }

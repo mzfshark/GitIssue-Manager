@@ -1,4 +1,5 @@
 #!/bin/bash
+trap 'pkill -P $$; wait; exit 143' TERM INT
 set -euo pipefail
 
 MANAGER_PATH="/opt/GitIssue-Manager"

@@ -97,6 +97,11 @@ function main() {
     process.exit(3);
   }
 
+  // Match `client/prepare.js`: output artifacts are written relative to the working directory
+  // (typically the GitIssue-Manager repo) so the executor can always find them.
+  const outBaseDir = process.cwd();
+  const configName = path.basename(configPath, path.extname(configPath));
+
   // Zero-to-hero: allow missing outputs in config and infer defaults from the repo root.
   // This matches what `prepare` prints: ./tmp/tasks.json ./tmp/subtasks.json ./tmp/engine-input.json
   const repoRootAbsFromCfg = resolveRepoRootAbs(cfg.localPath || '.');
@@ -107,11 +112,22 @@ function main() {
     engineOutputPath: path.join(repoRootAbsFromCfg, 'tmp', 'engine-output.json'),
   };
 
+  // Also support artifacts written into the manager repo under ./tmp/<configName>/...
+  // This is the default convention used by configs and the `gitissuer` workflow.
+  const inferredManager = {
+    engineInputPath: path.join(outBaseDir, 'tmp', configName, 'engine-input.json'),
+    engineOutputPath: path.join(outBaseDir, 'tmp', configName, 'engine-output.json'),
+  };
+
   const cfgOutputs = cfg.outputs || {};
 
-  const engineInputPath = resolveMaybeRelative(cfgOutputs.engineInputPath, repoRootAbsFromCfg)
+  const engineInputPath = resolveMaybeRelative(cfgOutputs.engineInputPath, outBaseDir)
+    || resolveMaybeRelative(cfgOutputs.engineInputPath, repoRootAbsFromCfg)
+    || (fs.existsSync(inferredManager.engineInputPath) ? inferredManager.engineInputPath : null)
     || (fs.existsSync(inferred.engineInputPath) ? inferred.engineInputPath : null);
-  const engineOutputPath = resolveMaybeRelative(cfgOutputs.engineOutputPath, repoRootAbsFromCfg)
+  const engineOutputPath = resolveMaybeRelative(cfgOutputs.engineOutputPath, outBaseDir)
+    || resolveMaybeRelative(cfgOutputs.engineOutputPath, repoRootAbsFromCfg)
+    || (fs.existsSync(inferredManager.engineOutputPath) ? inferredManager.engineOutputPath : null)
     || (fs.existsSync(inferred.engineOutputPath) ? inferred.engineOutputPath : null);
 
   if (!engineInputPath || !engineOutputPath) {
@@ -119,6 +135,9 @@ function main() {
     console.error('Tried inferred paths under repo root:', repoRootAbsFromCfg);
     console.error(' -', inferred.engineInputPath);
     console.error(' -', inferred.engineOutputPath);
+    console.error('Tried inferred paths under working directory:', outBaseDir);
+    console.error(' -', inferredManager.engineInputPath);
+    console.error(' -', inferredManager.engineOutputPath);
     console.error('HINT: Run `gitissuer prepare --repo <owner/name>` and then `gitissuer deploy --dry-run --repo <owner/name>` to generate engine-output.json.');
     process.exit(2);
   }

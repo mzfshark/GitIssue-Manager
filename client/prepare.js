@@ -123,9 +123,9 @@ function getPlanFiles(absRoot, selectedPlans, plansDir) {
 
 function parseTags(text) {
   // Supported inline tags:
-  // [estimate:2h] [priority:URGENT] [status:In Progress] [start:2026-01-01] [end:2026-01-31] [labels:plan,backend]
+  // [estimate:2h] [priority:URGENT] [status:In Progress] [start:2026-01-01] [end:2026-01-31] [labels:plan,backend] [key:01J...]
   const out = { cleaned: text };
-  const tagRe = /\[(estimate|priority|status|start|end|label|labels):([^\]]+)\]/gi;
+  const tagRe = /\[(estimate|priority|status|start|end|label|labels|key):([^\]]+)\]/gi;
   let m;
   while ((m = tagRe.exec(text)) !== null) {
     const key = m[1].toLowerCase();
@@ -133,6 +133,10 @@ function parseTags(text) {
     if (key === 'estimate') {
       const hm = value.match(/(\d+(?:\.\d+)?)h/i);
       if (hm) out.estimateHours = parseFloat(hm[1]);
+    } else if (key === 'key') {
+      // Canonical identity key for stable issue mapping. Keep as-is (trimmed).
+      // Recommended: ULID/UUID-like token without spaces.
+      out.key = value;
     } else if (key === 'start') {
       out.startDate = value;
     } else if (key === 'end') {
@@ -166,9 +170,11 @@ function parseChecklistWithIndent(content) {
       const headingText = headingMatch[2].trim();
       if (parentPattern.test(headingText)) {
         const tags = parseTags(headingText);
-        const stableId = sha1(`${i + 1}:${tags.cleaned}`);
+        const canonicalKey = tags.key || null;
+        const stableId = canonicalKey ? sha1(`key:${canonicalKey}`) : sha1(`${i + 1}:${tags.cleaned}`);
         headingParents.push({
           stableId,
+          canonicalKey,
           line: i + 1,
           text: tags.cleaned,
           rawText: headingText,
@@ -180,6 +186,7 @@ function parseChecklistWithIndent(content) {
             startDate: tags.startDate,
             endDate: tags.endDate,
             labels: tags.labels,
+            key: canonicalKey,
           },
         });
         currentHeading = { stableId, level: headingLevel };
@@ -209,6 +216,7 @@ function parseChecklistWithIndent(content) {
         startDate: tags.startDate,
         endDate: tags.endDate,
         labels: tags.labels,
+        key: tags.key || null,
       },
     });
   }
@@ -237,6 +245,7 @@ function buildHierarchy(relFile, items, defaults, headingParents) {
 
     const base = {
       stableId: heading.stableId,
+      canonicalKey: heading.canonicalKey || heading.meta && heading.meta.key || null,
       explicitId: extractExplicitId(heading.rawText) || extractExplicitId(heading.text),
       file: relFile,
       line: heading.line,
@@ -255,7 +264,8 @@ function buildHierarchy(relFile, items, defaults, headingParents) {
   }
 
   for (const it of items) {
-    const stableId = sha1(`${relFile}:${it.line}:${it.rawText}`);
+    const canonicalKey = it.meta && it.meta.key ? it.meta.key : null;
+    const stableId = canonicalKey ? sha1(`key:${canonicalKey}`) : sha1(`${relFile}:${it.line}:${it.rawText}`);
 
     while (stack.length && stack[stack.length - 1].indent >= it.indent) stack.pop();
     const parent = stack.length ? stack[stack.length - 1] : null;
@@ -269,6 +279,7 @@ function buildHierarchy(relFile, items, defaults, headingParents) {
 
     const base = {
       stableId,
+      canonicalKey,
       explicitId: extractExplicitId(it.rawText) || extractExplicitId(it.text),
       file: relFile,
       line: it.line,
@@ -488,6 +499,8 @@ function main() {
       },
       tasks: tasks.map((t) => ({
         stableId: t.stableId,
+        canonicalKey: t.canonicalKey || null,
+        explicitId: t.explicitId || null,
         file: t.file,
         line: t.line,
         text: t.text,
@@ -501,6 +514,8 @@ function main() {
       })),
       subtasks: subtasks.map((s) => ({
         stableId: s.stableId,
+        canonicalKey: s.canonicalKey || null,
+        explicitId: s.explicitId || null,
         parentStableId: s.parentStableId,
         file: s.file,
         line: s.line,

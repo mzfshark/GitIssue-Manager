@@ -45,6 +45,34 @@
 			],
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "Sync dry-run Axodus AragonOSX",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"cd /mnt/d/Rede/Github/mzfshark/GitIssue-Manager && ./bin/gitissuer sync --repo Axodus/AragonOSX --dry-run --no-link-hierarchy"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Sync dry-run Axodus AragonOSX (wsl)",
+			"type": "shell",
+			"command": "wsl.exe",
+			"args": [
+				"-d",
+				"Ubuntu-24.04",
+				"--",
+				"bash",
+				"-lc",
+				"cd /mnt/d/Rede/Github/mzfshark/GitIssue-Manager && ./bin/gitissuer sync --repo Axodus/AragonOSX --dry-run --no-link-hierarchy"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }

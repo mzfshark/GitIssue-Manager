@@ -1,7 +1,7 @@
 {
   "owner": "mzfshark",
   "repo": "mzfshark/GitIssue-Manager",
-  "localPath": "/opt/GitIssue-Manager",
+  "localPath": ".",
   "enableProjectSync": true,
   "project": {
     "url": "https://github.com/users/mzfshark/projects/15",
@@ -35,9 +35,9 @@
     ]
   },
   "outputs": {
-    "tasksPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/mzfshark-GitIssue-Manager/tasks.json",
-    "subtasksPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/mzfshark-GitIssue-Manager/subtasks.json",
-    "engineInputPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/mzfshark-GitIssue-Manager/engine-input.json",
-    "engineOutputPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/mzfshark-GitIssue-Manager/engine-output.json"
+    "tasksPath": "./tmp/mzfshark-GitIssue-Manager/tasks.json",
+    "subtasksPath": "./tmp/mzfshark-GitIssue-Manager/subtasks.json",
+    "engineInputPath": "./tmp/mzfshark-GitIssue-Manager/engine-input.json",
+    "engineOutputPath": "./tmp/mzfshark-GitIssue-Manager/engine-output.json"
   }
 }

@@ -120,6 +120,26 @@ pnpm install
 # Or: npm install / yarn install
 ```
 
+Optional (recommended): install `gitissuer` globally pointing to this checkout:
+
+```bash
+# From the GitIssue-Manager repo
+gitissuer install
+# (equivalent to: npm link)
+
+# Verify what is running
+gitissuer doctor
+```
+
+If you previously had a legacy hardcoded install (e.g. `/opt/GitIssue-Manager`), run `gitissuer doctor` and re-install via `npm link` so your PATH resolves to the current workspace code.
+
+If `command -v gitissuer` still resolves to `/usr/local/bin/gitissuer` and `gitissuer doctor` shows `/opt/GitIssue-Manager`, you likely have a root-owned legacy wrapper. You can replace it (requires sudo):
+
+```bash
+sudo rm -f /usr/local/bin/gitissuer
+sudo ln -sf "$(npm prefix -g)/bin/gitissuer" /usr/local/bin/gitissuer
+```
+
 ### 2. Prepare your plan file
 Create or edit `SPRINT.md` in your repo root:
 

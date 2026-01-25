@@ -1,6 +1,7 @@
 {
-  "last_run": "2026-01-23T12:03:24Z",
-  "status": "skipped",
-  "reason": "ISSUE_UPDATES.md not found",
+  "last_run": "2026-01-24T01:46:52Z",
+  "status": "success",
+  "steps": ["add", "prepare", "deploy", "registry", "apply", "e2e"],
+  "auto_deploy": true,
   "repo": "mzfshark/GitIssue-Manager"
 }

@@ -1,12 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+SCRIPT_PATH=""
+
+if command -v readlink >/dev/null 2>&1; then
+  SCRIPT_PATH="$(readlink -f "$SCRIPT_SOURCE" 2>/dev/null || true)"
+fi
+
+if [[ -z "$SCRIPT_PATH" ]] && command -v python3 >/dev/null 2>&1; then
+  SCRIPT_PATH="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$SCRIPT_SOURCE" 2>/dev/null || true)"
+fi
+
+if [[ -z "$SCRIPT_PATH" ]]; then
+  SCRIPT_PATH="$SCRIPT_SOURCE"
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CONFIGS_DIR="$ROOT/sync-helper/configs"
 
 usage() {
-  cat <<EOF
+  cat <<'EOF'
 Usage: gitissuer <command> [options]
 
 Target selection (all commands):
@@ -16,48 +31,84 @@ Target selection (all commands):
   --all                   Run for all enabled repos in sync-helper/configs (gitissuer.enabled=true)
 
 Commands (typical flow order):
+  doctor                                                 Show what binary/config is being used and how targeting resolves
+  install                                                Install this checkout as the global `gitissuer` via `npm link`
+  uninstall                                              Remove global `gitissuer` installed via `npm link`
   config <list|create|set|edit|delete|show|path>         Manage per-repo configs in sync-helper/configs
   enable [--repo <owner/name>]                           Enable gitissuer automation for repo config
   disable [--repo <owner/name>]                          Disable gitissuer automation for repo config
   watch <enable|disable|list>                            Manage gitissuer.watch.enabled per repo (controls systemd watcher targets)
   parent <set|show|clear> [--repo <owner/name>]          Manage gitissuer.hierarchy.parentIssueNumber in repo config
-  issues list   [--repo <owner/name>]                    List issues from GitHub (read-only)
-               [--state open|closed|all]
-               [--limit N]
-               [--show-parents] [--parents-only]
-               [--show-project]
-  generate  [updates] [--repo <path|owner/name>]         Generate ISSUE_UPDATES.md from git log (defaults to current repo)
-  prepare   [--repo <owner/name>]                        Generate engine-input.json (defaults to current repo)
-            [--config <path>] [--plan <file>|--plans <csv>] [--plans-dir <path>]
-  sync      [--repo <owner/name>]                        Convenience: prepare + deploy + registry:update
-            [--config <path>] [--dry-run|--confirm] [--plan <file>|--plans <csv>] [--plans-dir <path>]
-            [--link-hierarchy |--no-link-hierarchy]
-            [--parent-number <n>] [--replace-parent]
-  deploy    [--repo <owner/name>]                        Execute GitHub writes (issues/project sync) 
-            [--config <path>] --confirm 
-            [--link-hierarchy |--no-link-hierarchy] 
-            [--parent-number <n>] 
-            [--replace-parent]                                                      
-  registry:update   [--repo <owner/name>]                Update per-repo registry from engine input/output
-                    [--config <path>] 
-  link-hierarchy    [--repo <owner/name>]                Link parent↔child hierarchy only (E2E stage 5) 
-                    [--parent-number <n>] 
-                    [--metadata-file <path>] 
-                    [--engine-output-file <path>] 
-                    [--dry-run|--confirm] 
-                    [--replace-parent] 
-                    [--non-interactive]                                                     
-  apply   [--repo <owner/name>]                          Apply bounded ISSUE_UPDATES actions using the registry 
-          [--config <path>] 
-          [--file <ISSUE_UPDATES.md>] 
-          [--dry-run|--confirm]                                                      
-  e2e:run   [--repo <owner/name>]                       Run E2E orchestrator (dry-run by default)
-            [--config <path>] 
-            [--dry-run|--confirm] 
-            [--non-interactive]                                                      
-  check update  [--repo <owner/name>]                   List recently-updated issues in a repo (read-only)
-                [--limit N] 
-                [--since <ISO-8601>]  
+  
+List issues from GitHub (read-only)  
+  issues list               [--repo <owner/name>]                    
+                            [--state open|closed|all]
+                            [--limit N]
+                            [--show-parents] 
+                            [--parents-only]
+                            [--show-project]
+
+Generate ISSUE_UPDATES.md from git log (defaults to current repo)
+  generate                  [updates] [--repo <path|owner/name>]         
+
+Generate engine-input.json (defaults to current repo)
+  prepare                   [--repo <owner/name>]                        
+                            [--config <path>] 
+                            [--plan <file>|--plans <csv>] 
+                            [--plans-dir <path>]
+
+Inject canonical identity keys into Markdown plans (ULID)
+  rekey                     [--repo <owner/name>]
+                            [--config <path>] [--dry-run|--confirm]
+                            [--plan <file>|--plans <csv>]
+                            [--plans-dir <path>]
+  
+Convenience: prepare + deploy + registry:update  
+  sync                      [--repo <owner/name>]                        
+                            [--config <path>] [--dry-run|--confirm] 
+                            [--plan <file>|--plans <csv>] 
+                            [--plans-dir <path>]
+                            [--link-hierarchy |--no-link-hierarchy]
+                            [--parent-number <n>] 
+                            [--replace-parent]
+
+Execute GitHub writes (issues/project sync)
+  deploy                    [--repo <owner/name>]
+                            [--config <path>] --confirm
+                            [--link-hierarchy |--no-link-hierarchy]
+                            [--parent-number <n>] 
+                            [--replace-parent]
+
+Update per-repo registry from engine input/output
+  registry:update           [--repo <owner/name>]                
+                            [--config <path>]
+
+Link parent↔child hierarchy only (E2E stage 5)
+  link-hierarchy            [--repo <owner/name>]                 
+                            [--parent-number <n>] 
+                            [--metadata-file <path>] 
+                            [--engine-output-file <path>] 
+                            [--dry-run|--confirm] 
+                            [--replace-parent] 
+                            [--non-interactive]
+
+Apply bounded ISSUE_UPDATES actions using the registry
+  apply                     [--repo <owner/name>]
+                            [--config <path>]
+                            [--file <ISSUE_UPDATES.md>]
+                            [--dry-run|--confirm]
+
+Run E2E orchestrator (dry-run by default)
+  e2e:run                   [--repo <owner/name>]                       
+                            [--config <path>] 
+                            [--dry-run|--confirm] 
+                            [--non-interactive]
+                            [--plan <file>|--plan-file <path>]
+
+List recently-updated issues in a repo (read-only)
+  check update              [--repo <owner/name>]                   
+                            [--limit N] 
+                            [--since <ISO-8601>]  
 
 Config subcommands:
   config list               [--include-disabled]
@@ -91,12 +142,77 @@ Parent subcommands:
   parent clear              [--repo <owner/name>]
 
 Issues subcommands:
-  issues list                [--repo <owner/name>] [--select] [--include-disabled]
-                             [--state open|closed|all]
-                             [--limit N]
-                             [--show-parents] [--parents-only]
-                             [--show-project]
+  issues list               [--repo <owner/name>] [--select] [--include-disabled]
+                            [--state open|closed|all]
+                            [--limit N]
+                            [--show-parents] [--parents-only]
+                            [--show-project]
 EOF
+}
+
+passthrough_has_flag() {
+  local want="$1"
+  shift || true
+  local a
+  for a in "$@"; do
+    if [[ "$a" == "$want" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+ensure_repo_local_config_for_current_repo() {
+  # Zero-config fallback: when running inside a git repo with no sync-helper config,
+  # generate a repo-local config under .gitissuer/ and use it for this invocation.
+  # This keeps artifacts and state within the target repo ("clean repo" mode).
+  require_cmd git
+  require_cmd jq
+
+  local repo_full="$1"
+  local repo_root
+  repo_root="$(infer_git_root_from_cwd)"
+  if [[ -z "$repo_root" ]]; then
+    return 1
+  fi
+
+  # Only safe when the current repo matches the inferred target.
+  local current_full
+  current_full="$(infer_repo_full_from_cwd 2>/dev/null || true)"
+  if [[ -z "$current_full" || "$current_full" != "$repo_full" ]]; then
+    return 1
+  fi
+
+  local cfg_path="$repo_root/.gitissuer/gitissuer.sync.json"
+  if [[ -f "$cfg_path" ]]; then
+    printf '%s' "$cfg_path"
+    return 0
+  fi
+
+  mkdir -p "$repo_root/.gitissuer"
+
+  cat >"$cfg_path" <<EOF
+{
+  "repo": "${repo_full}",
+  "localPath": ".",
+  "enableProjectSync": false,
+  "gitissuer": {
+    "enabled": true,
+    "autoDeploy": false
+  },
+  "outputs": {
+    "tasksPath": "./.gitissuer/tmp/tasks.json",
+    "subtasksPath": "./.gitissuer/tmp/subtasks.json",
+    "engineInputPath": "./.gitissuer/tmp/engine-input.json",
+    "engineOutputPath": "./.gitissuer/tmp/engine-output.json",
+    "metadataPath": "./.gitissuer/tmp/metadata.json"
+  }
+}
+EOF
+
+  echo "[INFO] Created repo-local config: $cfg_path" >&2
+  printf '%s' "$cfg_path"
+  return 0
 }
 
 ensure_dirs() {
@@ -788,14 +904,18 @@ infer_repo_full_from_git_remote() {
   local repo_root="$1"
   require_cmd git
 
-  local remote_url
-  remote_url="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
-  if [[ -z "$remote_url" ]]; then
+  # Prefer upstream when present to avoid fork-origin mismatches.
+  local candidate_url=""
+  candidate_url="$(git -C "$repo_root" remote get-url upstream 2>/dev/null || true)"
+  if [[ -z "$candidate_url" ]]; then
+    candidate_url="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
+  fi
+  if [[ -z "$candidate_url" ]]; then
     return 1
   fi
 
   # Support git@github.com:owner/repo(.git) and https://github.com/owner/repo(.git)
-  if [[ "$remote_url" =~ github\.com[:/]+([^/]+)/([^/]+)$ ]]; then
+  if [[ "$candidate_url" =~ github\.com[:/]+([^/]+)/([^/]+)$ ]]; then
     local owner="${BASH_REMATCH[1]}"
     local repo_raw="${BASH_REMATCH[2]}"
     repo_raw="${repo_raw%.git}"
@@ -1203,14 +1323,117 @@ run_for_targets() {
       fi
     fi
     echo "[INFO] Running $subcmd for $t" >&2
-    /bin/bash "$ROOT/scripts/gitissuer.sh" "$subcmd" --repo "$t" "${passthrough[@]}" || rc=$?
+
+    # Zero-config fallback for the current repo only:
+    # If no --config was provided and sync-helper config is missing, generate and use a repo-local config.
+    local -a effective_passthrough=("${passthrough[@]}")
+    if ! passthrough_has_flag --config "${passthrough[@]}"; then
+      local cfg_guess
+      cfg_guess="$(config_path_for_repo_full "$t" 2>/dev/null || true)"
+      if [[ -z "$cfg_guess" || ! -f "$cfg_guess" ]]; then
+        if [[ "$mode" == "infer" ]] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          local local_cfg
+          local_cfg="$(ensure_repo_local_config_for_current_repo "$t" 2>/dev/null || true)"
+          if [[ -n "$local_cfg" && -f "$local_cfg" ]]; then
+            effective_passthrough+=(--config "$local_cfg")
+          fi
+        fi
+      fi
+    fi
+
+    /bin/bash "$ROOT/scripts/gitissuer.sh" "$subcmd" --repo "$t" "${effective_passthrough[@]}" || rc=$?
   done
 
   exit $rc
 }
 
+cmd_doctor() {
+  require_cmd git
+  echo "gitissuer resolved path: $(command -v gitissuer 2>/dev/null || echo "(not found in PATH)")"
+  echo "gitissuer script path: $0"
+  echo "gitissuer root: $ROOT"
+  echo "configs dir: $CONFIGS_DIR"
+
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    local repo_root
+    repo_root="$(infer_git_root_from_cwd)"
+    echo "cwd git root: $repo_root"
+
+    local repo_full
+    repo_full="$(infer_repo_full_from_cwd 2>/dev/null || true)"
+    echo "cwd inferred repo: ${repo_full:-"(unable to infer)"}"
+
+    if [[ -n "$repo_full" ]]; then
+      local cfg
+      cfg="$(config_path_for_repo_full "$repo_full" 2>/dev/null || true)"
+      if [[ -n "$cfg" && -f "$cfg" ]]; then
+        echo "sync-helper config: $cfg"
+      else
+        local local_cfg="$repo_root/.gitissuer/gitissuer.sync.json"
+        if [[ -f "$local_cfg" ]]; then
+          echo "repo-local config: $local_cfg"
+        else
+          echo "config: (missing)"
+          echo "HINT: Run in this repo: gitissuer config create --repo $repo_full --local-path \"$repo_root\"" >&2
+          echo "HINT: Or rely on zero-config: gitissuer prepare (will auto-create .gitissuer/gitissuer.sync.json)" >&2
+        fi
+      fi
+    fi
+  else
+    echo "cwd git root: (not a git repo)"
+  fi
+
+  # Detect legacy hardcoded install patterns.
+  if [[ "$ROOT" == "/opt/GitIssue-Manager"* ]]; then
+    echo "[WARN] This looks like a legacy /opt install. Prefer an npm-linked install to this checkout." >&2
+    echo "[HINT] From the GitIssue-Manager repo: npm link" >&2
+  fi
+}
+
+cmd_install() {
+  require_cmd npm
+  (cd "$ROOT" && npm link --ignore-scripts)
+  echo "[OK] Installed global gitissuer from: $ROOT"
+
+  # If a legacy root-owned wrapper exists, PATH may still resolve to /usr/local/bin/gitissuer.
+  if [[ -f "/usr/local/bin/gitissuer" ]]; then
+    if head -n 20 /usr/local/bin/gitissuer 2>/dev/null | grep -q 'ROOT="/opt/GitIssue-Manager"'; then
+      local npm_prefix
+      local npm_bin
+      npm_prefix="$(npm prefix -g 2>/dev/null || true)"
+      npm_bin=""
+      if [[ -n "$npm_prefix" ]]; then
+        npm_bin="$npm_prefix/bin"
+      fi
+      echo "[WARN] Detected legacy wrapper: /usr/local/bin/gitissuer (hardcoded to /opt/GitIssue-Manager)" >&2
+      echo "[WARN] It is owned by root; it will override the npm-linked binary in many PATH setups." >&2
+      echo "[FIX] If you have sudo, replace it with the npm-linked shim:" >&2
+      if [[ -n "$npm_bin" ]]; then
+        echo "      sudo rm -f /usr/local/bin/gitissuer" >&2
+        echo "      sudo ln -sf \"$npm_bin/gitissuer\" /usr/local/bin/gitissuer" >&2
+      else
+        echo "      sudo rm -f /usr/local/bin/gitissuer" >&2
+        echo "      # then open a new shell and re-run: command -v gitissuer" >&2
+      fi
+    fi
+  fi
+
+  echo "[HINT] Verify with: command -v gitissuer && gitissuer doctor"
+}
+
+cmd_uninstall() {
+  require_cmd npm
+  # Package name is gitissue-manager; npm link creates a global link for it.
+  npm unlink -g gitissue-manager >/dev/null 2>&1 || true
+  echo "[OK] Unlinked global gitissue-manager (gitissuer)"
+}
+
 cmd_prepare() {
   run_for_targets prepare "$@"
+}
+
+cmd_rekey() {
+  run_for_targets rekey "$@"
 }
 
 cmd_sync() {
@@ -1560,8 +1783,8 @@ cmd_config() {
         fi
 
         if [[ -z "$local_path" ]]; then
-          echo "[INFO] localPath should be an absolute path. Prefer /opt/<REPO> when possible." >&2
-          local_path="$(prompt_string "localPath" "${current_abs:-/opt/${repo_full##*/}}")"
+            echo "[INFO] localPath should be an absolute path." >&2
+            local_path="$(prompt_string "localPath" "${current_abs:-$(pwd)}")"
         fi
 
         local_path="$(abs_path "$local_path")"
@@ -2509,8 +2732,12 @@ main() {
   esac
 
   case "$cmd" in
+    doctor) cmd_doctor "$@" ;;
+    install) cmd_install "$@" ;;
+    uninstall) cmd_uninstall "$@" ;;
     generate) cmd_generate "$@" ;;
     prepare) cmd_prepare "$@" ;;
+    rekey) cmd_rekey "$@" ;;
     sync) cmd_sync "$@" ;;
     deploy) cmd_deploy "$@" ;;
     registry:update) cmd_registry_update "$@" ;;

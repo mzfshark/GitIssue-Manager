@@ -1,6 +1,6 @@
 # GitIssue-Manager Engine Input Mapping
 
-Specification for parsing SPRINT.md, PLAN.md, and BUG.md into engine-input.json.
+Specification for parsing PLAN.md (and linked Markdown files) into engine-input.json.
 
 **Version:** 1.0  
 **Last Updated:** 2026-01-21  
@@ -16,9 +16,9 @@ GitIssue-Manager consumes Markdown planning artifacts and converts them into str
 
 ```
 <repo-root>/
-  SPRINT.md         ← Main input; generates 1 aggregated issue per repo
-  PLAN.md           ← Reference only; not parsed for issue generation
-  BUG.md            ← Reference only; not parsed for issue generation
+  PLAN.md           ← Main input; parsed for tasks/subtasks
+  docs/plans/*.md   ← Optional; you can point to these using --plan/--plans/--plans-dir
+  (linked .md files)← PLAN.md can link to other .md files; those are parsed too
 ```
 
 ### Output File
@@ -29,43 +29,25 @@ GitIssue-Manager/tmp/
 
 ---
 
-## SPRINT.md Schema
+## PLAN.md Schema
 
 ### File Structure
 ```markdown
-# Sprint 1: <Title>
+#  #PLAN-001 - <Plan Title>
 
-## Summary
-<Brief description>
+## Subtasks (Linked)
 
-**Sprint Goal:** <Goal statement>
-**Sprint Start:** YYYY-MM-DD
-**Sprint End:** YYYY-MM-DD
-**Status:** Active
+### PLAN-001: <Milestone>
 
----
-
-## FEATURE-001: <Name> [metadata-tags]
-
-**Description:** <What>
-
-- [ ] <Task> [metadata-tags]
-  - [ ] <Subtask> [metadata-tags]
-
----
-
-## TASK-001: <Name> [metadata-tags]
-
-**Description:** <What>
-
-- [ ] <Task> [metadata-tags]
+- [ ] <Top-level item>
+  - [ ] <Child item>
 ```
 
-### Item ID Format
+### Item ID Format (optional but recommended)
 
 **Syntax:** `TYPE-NNN` (case-insensitive)
 
-**Valid Types:** `FEATURE`, `TASK`, `BUG`, `EPIC`, `HOTFIX`
+**Valid Types:** `FEATURE`, `TASK`, `BUG`, `EPIC`, `HOTFIX`, `PLAN`, `SPRINT`
 
 **Examples:**
 - `FEATURE-001` → New feature for sprint
@@ -80,10 +62,11 @@ GitIssue-Manager/tmp/
 
 **Syntax:**
 ```
-[labels:label1, label2] [status:DONE|TODO] [priority:HIGH|MEDIUM|LOW] [estimate:Nh] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+[key:<canonical-key>] [labels:label1, label2] [status:DONE|TODO] [priority:HIGH|MEDIUM|LOW] [estimate:Nh] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
 ```
 
 **Rules:**
+- `key` is the canonical identity. When present, GitIssue-Manager derives `StableId` from `key` to avoid duplicates when items move.
 - All tags optional except status (defaults to TODO if missing)
 - Labels: comma-separated, no spaces
 - Status: case-insensitive (DONE, Done, done all valid)
@@ -93,7 +76,7 @@ GitIssue-Manager/tmp/
 
 **Example:**
 ```markdown
-- [ ] Implement reorg detection [labels:type:feature, area:indexing, area:backend] [status:TODO] [priority:high] [estimate:12h] [start:2026-01-20] [end:2026-01-22]
+- [ ] Implement reorg detection [key:01J0ABCDE...] [labels:type:feature, area:indexing, area:backend] [status:TODO] [priority:high] [estimate:12h] [start:2026-01-20] [end:2026-01-22]
   - [ ] Add unique constraint on block hash [labels:type:task] [status:DONE] [priority:high] [estimate:2h] [start:2026-01-20] [end:2026-01-20]
   - [ ] Test reorg recovery [labels:type:test] [status:TODO] [priority:high] [estimate:6h] [start:2026-01-21] [end:2026-01-22]
 ```
@@ -102,7 +85,13 @@ GitIssue-Manager/tmp/
 
 ## Parsing Algorithm
 
-### Step 1: Extract Sprint Metadata
+### Step 1: Resolve plan files
+
+GitIssue-Manager starts from PLAN.md (or a list of selected plan files via CLI flags) and also parses any linked `.md` files referenced via Markdown links.
+
+It ignores dot-segments (e.g., `.git/`, `.github/`) for safety.
+
+### Step 2: Parse hierarchy
 ```javascript
 {
   title: "Sprint 1: HarmonyVoting E2E Production Rollout",
@@ -163,9 +152,23 @@ For each checklist section (FEATURE-001, TASK-042, etc.):
 }
 ```
 
-### Step 4: Generate GitHub Issue Body
+### Step 4: Generate GitHub Issue Title and Body
 
-**Template:**
+**Title:**
+
+GitHub issue titles use breadcrumb format (no `-NNN` numbering in the GitHub title):
+
+`[PLAN / EPIC / FEATURE|TASK|BUG|HOTFIX] - <Title>`
+
+**Body:**
+
+The body always includes `Source`, and includes `Key` when present:
+
+```
+Source: <file>#L<line>
+Key: <canonical-key>
+StableId: <stableId>
+```
 ```markdown
 # <Sprint Title>
 
@@ -452,7 +455,7 @@ Implement reorg detection and recovery.
 ## Next Steps
 
 1. Validate all SPRINT.md files against this schema
-2. Run dry-run: `yarn prepare --repos aragon-osx,aragon-app,aragon-app-backend --dry-run`
+2. Run dry-run (no GitHub writes): `gitissuer sync --repo "mzfshark/AragonOSX" --dry-run`
 3. Review output in console and `tmp/engine-input.json`
-4. Approve and execute: `yarn prepare --repos ... --execute`
+4. Approve and execute (writes to GitHub): `GITHUB_TOKEN=<token> gitissuer sync --repo "mzfshark/AragonOSX" --confirm`
 5. Verify issues created in GitHub and attached to ProjectV2

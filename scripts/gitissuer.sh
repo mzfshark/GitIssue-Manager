@@ -14,6 +14,8 @@ Usage: gitissuer.sh <command> [options]
 
 Commands:
   add --file <path> --output <path>        Copy ISSUE_UPDATES.md into a timestamped update file
+  rekey --repo <owner/name> [--config <path>] [--dry-run|--confirm] [--plan <file>|--plans <csv>] [--plans-dir <path>]
+                                           Inject missing [key:<ULID>] tags into Markdown planning files
   prepare --repo <owner/name> [--config <path>] [--dry-run] [--plan <file>|--plans <csv>] [--plans-dir <path>]
                                            Generate engine input from Markdown plans
   sync --repo <owner/name> [--config <path>] [--dry-run|--confirm] [--plan <file>|--plans <csv>] [--plans-dir <path>] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
@@ -24,7 +26,7 @@ Commands:
                                            Update per-repo registry from engine-input + engine-output
   apply --repo <owner/name> [--config <path>] [--file <ISSUE_UPDATES.md>] [--dry-run|--confirm]
                                            Parse bounded updates section and apply safe actions using the registry
-  e2e:run --repo <owner/name> [--config <path>] [--dry-run] [--non-interactive]
+  e2e:run --repo <owner/name> [--config <path>] [--dry-run] [--non-interactive] [--plan <file>|--plan-file <path>]
                                            Run E2E validation flow (dry-run by default)
   link:hierarchy --repo <owner/name> [--config <path>] [--parent-number <n>] [--metadata-file <path>] [--engine-output-file <path>] [--dry-run|--confirm] [--replace-parent] [--non-interactive]
                                            Link parent↔child hierarchy using E2E stage 5 only
@@ -161,6 +163,68 @@ cmd_prepare() {
   fi
 }
 
+cmd_rekey() {
+  require_cmd node
+  require_cmd jq
+
+  local repo_full=""
+  local config_path=""
+  local confirm="false"
+  local dry_run="false"
+  local plan_arg=""
+  local plans_arg=""
+  local plans_dir_arg=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --repo) repo_full="$2"; shift 2 ;;
+      --config) config_path="$2"; shift 2 ;;
+      --dry-run) dry_run="true"; shift ;;
+      --confirm) confirm="true"; shift ;;
+      --plan) plan_arg="$2"; shift 2 ;;
+      --plans) plans_arg="$2"; shift 2 ;;
+      --plans-dir) plans_dir_arg="$2"; shift 2 ;;
+      -h|--help) usage; exit 0 ;;
+      *) echo "ERROR: Unknown arg: $1"; usage; exit 1 ;;
+    esac
+  done
+
+  if [[ "$confirm" == "true" && "$dry_run" == "true" ]]; then
+    echo "ERROR: Choose one: --dry-run or --confirm" >&2
+    exit 2
+  fi
+
+  if [[ "$confirm" != "true" && "$dry_run" != "true" ]]; then
+    echo "ERROR: Refusing to modify files without --confirm (or preview with --dry-run)" >&2
+    exit 2
+  fi
+
+  local cfg
+  cfg=$(resolve_config_path "$repo_full" "$config_path")
+
+  local -a rekey_args=(--config "$cfg")
+  if [[ -n "$plans_arg" ]]; then
+    rekey_args+=(--plans "$plans_arg")
+  elif [[ -n "$plan_arg" ]]; then
+    rekey_args+=(--plan "$plan_arg")
+  fi
+  if [[ -n "$plans_dir_arg" ]]; then
+    rekey_args+=(--plans-dir "$plans_dir_arg")
+  fi
+  if [[ "$dry_run" == "true" ]]; then
+    rekey_args+=(--dry-run)
+  else
+    rekey_args+=(--confirm)
+  fi
+
+  node "$PROJECT_ROOT/client/rekey.js" "${rekey_args[@]}"
+  if [[ "$dry_run" == "true" ]]; then
+    echo "OK: rekey (dry-run) completed for $repo_full"
+  else
+    echo "OK: rekey completed for $repo_full"
+  fi
+}
+
 cmd_sync() {
   require_cmd bash
   require_cmd jq
@@ -250,11 +314,16 @@ cmd_sync() {
   cmd_deploy "${deploy_args[@]}"
 
   # 3) Update registry locally (required for later `apply` workflows)
-  local -a reg_args=(--repo "$repo_full")
-  if [[ -n "$config_path" ]]; then
-    reg_args+=(--config "$config_path")
+  # IMPORTANT: Do not update registry during --dry-run to avoid phantom entries.
+  if [[ "$dry_run" == "true" ]]; then
+    echo "INFO: registry:update skipped (dry-run) for $repo_full" >&2
+  else
+    local -a reg_args=(--repo "$repo_full")
+    if [[ -n "$config_path" ]]; then
+      reg_args+=(--config "$config_path")
+    fi
+    cmd_registry_update "${reg_args[@]}"
   fi
-  cmd_registry_update "${reg_args[@]}"
 
   echo "OK: sync completed for $repo_full"
 }
@@ -410,6 +479,10 @@ cmd_e2e() {
   local config_path=""
   local dry_run="true"
   local non_interactive="true"
+  local plan_arg=""
+  local plan_file_arg=""
+  local metadata_file_arg=""
+  local engine_output_file_arg=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -418,6 +491,10 @@ cmd_e2e() {
       --dry-run) dry_run="true"; shift ;;
       --confirm) dry_run="false"; shift ;;
       --non-interactive) non_interactive="true"; shift ;;
+      --plan) plan_arg="$2"; shift 2 ;;
+      --plan-file) plan_file_arg="$2"; shift 2 ;;
+      --metadata-file) metadata_file_arg="$2"; shift 2 ;;
+      --engine-output-file) engine_output_file_arg="$2"; shift 2 ;;
       -h|--help) usage; exit 0 ;;
       *) echo "ERROR: Unknown arg: $1"; usage; exit 1 ;;
     esac
@@ -434,6 +511,17 @@ cmd_e2e() {
   fi
   if [[ "$dry_run" == "true" ]]; then
     args+=("--dry-run")
+  fi
+  if [[ -n "$plan_file_arg" ]]; then
+    args+=("--plan-file" "$plan_file_arg")
+  elif [[ -n "$plan_arg" ]]; then
+    args+=("--plan" "$plan_arg")
+  fi
+  if [[ -n "$metadata_file_arg" ]]; then
+    args+=("--metadata-file" "$metadata_file_arg")
+  fi
+  if [[ -n "$engine_output_file_arg" ]]; then
+    args+=("--engine-output-file" "$engine_output_file_arg")
   fi
 
   bash "$PROJECT_ROOT/scripts/e2e-flow-v2.sh" "${args[@]}"
@@ -476,6 +564,27 @@ cmd_link_hierarchy() {
     resolve_config_path "$repo_full" "$config_path" >/dev/null
   fi
 
+  # Best-effort: auto-resolve metadata/engine-output paths from config outputs if not provided.
+  if [[ -z "$metadata_file" || -z "$engine_output_file" ]]; then
+    local cfg
+    cfg=$(resolve_config_path "$repo_full" "$config_path" 2>/dev/null || true)
+    if [[ -n "$cfg" && -f "$cfg" ]]; then
+      if [[ -z "$engine_output_file" ]]; then
+        engine_output_file=$(jq -r '.outputs.engineOutputPath // empty' "$cfg" 2>/dev/null || true)
+      fi
+      if [[ -z "$metadata_file" ]]; then
+        metadata_file=$(jq -r '.outputs.metadataPath // empty' "$cfg" 2>/dev/null || true)
+        if [[ -z "$metadata_file" ]]; then
+          local tasks_path
+          tasks_path=$(jq -r '.outputs.tasksPath // empty' "$cfg" 2>/dev/null || true)
+          if [[ -n "$tasks_path" ]]; then
+            metadata_file="$(dirname "$tasks_path")/metadata.json"
+          fi
+        fi
+      fi
+    fi
+  fi
+
   local args=("--repo" "$repo_full" "--stage" "5")
   if [[ "$non_interactive" == "true" ]]; then
     args+=("--non-interactive")
@@ -505,6 +614,7 @@ main() {
 
   case "$cmd" in
     add) cmd_add "$@" ;;
+    rekey) cmd_rekey "$@" ;;
     prepare) cmd_prepare "$@" ;;
     sync) cmd_sync "$@" ;;
     deploy) cmd_deploy "$@" ;;

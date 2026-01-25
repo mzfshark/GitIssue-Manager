@@ -27,8 +27,8 @@ Use headings that include an ID (e.g., PLAN-001, EPIC-001, FEATURE-002). Checkli
 
 ### PLAN-001: <Milestone Name>
 
-- [ ] <Subtask title> [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
-- [ ] <Subtask title> [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] <Subtask title> [key:<canonical-key>] [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] <Subtask title> [key:<canonical-key>] [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
 
 ---
 

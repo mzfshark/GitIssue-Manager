@@ -973,7 +973,7 @@ cp config.sample.json config.json
 npm run setup -- --config config.json
 
 # STAGE 2: Prepare
-npm run prepare -- --config config.json
+gitissuer prepare --all
 
 # STAGE 3: Create issues (manually organize in UI after)
 npm run create:parents -- --input tmp/engine-input.json

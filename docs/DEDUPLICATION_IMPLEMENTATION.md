@@ -1,13 +1,10 @@
-# Execute Pipeline v2 - Melhorias de Deduplicação
+# Execute Pipeline v2 - Deduplication Notes
 
-## 🔍 Problema Identificado
+## Problem
 
-**Problema Original:**
-- Script criava **issues duplicadas** (#429, #430, #431) sem verificar se já existiam
-- Ao executar o pipeline novamente, criava novas issues ao invés de atualizar as existentes
-- Causava poluição do repositório e perda de rastreamento
+The original pipeline could create duplicate issues when the same logical work item was re-parsed with a different identifier (e.g., moved lines, edited text).
 
-**Exemplo de Duplicação:**
+Example (duplicates):
 ```
 AragonOSX PLAN-001:
 ❌ #429 - HarmonyVoting E2E Production Rollout (DUPLICATE)
@@ -17,24 +14,26 @@ AragonOSX PLAN-001:
 
 ---
 
-## ✅ Solução Implementada: Deduplicação
+## Current dedupe strategy (Option A)
 
-### 1. Função Helper: `issue_exists()`
+GitIssue-Manager now supports a canonical identity tag:
 
-```bash
-issue_exists() {
-    local repo="$1"
-    local title_pattern="$2"
-    
-    # Busca por issues que correspondem ao padrão
-    local existing=$(gh issue list -R "$repo" \
-        --state all \
-        --json number,title \
-        --jq ".[] | select(.title | test(\"${title_pattern}\")) | .number" 2>/dev/null | head -1)
-    
-    echo "$existing"
-}
-```
+- Add `[key:<canonical-key>]` to checklist items.
+
+Recommended format: ULID (26 chars, time-sortable). You can auto-inject missing keys with:
+
+- `gitissuer rekey --repo <owner/name> --dry-run`
+- `gitissuer rekey --repo <owner/name> --confirm`
+
+When `key` is present:
+
+- `StableId` is derived from `key` (instead of file/line/rawText), so it remains stable across moves/edits.
+- GitHub issue bodies include `Key: <canonical-key>`.
+- The executor dedupes by `Key` first, then falls back to `StableId` (backward compatible).
+
+## Legacy notes (title-regex)
+
+Older iterations used title-pattern matching to avoid duplicates. This is fragile and should not be treated as the source of truth.
 
 **O que faz:**
 - Verifica se uma issue com o padrão de título já existe
@@ -158,13 +157,12 @@ bash scripts/execute-pipeline-v2.sh
 
 ---
 
-## 📝 Padrões de Título por PLAN
+## GitHub issue titles
 
-| PLAN | Padrão de Busca | Exemplo |
-|------|-----------------|---------|
-| PLAN-001 | `PLAN-001.*HarmonyVoting E2E` | `[AragonOSX \| #PLAN-001]: HarmonyVoting E2E...` |
-| PLAN-002 | `PLAN-002.*Frontend UI` | `[aragon-app \| #PLAN-002]: HarmonyVoting Frontend...` |
-| PLAN-003 | `PLAN-003.*Event Pipeline` | `[Aragon-app-backend \| #PLAN-003]: Backend...` |
+GitHub issue titles are generated as breadcrumbs (no `-NNN` numbering in the GitHub title), e.g.:
+
+- `[PLAN / EPIC / FEATURE] - Title`
+- `[PLAN / EPIC / BUG] - Title`
 
 ---
 

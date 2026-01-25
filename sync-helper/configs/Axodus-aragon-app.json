@@ -1,7 +1,7 @@
 {
   "owner": "Axodus",
   "repo": "Axodus/aragon-app",
-  "localPath": "/opt/aragon-app",
+  "localPath": "../aragon-app",
   "enableProjectSync": true,
   "gitissuer": {
     "enabled": true,
@@ -36,9 +36,9 @@
     ]
   },
   "outputs": {
-    "tasksPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-aragon-app/tasks.json",
-    "subtasksPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-aragon-app/subtasks.json",
-    "engineInputPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-aragon-app/engine-input.json",
-    "engineOutputPath": "/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/Axodus-aragon-app/engine-output.json"
+    "tasksPath": "./tmp/Axodus-aragon-app/tasks.json",
+    "subtasksPath": "./tmp/Axodus-aragon-app/subtasks.json",
+    "engineInputPath": "./tmp/Axodus-aragon-app/engine-input.json",
+    "engineOutputPath": "./tmp/Axodus-aragon-app/engine-output.json"
   }
 }

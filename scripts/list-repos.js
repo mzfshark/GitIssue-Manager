@@ -9,13 +9,13 @@ const CONFIG_DIR = path.join(__dirname, '../sync-helper/configs');
 
 function listConfigs() {
   if (!fs.existsSync(CONFIG_DIR)) {
-    console.log('No configurations found. Run: npm run setup');
+    console.log('No configurations found. Run: gitissuer config create (or npm run setup)');
     return [];
   }
 
   const files = fs.readdirSync(CONFIG_DIR).filter(f => f.endsWith('.json'));
   if (!files.length) {
-    console.log('No repositories configured yet. Run: npm run setup');
+    console.log('No repositories configured yet. Run: gitissuer config create (or npm run setup)');
     return [];
   }
 
@@ -45,16 +45,32 @@ function listConfigs() {
 
 function showCommands(configName) {
   const configPath = path.join(CONFIG_DIR, `${configName}.json`);
+  if (!fs.existsSync(configPath)) {
+    console.error(`Config not found: ${configPath}`);
+    console.error('Hint: run `gitissuer config list` to see available names, or create one with `gitissuer config create`.');
+    process.exitCode = 2;
+    return;
+  }
+
+  const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const repo = cfg.repo || '<owner/name>';
   
   console.log(`\n=== Commands for ${configName} ===\n`);
-  console.log('Prepare (scan Markdown and generate input):');
-  console.log(`  npm run prepare -- --config ${configPath}`);
+  console.log('Doctor (what binary/config is being used):');
+  console.log('  gitissuer doctor');
   console.log('');
-  console.log('Execute (create/update GitHub issues):');
-  console.log(`  npm run execute -- --config ${configPath}`);
+  console.log('Prepare (scan Markdown and generate engine-input.json):');
+  console.log(`  gitissuer prepare --repo "${repo}" --config ${configPath}`);
   console.log('');
-  console.log('Full workflow (prepare + execute):');
-  console.log(`  npm run prepare -- --config ${configPath} && npm run execute -- --config ${configPath}`);
+  console.log('Deploy (dry-run):');
+  console.log(`  gitissuer deploy --repo "${repo}" --config ${configPath} --dry-run`);
+  console.log('');
+  console.log('Deploy (write to GitHub):');
+  console.log(`  GITHUB_TOKEN=<token> gitissuer deploy --repo "${repo}" --config ${configPath} --confirm`);
+  console.log('');
+  console.log('Sync (prepare + deploy + registry:update):');
+  console.log(`  gitissuer sync --repo "${repo}" --config ${configPath} --dry-run`);
+  console.log(`  GITHUB_TOKEN=<token> gitissuer sync --repo "${repo}" --config ${configPath} --confirm`);
   console.log('');
   console.log('Edit configuration:');
   console.log(`  ${process.env.EDITOR || 'nano'} ${configPath}`);
