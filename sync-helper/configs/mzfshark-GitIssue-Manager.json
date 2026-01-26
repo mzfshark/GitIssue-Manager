@@ -20,6 +20,10 @@
     "autoDeploy": true,
     "watch": {
       "enabled": true
+    },
+    "hierarchy": {
+      "parentIssueNumber": 73,
+      "autoLink": true
     }
   },
   "defaults": {

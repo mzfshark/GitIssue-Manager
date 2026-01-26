@@ -1,4 +1,4 @@
-#  #PLAN-002 - Single Source of Truth for Issue Generation (sync-helper + E2E)
+# #PLAN-002 - Single Source of Truth for Issue Generation (sync-helper + E2E) [key:01KFXQ0FJPGFR7BX34GK62ZCAD]
 
 Repository: GitIssue-Manager (mzfshark/GitIssue-Manager)
 End Date Goal: 2026-01-26
@@ -41,18 +41,18 @@ Expected outcomes:
 
 ## Subtasks (Linked)
 
-### PLAN-002:
+### PLAN-002: [key:01KFXQ0FJRYKKPR24V1YHA8KXY]
 
-- [ ] Make Stage 2 call sync-helper prepare and persist artifact paths [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-22] [end:2026-01-23]
-- [ ] Fix Stage 2 plan resolution to use `<repoRoot>/docs/plans/` by default (avoid hardcoded sibling paths) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
-- [ ] Add `gitissuer sync` command (prepare + deploy + registry:update) as a first-class CLI workflow [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
-- [ ] Make `gitissuer` portable: add `doctor/install` commands and a repo-local zero-config fallback config under `.gitissuer/` [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:1h] [start:2026-01-23] [end:2026-01-23]
-- [ ] Harden Axodus maintenance scripts (archive/close) to fail closed on API errors and avoid silent hangs (timeouts + logs) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:0.5h] [start:2026-01-25] [end:2026-01-25]
-- [ ] Make Stage 3 create/reuse PAI from templates + plan file content [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-22] [end:2026-01-24]
-- [ ] Make Stage 4 run executor (idempotent issue upsert) and capture engine-output.json [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-23] [end:2026-01-24]
-- [ ] Add `deploy --dry-run` support in `scripts/gitissuer.sh` (no writes; allow `--link-hierarchy` to dry-run too) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
-- [ ] Make Stage 5 link hierarchy based on stableId/parentStableId maps [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:1h] [start:2026-01-24] [end:2026-01-25]
-- [ ] Make Stage 7 update progress via bounded markers (no overwrite) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:1h] [start:2026-01-25] [end:2026-01-26]
+- [ ] Make Stage 2 call sync-helper prepare and persist artifact paths [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-22] [end:2026-01-23] [key:01KFXQ0FJRYKKPR24V1YHA8KXZ]
+- [ ] Fix Stage 2 plan resolution to use `<repoRoot>/docs/plans/` by default (avoid hardcoded sibling paths) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23] [key:01KFXQ0FJRYKKPR24V1YHA8KY0]
+- [ ] Add `gitissuer sync` command (prepare + deploy + registry:update) as a first-class CLI workflow [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23] [key:01KFXQ0FJRYKKPR24V1YHA8KY1]
+- [ ] Make `gitissuer` portable: add `doctor/install` commands and a repo-local zero-config fallback config under `.gitissuer/` [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:1h] [start:2026-01-23] [end:2026-01-23] [key:01KFXQ0FJRYKKPR24V1YHA8KY2]
+- [ ] Harden Axodus maintenance scripts (archive/close) to fail closed on API errors and avoid silent hangs (timeouts + logs) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:0.5h] [start:2026-01-25] [end:2026-01-25] [key:01KFXQ0FJSN7T122BPFED3Z56B]
+- [ ] Make Stage 3 create/reuse PAI from templates + plan file content [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-22] [end:2026-01-24] [key:01KFXQ0FJSN7T122BPFED3Z56C]
+- [ ] Make Stage 4 run executor (idempotent issue upsert) and capture engine-output.json [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-23] [end:2026-01-24] [key:01KFXQ0FJSN7T122BPFED3Z56D]
+- [ ] Add `deploy --dry-run` support in `scripts/gitissuer.sh` (no writes; allow `--link-hierarchy` to dry-run too) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23] [key:01KFXQ0FJSN7T122BPFED3Z56E]
+- [ ] Make Stage 5 link hierarchy based on stableId/parentStableId maps [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:1h] [start:2026-01-24] [end:2026-01-25] [key:01KFXQ0FJSN7T122BPFED3Z56F]
+- [ ] Make Stage 7 update progress via bounded markers (no overwrite) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:1h] [start:2026-01-25] [end:2026-01-26] [key:01KFXQ0FJSN7T122BPFED3Z56G]
 
 ## Milestones
 
@@ -61,7 +61,7 @@ Expected outcomes:
 
 ---
 
-# PLAN-003 - Per-Repo Registry + ISSUE_UPDATES Apply Engine
+# PLAN-003 - Per-Repo Registry + ISSUE_UPDATES Apply Engine [key:01KFXQ0FJSN7T122BPFED3Z56H]
 
 Repository: GitIssue-Manager (mzfshark/GitIssue-Manager)
 End Date Goal: 2026-01-30
@@ -98,21 +98,21 @@ Expected outcomes:
 
 ## Subtasks (Linked)
 
-### PLAN-003:
+### PLAN-003: [key:01KFXQ0FJSN7T122BPFED3Z56J]
 
-- [ ] Define registry schema and report schema [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-23] [end:2026-01-24]
-- [ ] Implement registry read/write helpers + atomic update [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-24] [end:2026-01-25]
-- [ ] Implement ISSUE_UPDATES.md parser with strict validation [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-25] [end:2026-01-26]
-- [ ] Make `registry:update` infer outputs from `<repo>/tmp/*.json` when missing in config (zero-to-hero flow) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
-- [ ] Fix configs missing `outputs.*` so `registry:update` works after `prepare`/`deploy` [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
-- [ ] Make apply skip missing registry when there are no actionable updates (improves `apply --all` UX) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23]
-- [ ] Implement dry-run and apply modes with confirmation gate [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:3h] [start:2026-01-26] [end:2026-01-29]
-- [ ] Wire daemon to run apply step (dry-run by default) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:1h] [start:2026-01-29] [end:2026-01-30]
+- [ ] Define registry schema and report schema [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-23] [end:2026-01-24] [key:01KFXQ0FJSN7T122BPFED3Z56K]
+- [ ] Implement registry read/write helpers + atomic update [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-24] [end:2026-01-25] [key:01KFXQ0FJSN7T122BPFED3Z56M]
+- [ ] Implement ISSUE_UPDATES.md parser with strict validation [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:2h] [start:2026-01-25] [end:2026-01-26] [key:01KFXQ0FJSN7T122BPFED3Z56N]
+- [ ] Make `registry:update` infer outputs from `<repo>/tmp/*.json` when missing in config (zero-to-hero flow) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23] [key:01KFXQ0FJSN7T122BPFED3Z56P]
+- [ ] Fix configs missing `outputs.*` so `registry:update` works after `prepare`/`deploy` [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23] [key:01KFXQ0FJSN7T122BPFED3Z56Q]
+- [ ] Make apply skip missing registry when there are no actionable updates (improves `apply --all` UX) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:0.5h] [start:2026-01-23] [end:2026-01-23] [key:01KFXQ0FJSN7T122BPFED3Z56R]
+- [ ] Implement dry-run and apply modes with confirmation gate [labels:type:task, area:gitissue-manager] [status:TODO] [priority:HIGH] [estimate:3h] [start:2026-01-26] [end:2026-01-29] [key:01KFXQ0FJSN7T122BPFED3Z56S]
+- [ ] Wire daemon to run apply step (dry-run by default) [labels:type:task, area:gitissue-manager] [status:TODO] [priority:MEDIUM] [estimate:1h] [start:2026-01-29] [end:2026-01-30] [key:01KFXQ0FJSN7T122BPFED3Z56T]
 
 ---
 
 ## Archive
 
-### PLAN-001 - Fix ProjectV2 GraphQL Variable Handling (GitIssue-Manager)
+### PLAN-001 - Fix ProjectV2 GraphQL Variable Handling (GitIssue-Manager) [key:01KFXQ0FJSN7T122BPFED3Z56V]
 
 Archived: 2026-01-22 (superseded by PLAN-002)

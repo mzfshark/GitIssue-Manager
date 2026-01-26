@@ -18,9 +18,9 @@ Commands:
                                            Inject missing [key:<ULID>] tags into Markdown planning files
   prepare --repo <owner/name> [--config <path>] [--dry-run] [--plan <file>|--plans <csv>] [--plans-dir <path>]
                                            Generate engine input from Markdown plans
-  sync --repo <owner/name> [--config <path>] [--dry-run|--confirm] [--plan <file>|--plans <csv>] [--plans-dir <path>] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
+  sync --repo <owner/name> [--config <path>] [--dry-run|--confirm] [--update-only] [--plan <file>|--plans <csv>] [--plans-dir <path>] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
                                            Convenience command: prepare + deploy + registry:update
-  deploy --repo <owner/name> [--config <path>] [--batch] [--dry-run|--confirm] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
+  deploy --repo <owner/name> [--config <path>] [--batch] [--dry-run|--confirm] [--update-only] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
                                            Execute GitHub writes (issues + optional ProjectV2)
   registry:update --repo <owner/name> [--config <path>]
                                            Update per-repo registry from engine-input + engine-output
@@ -235,6 +235,8 @@ cmd_sync() {
   local confirm="false"
   local dry_run="false"
 
+  local update_only="false"
+
   local plan_arg=""
   local plans_arg=""
   local plans_dir_arg=""
@@ -249,6 +251,7 @@ cmd_sync() {
       --config) config_path="$2"; shift 2 ;;
       --dry-run) dry_run="true"; shift ;;
       --confirm) confirm="true"; shift ;;
+      --update-only) update_only="true"; shift ;;
       --plan) plan_arg="$2"; shift 2 ;;
       --plans) plans_arg="$2"; shift 2 ;;
       --plans-dir) plans_dir_arg="$2"; shift 2 ;;
@@ -300,6 +303,9 @@ cmd_sync() {
   else
     deploy_args+=(--confirm)
   fi
+  if [[ "$update_only" == "true" ]]; then
+    deploy_args+=(--update-only)
+  fi
   if [[ "$link_hierarchy" == "true" ]]; then
     deploy_args+=(--link-hierarchy)
   else
@@ -337,6 +343,7 @@ cmd_deploy() {
   local config_path=""
   local confirm="false"
   local dry_run="false"
+  local update_only="false"
   local link_hierarchy="true"
   local parent_number=""
   local replace_parent="false"
@@ -347,6 +354,7 @@ cmd_deploy() {
       --config) config_path="$2"; shift 2 ;;
       --dry-run) dry_run="true"; shift ;;
       --confirm) confirm="true"; shift ;;
+      --update-only) update_only="true"; shift ;;
       --link-hierarchy) link_hierarchy="true"; shift ;;
       --no-link-hierarchy) link_hierarchy="false"; shift ;;
       --parent-number) parent_number="$2"; shift 2 ;;
@@ -370,10 +378,18 @@ cmd_deploy() {
   local cfg
   cfg=$(resolve_config_path "$repo_full" "$config_path")
   if [[ "$dry_run" == "true" ]]; then
-    node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run
+    if [[ "$update_only" == "true" ]]; then
+      node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run --update-only
+    else
+      node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run
+    fi
     echo "OK: deploy (dry-run) completed for $repo_full"
   else
-    node "$PROJECT_ROOT/server/executor.js" --config "$cfg"
+    if [[ "$update_only" == "true" ]]; then
+      node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --update-only
+    else
+      node "$PROJECT_ROOT/server/executor.js" --config "$cfg"
+    fi
     echo "OK: deploy completed for $repo_full"
   fi
 
@@ -528,14 +544,15 @@ cmd_e2e() {
 }
 
 cmd_link_hierarchy() {
+  require_cmd node
+  require_cmd jq
+  require_cmd gh
+
   local repo_full=""
   local config_path=""
   local dry_run="true"
-  local non_interactive="true"
 
   local parent_number=""
-  local metadata_file=""
-  local engine_output_file=""
   local replace_parent="false"
 
   while [[ $# -gt 0 ]]; do
@@ -544,10 +561,10 @@ cmd_link_hierarchy() {
       --config) config_path="$2"; shift 2 ;;
       --confirm) dry_run="false"; shift ;;
       --dry-run) dry_run="true"; shift ;;
-      --non-interactive) non_interactive="true"; shift ;;
+      --non-interactive) shift ;; # accepted for compatibility
       --parent-number) parent_number="$2"; shift 2 ;;
-      --metadata-file) metadata_file="$2"; shift 2 ;;
-      --engine-output-file) engine_output_file="$2"; shift 2 ;;
+      --metadata-file) shift 2 ;; # deprecated, ignored
+      --engine-output-file) shift 2 ;; # deprecated, ignored
       --replace-parent) replace_parent="true"; shift ;;
       -h|--help) usage; exit 0 ;;
       *) echo "ERROR: Unknown arg: $1"; usage; exit 1 ;;
@@ -559,53 +576,29 @@ cmd_link_hierarchy() {
     exit 2
   fi
 
-  # If config was provided, validate it resolves, even though e2e flow will re-resolve by repo.
-  if [[ -n "$config_path" ]]; then
-    resolve_config_path "$repo_full" "$config_path" >/dev/null
-  fi
+  local cfg
+  cfg=$(resolve_config_path "$repo_full" "$config_path")
 
-  # Best-effort: auto-resolve metadata/engine-output paths from config outputs if not provided.
-  if [[ -z "$metadata_file" || -z "$engine_output_file" ]]; then
-    local cfg
-    cfg=$(resolve_config_path "$repo_full" "$config_path" 2>/dev/null || true)
-    if [[ -n "$cfg" && -f "$cfg" ]]; then
-      if [[ -z "$engine_output_file" ]]; then
-        engine_output_file=$(jq -r '.outputs.engineOutputPath // empty' "$cfg" 2>/dev/null || true)
-      fi
-      if [[ -z "$metadata_file" ]]; then
-        metadata_file=$(jq -r '.outputs.metadataPath // empty' "$cfg" 2>/dev/null || true)
-        if [[ -z "$metadata_file" ]]; then
-          local tasks_path
-          tasks_path=$(jq -r '.outputs.tasksPath // empty' "$cfg" 2>/dev/null || true)
-          if [[ -n "$tasks_path" ]]; then
-            metadata_file="$(dirname "$tasks_path")/metadata.json"
-          fi
-        fi
-      fi
-    fi
-  fi
-
-  local args=("--repo" "$repo_full" "--stage" "5")
-  if [[ "$non_interactive" == "true" ]]; then
-    args+=("--non-interactive")
-  fi
+  # Build args for the new Node-based link-hierarchy script
+  local -a link_args=(--config "$cfg")
+  
   if [[ "$dry_run" == "true" ]]; then
-    args+=("--dry-run")
+    link_args+=(--dry-run)
   fi
   if [[ -n "$parent_number" ]]; then
-    args+=("--parent-number" "$parent_number")
-  fi
-  if [[ -n "$metadata_file" ]]; then
-    args+=("--metadata-file" "$metadata_file")
-  fi
-  if [[ -n "$engine_output_file" ]]; then
-    args+=("--engine-output-file" "$engine_output_file")
+    link_args+=(--parent-number "$parent_number")
   fi
   if [[ "$replace_parent" == "true" ]]; then
-    args+=("--replace-parent")
+    link_args+=(--replace-parent)
   fi
 
-  bash "$PROJECT_ROOT/scripts/e2e-flow-v2.sh" "${args[@]}"
+  node "$PROJECT_ROOT/server/link-hierarchy.js" "${link_args[@]}"
+
+  if [[ "$dry_run" == "true" ]]; then
+    echo "OK: link-hierarchy (dry-run) completed for $repo_full"
+  else
+    echo "OK: link-hierarchy completed for $repo_full"
+  fi
 }
 
 main() {
