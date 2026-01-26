@@ -270,8 +270,78 @@ function extractCanonicalKeyFromBody(body) {
 // Shape: { [repo]: { byStableId: Record<string, Issue>, byKey: Record<string, Issue> } }
 const stableIdIndexCache = {};
 
+// Optional preflight cache loaded from github-state.json
+// Shape: { [repo]: { byStableId: Record<string, any>, byKey: Record<string, any>, byStableMeta: Record<string, {updatedAt?:string, number?:number}> } }
+const githubStateIndexCache = {};
+
+function resolveGithubStatePathFromConfig(configPath, config, repo) {
+	try {
+		const configured = config && config.outputs && config.outputs.githubStatePath ? String(config.outputs.githubStatePath) : '';
+		if (configured) return path.isAbsolute(configured) ? configured : path.resolve(process.cwd(), configured);
+		const configName = configPath ? path.basename(configPath, path.extname(configPath)) : (repo ? repo.replace('/', '-') : 'repo');
+		return path.resolve(process.cwd(), 'tmp', configName, 'github-state.json');
+	} catch (_) {
+		return null;
+	}
+}
+
+function loadGithubStateIndex(repo, githubStatePath) {
+	if (!repo || !githubStatePath) return null;
+	if (githubStateIndexCache[repo]) return githubStateIndexCache[repo];
+	if (!fs.existsSync(githubStatePath)) return null;
+	try {
+		const data = readJson(githubStatePath);
+		if (!data || data.repo !== repo || !Array.isArray(data.issues)) return null;
+		const idx = { byStableId: {}, byKey: {}, byStableMeta: {} };
+		for (const it of data.issues) {
+			if (!it || !it.stableId || !it.number) continue;
+			// executor expects an object shaped similarly to the gh issues REST response (at least: number, body)
+			const issueLike = {
+				number: it.number,
+				node_id: it.nodeId || null,
+				title: it.title || null,
+				state: it.state || null,
+				updated_at: it.updatedAt || null,
+				labels: Array.isArray(it.labels) ? it.labels.map((n) => ({ name: n })) : [],
+				assignees: Array.isArray(it.assignees) ? it.assignees.map((login) => ({ login })) : [],
+				body: it.body || '',
+			};
+			idx.byStableId[String(it.stableId)] = issueLike;
+			const key = extractCanonicalKeyFromBody(issueLike.body);
+			if (key) idx.byKey[key] = issueLike;
+			idx.byStableMeta[String(it.stableId)] = { updatedAt: it.updatedAt || null, number: it.number };
+		}
+		githubStateIndexCache[repo] = idx;
+		return idx;
+	} catch (e) {
+		return null;
+	}
+}
+
+function loadRegistryLastSyncedAt(repoRootAbs) {
+	try {
+		const p = path.join(repoRootAbs, '.gitissuer', 'registry', 'issue-registry.json');
+		if (!fs.existsSync(p)) return null;
+		const reg = readJson(p);
+		const items = Array.isArray(reg && reg.items) ? reg.items : [];
+		const map = new Map();
+		for (const it of items) {
+			if (!it || !it.stableId || !it.lastSyncedAt) continue;
+			map.set(String(it.stableId), String(it.lastSyncedAt));
+		}
+		return map;
+	} catch (e) {
+		return null;
+	}
+}
+
 function loadStableIdIndex(repo) {
 	if (stableIdIndexCache[repo]) return stableIdIndexCache[repo];
+	// If preflight fetch produced github-state.json, prefer it to avoid GitHub API churn.
+	if (githubStateIndexCache[repo]) {
+		stableIdIndexCache[repo] = { byStableId: githubStateIndexCache[repo].byStableId || {}, byKey: githubStateIndexCache[repo].byKey || {} };
+		return stableIdIndexCache[repo];
+	}
 	const index = { byStableId: {}, byKey: {} };
 	let page = 1;
 	let hasMore = true;
@@ -711,6 +781,7 @@ async function main() {
 	const args = process.argv.slice(2);
 	const dryRun = args.includes('--dry-run') || args.includes('--dryrun');
 	const updateOnly = args.includes('--update-only'); // NEW: Skip creation, only update existing
+	const force = args.includes('--force');
 	const configIndex = args.indexOf('--config');
 	const inputIndex = args.indexOf('--input');
 	
@@ -730,6 +801,16 @@ async function main() {
 		const cfg = readJson(configPath);
 		inputPath = cfg.outputs?.engineInputPath || './tmp/engine-input.json';
 		outputPath = cfg.outputs?.engineOutputPath || './tmp/engine-output.json';
+		// Load optional preflight snapshot for stableId resolution + conflict detection.
+		try {
+			const repoFromCfg = cfg.repo || null;
+			const githubStatePath = resolveGithubStatePathFromConfig(configPath, cfg, repoFromCfg);
+			if (repoFromCfg && githubStatePath) {
+				loadGithubStateIndex(repoFromCfg, githubStatePath);
+			}
+		} catch (_) {
+			// best-effort
+		}
 		// Optional mirror project configuration in config file
 		if (cfg.projectMirror && cfg.projectMirror.path) {
 			mirrorProjectPath = cfg.projectMirror.path;
@@ -851,6 +932,19 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 			projectNodeId = engine.project.projectNodeId;
 		}
 
+		// If preflight snapshot exists for this repo, load it so stableId resolution and conflict
+		// detection are consistent and avoid extra GitHub API calls.
+		try {
+			if (configIndex >= 0 && args[configIndex + 1]) {
+				const configPath = args[configIndex + 1];
+				const cfg = readJson(configPath);
+				const githubStatePath = resolveGithubStatePathFromConfig(configPath, cfg, fullRepo);
+				loadGithubStateIndex(fullRepo, githubStatePath);
+			}
+		} catch (_) {
+			// best-effort
+		}
+
 		// Build a stableId index once per repo to avoid Search API rate limits.
 		loadStableIdIndex(fullRepo);
 
@@ -858,6 +952,64 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 		const byStableId = {};
 		for (const x of (t.tasks || [])) { if (x && x.stableId) byStableId[x.stableId] = x; }
 		for (const x of (t.subtasks || [])) { if (x && x.stableId) byStableId[x.stableId] = x; }
+
+		// Preflight guard: block if a remote issue was updated after our last sync.
+		// Bypass with --force.
+		try {
+			// Resolve repo root for registry lookup.
+			let repoRootAbs = null;
+			const localPath = t.localPath || (configIndex >= 0 && args[configIndex + 1] ? (readJson(args[configIndex + 1]).localPath || '.') : '.');
+			if (localPath) {
+				repoRootAbs = path.isAbsolute(localPath) ? localPath : path.resolve(path.dirname(process.cwd()), localPath);
+				// If localPath is relative and points inside the manager repo, prefer cwd.
+				if (!path.isAbsolute(localPath)) {
+					repoRootAbs = path.resolve(process.cwd(), localPath);
+				}
+			}
+			if (!repoRootAbs) repoRootAbs = process.cwd();
+
+			const lastSyncedAtByStableId = loadRegistryLastSyncedAt(repoRootAbs);
+			if (!lastSyncedAtByStableId) {
+				console.warn('WARN: Preflight guard skipped (no registry found).');
+			} else {
+				const conflicts = [];
+				const candidates = ([]).concat(t.tasks || [], t.subtasks || []);
+				for (const item of candidates) {
+					if (!item || !item.stableId) continue;
+					const stableId = String(item.stableId);
+					const lastSyncedAt = lastSyncedAtByStableId.get(stableId) || null;
+					if (!lastSyncedAt) continue;
+					let issue = item.canonicalKey ? findIssueByCanonicalKey(fullRepo, item.canonicalKey) : null;
+					if (!issue) issue = findIssueByStableId(fullRepo, stableId);
+					if (!issue) continue;
+					const remoteUpdatedAt = issue.updated_at || issue.updatedAt || null;
+					if (!remoteUpdatedAt) continue;
+					const remoteMs = Date.parse(String(remoteUpdatedAt));
+					const localMs = Date.parse(String(lastSyncedAt));
+					if (!Number.isFinite(remoteMs) || !Number.isFinite(localMs)) continue;
+					// 5s slack for clock skew and registry write time.
+					if (remoteMs > (localMs + 5000)) {
+						conflicts.push({ stableId, issueNumber: issue.number, remoteUpdatedAt: String(remoteUpdatedAt), lastSyncedAt: String(lastSyncedAt) });
+					}
+				}
+
+				if (conflicts.length > 0 && !force) {
+					console.error('\nERROR: Preflight guard blocked sync due to remote updates after last sync.');
+					for (const c of conflicts.slice(0, 25)) {
+						console.error(` - #${c.issueNumber} ${c.stableId.substring(0, 10)} remoteUpdatedAt=${c.remoteUpdatedAt} lastSyncedAt=${c.lastSyncedAt}`);
+					}
+					if (conflicts.length > 25) {
+						console.error(` ... and ${conflicts.length - 25} more`);
+					}
+					console.error('HINT: Reconcile remote changes, then re-run; or bypass with --force (will overwrite issue title/body/labels).');
+					process.exit(4);
+				} else if (conflicts.length > 0 && force) {
+					console.warn(`WARN: --force enabled; proceeding despite ${conflicts.length} preflight conflict(s).`);
+				}
+			}
+		} catch (e) {
+			console.warn('WARN: Preflight guard failed; continuing. Reason:', (e && e.message) ? e.message.split('\n')[0] : String(e));
+		}
 
 		for (const task of t.tasks || []) {
 			try {

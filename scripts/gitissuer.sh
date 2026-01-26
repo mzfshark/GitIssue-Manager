@@ -18,9 +18,9 @@ Commands:
                                            Inject missing [key:<ULID>] tags into Markdown planning files
   prepare --repo <owner/name> [--config <path>] [--dry-run] [--plan <file>|--plans <csv>] [--plans-dir <path>]
                                            Generate engine input from Markdown plans
-  sync --repo <owner/name> [--config <path>] [--dry-run|--confirm] [--update-only] [--plan <file>|--plans <csv>] [--plans-dir <path>] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
+  sync --repo <owner/name> [--config <path>] [--dry-run|--confirm] [--update-only] [--force] [--skip-fetch] [--plan <file>|--plans <csv>] [--plans-dir <path>] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
                                            Convenience command: prepare + deploy + registry:update
-  deploy --repo <owner/name> [--config <path>] [--batch] [--dry-run|--confirm] [--update-only] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
+  deploy --repo <owner/name> [--config <path>] [--batch] [--dry-run|--confirm] [--update-only] [--force] [--skip-fetch] [--plan <file>|--plans <csv>] [--plans-dir <path>] [--no-prepare] [--link-hierarchy|--no-link-hierarchy] [--parent-number <n>] [--replace-parent]
                                            Execute GitHub writes (issues + optional ProjectV2)
   registry:update --repo <owner/name> [--config <path>]
                                            Update per-repo registry from engine-input + engine-output
@@ -236,6 +236,8 @@ cmd_sync() {
   local dry_run="false"
 
   local update_only="false"
+  local force="false"
+  local skip_fetch="false"
 
   local plan_arg=""
   local plans_arg=""
@@ -252,6 +254,8 @@ cmd_sync() {
       --dry-run) dry_run="true"; shift ;;
       --confirm) confirm="true"; shift ;;
       --update-only) update_only="true"; shift ;;
+      --force) force="true"; shift ;;
+      --skip-fetch) skip_fetch="true"; shift ;;
       --plan) plan_arg="$2"; shift 2 ;;
       --plans) plans_arg="$2"; shift 2 ;;
       --plans-dir) plans_dir_arg="$2"; shift 2 ;;
@@ -306,6 +310,14 @@ cmd_sync() {
   if [[ "$update_only" == "true" ]]; then
     deploy_args+=(--update-only)
   fi
+  if [[ "$force" == "true" ]]; then
+    deploy_args+=(--force)
+  fi
+  if [[ "$skip_fetch" == "true" ]]; then
+    deploy_args+=(--skip-fetch)
+  fi
+  # deploy runs prepare by default; avoid double-preparing here.
+  deploy_args+=(--no-prepare)
   if [[ "$link_hierarchy" == "true" ]]; then
     deploy_args+=(--link-hierarchy)
   else
@@ -344,6 +356,14 @@ cmd_deploy() {
   local confirm="false"
   local dry_run="false"
   local update_only="false"
+  local do_prepare="true"
+  local force="false"
+  local skip_fetch="false"
+
+  local plan_arg=""
+  local plans_arg=""
+  local plans_dir_arg=""
+
   local link_hierarchy="true"
   local parent_number=""
   local replace_parent="false"
@@ -355,6 +375,12 @@ cmd_deploy() {
       --dry-run) dry_run="true"; shift ;;
       --confirm) confirm="true"; shift ;;
       --update-only) update_only="true"; shift ;;
+      --force) force="true"; shift ;;
+      --skip-fetch) skip_fetch="true"; shift ;;
+      --plan) plan_arg="$2"; shift 2 ;;
+      --plans) plans_arg="$2"; shift 2 ;;
+      --plans-dir) plans_dir_arg="$2"; shift 2 ;;
+      --no-prepare) do_prepare="false"; shift ;;
       --link-hierarchy) link_hierarchy="true"; shift ;;
       --no-link-hierarchy) link_hierarchy="false"; shift ;;
       --parent-number) parent_number="$2"; shift 2 ;;
@@ -377,18 +403,63 @@ cmd_deploy() {
 
   local cfg
   cfg=$(resolve_config_path "$repo_full" "$config_path")
+
+  # Always regenerate artifacts before deploying (avoids stale metadata/engine-input/engine-output).
+  # Can be disabled with --no-prepare.
+  if [[ "$do_prepare" == "true" ]]; then
+    local -a prepare_args=(--repo "$repo_full" --config "$cfg")
+    if [[ "$dry_run" == "true" ]]; then
+      prepare_args+=(--dry-run)
+    fi
+    if [[ -n "$plans_arg" ]]; then
+      prepare_args+=(--plans "$plans_arg")
+    elif [[ -n "$plan_arg" ]]; then
+      prepare_args+=(--plan "$plan_arg")
+    fi
+    if [[ -n "$plans_dir_arg" ]]; then
+      prepare_args+=(--plans-dir "$plans_dir_arg")
+    fi
+    cmd_prepare "${prepare_args[@]}"
+  fi
+
+  # Preflight: fetch current GitHub state before any mutations (helps prevent clobbering manual edits).
+  # Can be disabled with --skip-fetch.
+  if [[ "$skip_fetch" != "true" ]]; then
+    echo "INFO: Preflight fetch (sync-md issues snapshot)..." >&2
+    node "$PROJECT_ROOT/server/preflight-fetch.js" --config "$cfg" >/dev/null
+    echo "OK: Preflight fetch completed." >&2
+  else
+    echo "INFO: Preflight fetch skipped (--skip-fetch)." >&2
+  fi
+
   if [[ "$dry_run" == "true" ]]; then
     if [[ "$update_only" == "true" ]]; then
-      node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run --update-only
+      if [[ "$force" == "true" ]]; then
+        node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run --update-only --force
+      else
+        node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run --update-only
+      fi
     else
-      node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run
+      if [[ "$force" == "true" ]]; then
+        node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run --force
+      else
+        node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --dry-run
+      fi
     fi
     echo "OK: deploy (dry-run) completed for $repo_full"
   else
     if [[ "$update_only" == "true" ]]; then
-      node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --update-only
+      if [[ "$force" == "true" ]]; then
+        node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --update-only --force
+      else
+        node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --update-only
+      fi
     else
-      node "$PROJECT_ROOT/server/executor.js" --config "$cfg"
+      if [[ "$force" == "true" ]]; then
+        node "$PROJECT_ROOT/server/executor.js" --config "$cfg" --force
+      else
+        node "$PROJECT_ROOT/server/executor.js" --config "$cfg"
+      fi
     fi
     echo "OK: deploy completed for $repo_full"
   fi
@@ -408,12 +479,27 @@ cmd_deploy() {
 
     echo "INFO: Linking hierarchy under parent #$parent_number..." >&2
 
+    # Ensure link-hierarchy consumes artifacts from this exact run.
+    local repo_slug
+    repo_slug="${repo_full//\//-}"
+    local engine_output_file
+    local metadata_file
+    engine_output_file=$(jq -r '.outputs.engineOutputPath // empty' "$cfg" 2>/dev/null || true)
+    metadata_file=$(jq -r '.outputs.metadataPath // empty' "$cfg" 2>/dev/null || true)
+    if [[ -z "$engine_output_file" || "$engine_output_file" == "null" ]]; then
+      engine_output_file="./tmp/${repo_slug}/engine-output.json"
+    fi
+    if [[ -z "$metadata_file" || "$metadata_file" == "null" ]]; then
+      metadata_file="./tmp/${repo_slug}/metadata.json"
+    fi
+
     local -a link_args=(--repo "$repo_full" --parent-number "$parent_number" --non-interactive)
     if [[ "$dry_run" == "true" ]]; then
       link_args+=(--dry-run)
     else
       link_args+=(--confirm)
     fi
+    link_args+=(--engine-output-file "$engine_output_file" --metadata-file "$metadata_file")
     if [[ "$replace_parent" == "true" ]]; then
       link_args+=(--replace-parent)
     fi
@@ -553,6 +639,8 @@ cmd_link_hierarchy() {
   local dry_run="true"
 
   local parent_number=""
+  local metadata_file=""
+  local engine_output_file=""
   local replace_parent="false"
 
   while [[ $# -gt 0 ]]; do
@@ -563,8 +651,8 @@ cmd_link_hierarchy() {
       --dry-run) dry_run="true"; shift ;;
       --non-interactive) shift ;; # accepted for compatibility
       --parent-number) parent_number="$2"; shift 2 ;;
-      --metadata-file) shift 2 ;; # deprecated, ignored
-      --engine-output-file) shift 2 ;; # deprecated, ignored
+      --metadata-file) metadata_file="$2"; shift 2 ;;
+      --engine-output-file) engine_output_file="$2"; shift 2 ;;
       --replace-parent) replace_parent="true"; shift ;;
       -h|--help) usage; exit 0 ;;
       *) echo "ERROR: Unknown arg: $1"; usage; exit 1 ;;
@@ -587,6 +675,12 @@ cmd_link_hierarchy() {
   fi
   if [[ -n "$parent_number" ]]; then
     link_args+=(--parent-number "$parent_number")
+  fi
+  if [[ -n "$engine_output_file" ]]; then
+    link_args+=(--engine-output-file "$engine_output_file")
+  fi
+  if [[ -n "$metadata_file" ]]; then
+    link_args+=(--metadata-file "$metadata_file")
   fi
   if [[ "$replace_parent" == "true" ]]; then
     link_args+=(--replace-parent)

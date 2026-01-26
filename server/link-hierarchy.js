@@ -7,6 +7,7 @@
  * 
  * Usage:
  *   node server/link-hierarchy.js --config <path> [--dry-run] [--parent-number <n>] [--replace-parent]
+ *     [--engine-output-file <path>] [--metadata-file <path>]
  * 
  * Reads engine-output.json to get stableId → issueNumber mapping, then calls addSubIssue mutation
  * for each parent↔child relation.
@@ -32,9 +33,11 @@ const configPath = getArg('--config');
 const dryRun = args.includes('--dry-run');
 const replaceParent = args.includes('--replace-parent');
 const parentNumberArg = getArg('--parent-number');
+const engineOutputFileArg = getArg('--engine-output-file');
+const metadataFileArg = getArg('--metadata-file');
 
 if (!configPath) {
-  console.error('Usage: node link-hierarchy.js --config <path> [--dry-run] [--parent-number <n>] [--replace-parent]');
+  console.error('Usage: node link-hierarchy.js --config <path> [--dry-run] [--parent-number <n>] [--replace-parent] [--engine-output-file <path>] [--metadata-file <path>]');
   process.exit(1);
 }
 
@@ -52,8 +55,12 @@ const repoFull = config.repo || `${config.owner}/${config.repoName}`;
 const [owner, repo] = repoFull.split('/');
 
 // Resolve paths
-const engineOutputPath = config.outputs?.engineOutputPath || `./tmp/${repoFull.replace('/', '-')}/engine-output.json`;
-const metadataPath = config.outputs?.metadataPath || config.outputs?.tasksPath?.replace('tasks.json', 'metadata.json') || `./tmp/${repoFull.replace('/', '-')}/metadata.json`;
+const defaultEngineOutputPath = config.outputs?.engineOutputPath || `./tmp/${repoFull.replace('/', '-')}/engine-output.json`;
+const defaultMetadataPath = config.outputs?.metadataPath || config.outputs?.tasksPath?.replace('tasks.json', 'metadata.json') || `./tmp/${repoFull.replace('/', '-')}/metadata.json`;
+
+// Allow wrapper to pass explicit artifact paths from the same run.
+const engineOutputPath = engineOutputFileArg || defaultEngineOutputPath;
+const metadataPath = metadataFileArg || defaultMetadataPath;
 
 // Parent issue number: CLI arg > config > null
 let parentIssueNumber = parentNumberArg ? parseInt(parentNumberArg, 10) : null;
@@ -274,7 +281,7 @@ function ghApiWithVars(query, vars) {
   }
 }
 
-function resolveIssueNodeId(issueNumber) {
+function resolveIssueInfo(issueNumber) {
   const query = `
     query($owner: String!, $repo: String!, $number: Int!) {
       repository(owner: $owner, name: $repo) {
@@ -288,7 +295,12 @@ function resolveIssueNodeId(issueNumber) {
   `;
   
   const result = ghApiWithVars(query, { owner, repo, number: issueNumber });
-  return result?.data?.repository?.issue?.id ?? null;
+  const issue = result?.data?.repository?.issue;
+  return {
+    id: issue?.id ?? null,
+    number: issue?.number ?? issueNumber,
+    parentNumber: issue?.parent?.number ?? null,
+  };
 }
 
 function addSubIssue(parentNodeId, childNodeId, replaceParentFlag) {
@@ -315,7 +327,11 @@ function addSubIssue(parentNodeId, childNodeId, replaceParentFlag) {
     const stderr = err.stderr?.toString() || '';
     const stdout = err.stdout?.toString() || '';
     // Check if already linked (not an error)
-    if (stderr.includes('already a sub-issue') || stdout.includes('already a sub-issue')) {
+    const combined = `${stderr}\n${stdout}`;
+    if (
+      combined.includes('already a sub-issue') ||
+      combined.includes('Issue may not contain duplicate sub-issues')
+    ) {
       return { alreadyLinked: true };
     }
     console.error(`addSubIssue error: ${stderr || stdout}`);
@@ -340,17 +356,15 @@ async function resolveNodeIdCached(issueNumber) {
   if (nodeIdCache.has(issueNumber)) {
     return nodeIdCache.get(issueNumber);
   }
-  const nodeId = resolveIssueNodeId(issueNumber);
-  if (nodeId) {
-    nodeIdCache.set(issueNumber, nodeId);
-  }
-  return nodeId;
+  const info = resolveIssueInfo(issueNumber);
+  if (info?.id) nodeIdCache.set(issueNumber, info.id);
+  return info?.id ?? null;
 }
 
 // Resolve parent issue node ID upfront
 let parentNodeId = null;
 if (!dryRun) {
-  parentNodeId = resolveIssueNodeId(parentIssueNumber);
+  parentNodeId = resolveIssueInfo(parentIssueNumber)?.id;
   if (!parentNodeId) {
     console.error(`ERROR: Failed to resolve node ID for parent issue #${parentIssueNumber}`);
     process.exit(1);
@@ -367,6 +381,7 @@ console.log('');
 for (const link of linkPlan) {
   const { kind, parentType, parentStableId, childStableId, childIssueNumber, childNodeId } = link;
   let { parentIssueNumber: linkParentNumber, parentNodeId: linkParentNodeId } = link;
+  const desiredParentNumber = parentType === 'pai' ? parentIssueNumber : linkParentNumber;
   
   // Skip if child issue number is missing
   if (!childIssueNumber) {
@@ -377,6 +392,17 @@ for (const link of linkPlan) {
       console.error(`[FAIL] Missing child issue number for stableId=${childStableId?.slice(0, 12)}... Re-run deploy without --dry-run.`);
       failCount++;
     }
+    continue;
+  }
+
+  // Never attempt to link an issue as a sub-issue of itself.
+  if (desiredParentNumber && childIssueNumber === desiredParentNumber) {
+    if (dryRun) {
+      console.log(`[DRY-RUN] Would skip self-link #${childIssueNumber} -> #${desiredParentNumber}`);
+    } else {
+      console.log(`[SKIP] #${childIssueNumber} self-link avoided`);
+    }
+    skipCount++;
     continue;
   }
   
@@ -390,7 +416,7 @@ for (const link of linkPlan) {
     linkCount++;
     continue;
   }
-  
+
   // LIVE mode - resolve node IDs
   let targetParentNodeId = null;
   
@@ -413,15 +439,29 @@ for (const link of linkPlan) {
   }
   
   // Resolve child node ID
-  let targetChildNodeId = childNodeId;
-  if (!targetChildNodeId) {
-    targetChildNodeId = resolveIssueNodeId(childIssueNumber);
-  }
+  const childInfo = resolveIssueInfo(childIssueNumber);
+  const targetChildNodeId = childNodeId || childInfo?.id;
   
   if (!targetChildNodeId) {
     console.error(`[FAIL] Cannot resolve child node ID for #${childIssueNumber}`);
     failCount++;
     continue;
+  }
+
+  // If the child already has a parent:
+  // - If it's already the target parent, count as already linked.
+  // - If it's a different parent and replaceParent=false, skip.
+  if (childInfo?.parentNumber) {
+    if (childInfo.parentNumber === linkParentNumber) {
+      console.log(`[SKIP] #${childIssueNumber} already linked to #${linkParentNumber}`);
+      alreadyLinkedCount++;
+      continue;
+    }
+    if (!replaceParent) {
+      console.log(`[SKIP] #${childIssueNumber} already has parent #${childInfo.parentNumber} (use --replace-parent to move)`);
+      skipCount++;
+      continue;
+    }
   }
   
   // Execute addSubIssue mutation

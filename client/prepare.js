@@ -358,6 +358,13 @@ function buildHierarchy(relFile, content, items, defaults, headingParents, owner
 
   // Process heading parents (sections like EPIC-001, TASK-001)
   for (const heading of headingParents || []) {
+    // Avoid duplicating the plan parent: if the first H1 heading carries the same canonical key,
+    // it will hash to the same stableId as the file-level plan task.
+    // That would create a subtask whose parentStableId is itself, leading to self-link attempts.
+    if (heading?.stableId === planStableId) {
+      continue;
+    }
+
     const labels = mergeLabels(defaults.defaultLabels, heading.meta.labels);
     const priority = heading.meta.priority ?? defaults.defaultPriority;
     const status = heading.meta.status ?? defaults.defaultStatus;

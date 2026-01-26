@@ -186,6 +186,49 @@ function loadRegistry(repoRootAbs) {
   return { path: p, registry: reg, byStableId, byExplicitId };
 }
 
+function queryProjectStatusValue(projectNodeId, projectItemId, statusFieldId) {
+  // Return null on any failure; caller will fallback to label-based check
+  try {
+    if (!projectNodeId || !projectItemId || !statusFieldId) return null;
+    const q = `query($projectId:ID!,$itemId:ID!,$fieldId:ID!){\n  node(id:$itemId){ ... on ProjectV2Item { id, fieldValues(first:50){ nodes{ projectField{ id, name } value{ __typename, text, number, date } } } } }\n}`;
+    const vars = { projectId: projectNodeId, itemId: projectItemId, fieldId: statusFieldId };
+    const out = graphqlMutation(q, vars);
+    // Navigate result defensively
+    const node = out && out.data && out.data.node;
+    if (!node || !node.fieldValues || !Array.isArray(node.fieldValues.nodes)) return null;
+    for (const fv of node.fieldValues.nodes) {
+      if (!fv || !fv.projectField || !fv.projectField.id) continue;
+      if (String(fv.projectField.id) === String(statusFieldId)) {
+        // Try to extract textual value
+        if (fv.value) {
+          if (fv.value.__typename === 'ProjectV2ItemFieldTextValue' && fv.value.text) return String(fv.value.text).trim();
+          if (fv.value.__typename === 'ProjectV2ItemFieldNumberValue' && fv.value.number != null) return String(fv.value.number);
+          if (fv.value.__typename === 'ProjectV2ItemFieldDateValue' && fv.value.date) return String(fv.value.date);
+        }
+        return null;
+      }
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function issueHasInProgressLabel(repo, issueNumber) {
+  try {
+    const out = ghApi([`repos/${repo}/issues/${issueNumber}`]);
+    if (!out) return false;
+    const labels = Array.isArray(out.labels) ? out.labels.map((l) => (typeof l === 'string' ? l : l.name)).filter(Boolean) : [];
+    for (const lbl of labels) {
+      const l = String(lbl).toLowerCase();
+      if (l === 'in progress' || l === 'in-progress' || l === 'status:in-progress' || l === 'status:in progress') return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 function resolveRegistryItem(reg, inputId) {
   const raw = String(inputId).trim();
   if (!raw) return { item: null, error: 'Empty id' };
@@ -268,33 +311,84 @@ function main() {
   const reportMdPath = path.join(updatesDir, `${ts}-apply-report.md`);
 
   if (!fs.existsSync(updateFilePath)) {
-    // If the user explicitly provided --file, fail fast. Otherwise, treat missing default file as "no updates".
+    // If the user explicitly provided --file, fail fast. Otherwise, generate a scaffold ISSUE_UPDATES.md
     if (fileIndex >= 0) {
       console.error('ISSUE_UPDATES.md not found:', updateFilePath);
       process.exit(2);
     }
 
+    // Load registry if available to prefill entries. If registry missing, create a simple scaffold.
+    let registry = null;
+    try {
+      registry = loadRegistry(repoRootAbs);
+    } catch (e) {
+      registry = null;
+    }
+
+    const lines = [
+      '# ISSUE_UPDATES',
+      '',
+      `Repo: ${repo}`,
+      '',
+      'Edit the bounded section below to list updates. Only issues currently IN PROGRESS are suggested.',
+      '',
+      UPDATES_BEGIN,
+    ];
+
+    if (registry && registry.registry && Array.isArray(registry.registry.items)) {
+      // Only suggest items that appear to be "in progress" based on Project status field or labels
+      const projectNodeId = cfg.project && (cfg.project.projectNodeId || cfg.project.nodeId) ? (cfg.project.projectNodeId || cfg.project.nodeId) : null;
+      const statusFieldId = cfg.project && cfg.project.fieldIds ? cfg.project.fieldIds.statusFieldId : null;
+
+      for (const it of registry.registry.items) {
+        try {
+          // Only items with issueNumber can be targeted
+          if (!it.issueNumber) continue;
+          let inProgress = false;
+          // Prefer project field check when we have projectItemId and a statusFieldId
+          if (it.projectItemId && statusFieldId) {
+            const val = queryProjectStatusValue(projectNodeId, it.projectItemId, statusFieldId);
+            if (val && String(val).toLowerCase().includes('in progress')) inProgress = true;
+          }
+          // Fallback to label check
+          if (!inProgress) {
+            if (issueHasInProgressLabel(repo, it.issueNumber)) inProgress = true;
+          }
+
+          if (!inProgress) continue;
+
+          const id = it.explicitId || it.stableId;
+          lines.push(`@${id} close`);
+          lines.push('labels: ');
+          lines.push('comment: |');
+          lines.push('  ');
+          lines.push('');
+        } catch (e) {
+          // ignore per-item failures
+        }
+      }
+    }
+
+    lines.push(UPDATES_END);
+    lines.push('');
+
+    const content = lines.join('\n');
+    writeTextAtomic(updateFilePath, content);
     const md = [
       '# GitIssuer Apply Report',
       '',
       `Repo: ${repo}`,
       `Mode: ${report.mode}`,
       '',
-      'No updates file found; nothing to apply.',
+      `Generated ISSUE_UPDATES.md skeleton at: ${updateFilePath}`,
       '',
-      'Create ISSUE_UPDATES.md with a bounded section:',
-      '',
-      UPDATES_BEGIN,
-      '@PLAN-003 close',
-      'labels: type:plan',
-      'comment: |',
-      '  Example comment',
-      UPDATES_END,
-      '',
+      'Edit the file and run `gitissuer apply --repo <owner/name> --confirm` to apply changes.',
     ].join('\n');
+
     writeJsonAtomic(reportJsonPath, report);
     writeTextAtomic(reportMdPath, md);
-    console.log('OK: No updates to apply. Report written:', reportJsonPath);
+    console.log('OK: ISSUE_UPDATES.md generated:', updateFilePath);
+    console.log('OK: Apply report written:', reportJsonPath);
     process.exit(0);
   }
 
@@ -384,6 +478,32 @@ function main() {
 
     if (dryRun) {
       entry.status = 'planned';
+      report.updates.push(entry);
+      continue;
+    }
+
+    // At apply time, enforce that the issue is currently IN PROGRESS. Check Project field if available, else fallback to labels.
+    try {
+      let isInProgress = false;
+      const projectNodeId = cfg.project && (cfg.project.projectNodeId || cfg.project.nodeId) ? (cfg.project.projectNodeId || cfg.project.nodeId) : null;
+      const statusFieldId = cfg.project && cfg.project.fieldIds ? cfg.project.fieldIds.statusFieldId : null;
+      if (item.projectItemId && statusFieldId) {
+        const sval = queryProjectStatusValue(projectNodeId, item.projectItemId, statusFieldId);
+        if (sval && String(sval).toLowerCase().includes('in progress')) isInProgress = true;
+      }
+      if (!isInProgress) {
+        if (issueHasInProgressLabel(repo, issueNumber)) isInProgress = true;
+      }
+      if (!isInProgress) {
+        entry.status = 'failed';
+        entry.error = 'Target issue is not IN PROGRESS; apply skipped for safety.';
+        report.updates.push(entry);
+        continue;
+      }
+    } catch (e) {
+      // If we fail to determine status, fail-safe: skip the update to avoid unintended changes
+      entry.status = 'failed';
+      entry.error = 'Failed to validate IN PROGRESS status; apply skipped.';
       report.updates.push(entry);
       continue;
     }
