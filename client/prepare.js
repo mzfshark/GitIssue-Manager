@@ -33,6 +33,64 @@ function computePlanFingerprint(planFiles) {
   return sha1(parts.join('\n'));
 }
 
+/**
+ * Extract file-level canonical key from plan content.
+ * Looks for [key:...] in the title line (first H1) or first 10 lines.
+ */
+function extractFileKey(content) {
+  const lines = content.split(/\r?\n/).slice(0, 10);
+  for (const line of lines) {
+    const match = line.match(/\[key:([^\]]+)\]/i);
+    if (match) return match[1].trim();
+  }
+  return null;
+}
+
+/**
+ * Extract plan title from first H1 heading.
+ * Strips inline tags like [key:...], [priority:...], etc.
+ */
+function extractPlanTitle(content) {
+  const match = content.match(/^#\s+(.+)$/m);
+  if (!match) return 'Untitled Plan';
+  // Remove inline tags
+  return match[1].replace(/\[(?:key|estimate|priority|status|start|end|labels?|label):[^\]]+\]/gi, '').trim();
+}
+
+/**
+ * Extract plan ID from filename (e.g., PLAN_SPRINT_1.md -> PLAN-SPRINT-1).
+ */
+function extractPlanIdFromFilename(relFile) {
+  const basename = path.basename(relFile, '.md');
+  // Match patterns like PLAN, PLAN_SPRINT_1, EPIC_001, TASK_oauth2
+  const match = basename.match(/^([A-Z]+(?:[-_][A-Z0-9]+)*)/i);
+  if (!match) return null;
+  return match[1].toUpperCase().replace(/_/g, '-');
+}
+
+/**
+ * Extract metadata block from plan file header.
+ * Parses lines like **Priority:** HIGH, **Status:** In Progress, etc.
+ */
+function extractPlanMetadata(content) {
+  const meta = {};
+  const lines = content.split(/\r?\n/).slice(0, 20);
+  for (const line of lines) {
+    const priorityMatch = line.match(/\*\*Priority:\*\*\s*(.+)/i);
+    if (priorityMatch) meta.priority = priorityMatch[1].trim();
+    
+    const statusMatch = line.match(/\*\*Status:\*\*\s*(.+)/i);
+    if (statusMatch) meta.status = statusMatch[1].trim();
+    
+    const endDateMatch = line.match(/\*\*End Date Goal:\*\*\s*(.+)/i);
+    if (endDateMatch) meta.endDate = endDateMatch[1].trim();
+    
+    const estimateMatch = line.match(/\*\*Estimative Hours:\*\*\s*(\d+)/i);
+    if (estimateMatch) meta.estimateHours = parseInt(estimateMatch[1], 10);
+  }
+  return meta;
+}
+
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
@@ -261,12 +319,44 @@ function mergeLabels(defaultLabels, itemLabels) {
   return Array.from(new Set(combined.map((l) => l.trim()).filter(Boolean)));
 }
 
-function buildHierarchy(relFile, items, defaults, headingParents) {
+function buildHierarchy(relFile, content, items, defaults, headingParents, owner) {
   const tasks = [];
   const subtasks = [];
   const stack = []; // { indent, stableId }
   const headingMap = new Map();
 
+  // NEW: Create parent issue from the plan file itself
+  const fileKey = extractFileKey(content);
+  const planStableId = fileKey
+    ? sha1(`key:${fileKey}`)
+    : sha1(`file:${relFile}`);
+  const planTitle = extractPlanTitle(content);
+  const planId = extractPlanIdFromFilename(relFile);
+  const planMeta = extractPlanMetadata(content);
+
+  const planTask = {
+    stableId: planStableId,
+    canonicalKey: fileKey,
+    explicitId: planId,
+    file: relFile,
+    line: 1,
+    text: planTitle,
+    body: content, // FULL FILE CONTENT
+    checked: false,
+    labels: mergeLabels(defaults.defaultLabels, ['plan-parent']),
+    priority: planMeta.priority || defaults.defaultPriority,
+    status: planMeta.status || defaults.defaultStatus,
+    startDate: defaults.defaultStartDate,
+    endDate: planMeta.endDate || defaults.defaultEndDate,
+    estimateHours: planMeta.estimateHours || 0,
+    isParentPlan: true, // FLAG: this is a parent plan issue
+    assignee: owner || null, // AUTO-ASSIGN to owner
+  };
+
+  tasks.push(planTask);
+  headingMap.set(planStableId, planTask);
+
+  // Process heading parents (sections like EPIC-001, TASK-001)
   for (const heading of headingParents || []) {
     const labels = mergeLabels(defaults.defaultLabels, heading.meta.labels);
     const priority = heading.meta.priority ?? defaults.defaultPriority;
@@ -289,9 +379,11 @@ function buildHierarchy(relFile, items, defaults, headingParents) {
       startDate,
       endDate,
       estimateHours,
+      parentStableId: planStableId, // Link heading sections to plan parent
     };
 
-    tasks.push(base);
+    // Heading sections become subtasks of the plan parent
+    subtasks.push(base);
     headingMap.set(heading.stableId, base);
   }
 
@@ -329,11 +421,12 @@ function buildHierarchy(relFile, items, defaults, headingParents) {
       ? { stableId: it.parentHeadingStableId }
       : null;
 
-    if (!parent && !headingParent) {
-      tasks.push(base);
-    } else {
-      subtasks.push({ ...base, parentStableId: (parent || headingParent).stableId });
-    }
+    // All items become subtasks - either under their heading parent, indent parent, or the plan parent
+    const effectiveParentStableId = (parent || headingParent)
+      ? (parent || headingParent).stableId
+      : planStableId; // Default to plan parent
+
+    subtasks.push({ ...base, parentStableId: effectiveParentStableId });
 
     stack.push({ indent: it.indent, stableId });
   }
@@ -463,12 +556,12 @@ function main() {
       const content = fs.readFileSync(f, 'utf8');
       const parsed = parseChecklistWithIndent(content, relFile);
       if (!parsed.items.length && (!parsed.headingParents || !parsed.headingParents.length)) continue;
-      const built = buildHierarchy(relFile, parsed.items, defaults, parsed.headingParents);
+      const built = buildHierarchy(relFile, content, parsed.items, defaults, parsed.headingParents, cfg.owner);
       tasks = tasks.concat(built.tasks);
       subtasks = subtasks.concat(built.subtasks);
-      if (built.tasks.length && built.subtasks.length === 0 && parsed.headingParents && parsed.headingParents.length) {
+      if (built.tasks.length === 1 && built.subtasks.length === 0) {
         console.warn('No subtasks detected for:', relFile);
-        console.warn('Tip: Use headings like EPIC-001 and list checkboxes under them, or indent subtasks with 2 spaces.');
+        console.warn('Tip: Add checklist items (- [ ] task) to the plan file.');
       }
     }
 

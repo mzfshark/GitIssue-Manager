@@ -8,11 +8,16 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 
 const GH_MIN_DELAY_MS = Number.parseInt(process.env.GITISSUER_GH_MIN_DELAY_MS || '250', 10);
 const USE_SEARCH_FALLBACK = process.env.GITISSUER_USE_SEARCH_FALLBACK === '1';
 let lastGhCallAtMs = 0;
+
+function sha1(str) {
+	return crypto.createHash('sha1').update(str).digest('hex');
+}
 
 function readJson(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); } // nosemgrep
 function writeJson(p, obj) { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2)); } // nosemgrep
@@ -200,7 +205,38 @@ function buildBreadcrumbTitle(item, byStableId) {
 	return combined.trim();
 }
 
+/**
+ * Build issue body for parent plan issues.
+ * Uses full file content wrapped in collapsible details if large.
+ */
+function buildParentIssueBody(item) {
+	const markers = [
+		`<!-- Source: ${item.file}#L${item.line} -->`,
+		item.canonicalKey ? `<!-- Key: ${item.canonicalKey} -->` : null,
+		`<!-- StableId: ${item.stableId} -->`,
+		item.body ? `<!-- ContentHash: ${sha1(item.body)} -->` : null,
+	].filter(Boolean).join('\n');
+
+	// Wrap large content in collapsible details for readability
+	let contentSection = '';
+	if (item.body) {
+		if (item.body.length > 1000) {
+			contentSection = `\n\n<details>\n<summary>📄 Plan Content (click to expand)</summary>\n\n${item.body}\n\n</details>`;
+		} else {
+			contentSection = `\n\n${item.body}`;
+		}
+	}
+
+	return `${markers}${contentSection}`;
+}
+
 function buildIssueBody(item) {
+	// NEW: Use parent body builder for parent plan issues
+	if (item.isParentPlan) {
+		return buildParentIssueBody(item);
+	}
+
+	// Standard body for regular tasks/subtasks
 	const lines = [`Source: ${item.file}#L${item.line}`];
 	if (item.canonicalKey) lines.push(`Key: ${item.canonicalKey}`);
 	lines.push(`StableId: ${item.stableId}`);
@@ -354,9 +390,11 @@ function findIssueByStableId(repo, stableId) {
 	return null;
 }
 
-function createIssue(repo, title, body, labels) {
+function createIssue(repo, title, body, labels, assignee) {
 	const args = [`repos/${repo}/issues`, '-f', `title=${title}`, '-f', `body=${body}`];
 	for (const l of labels || []) args.push('-f', `labels[]=${l}`);
+	// NEW: Support auto-assign for parent plan issues
+	if (assignee) args.push('-f', `assignees[]=${assignee}`);
 	try {
 		const out = ghApi(args);
 		return out;
@@ -672,6 +710,7 @@ function resolveProjectFieldNodeId(projectNodeId, candidate) {
 async function main() {
 	const args = process.argv.slice(2);
 	const dryRun = args.includes('--dry-run') || args.includes('--dryrun');
+	const updateOnly = args.includes('--update-only'); // NEW: Skip creation, only update existing
 	const configIndex = args.indexOf('--config');
 	const inputIndex = args.indexOf('--input');
 	
@@ -852,6 +891,13 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						issue = upd;
 					}
 				} else {
+					// NEW: Skip creation if --update-only flag is set
+					if (updateOnly) {
+						console.log('[SKIP] No existing issue for', task.stableId.substring(0, 10), '(update-only mode)');
+						const taskResult = { stableId: task.stableId, issueNumber: null, issueNodeId: null, created: false, skipped: true, reason: 'update-only' };
+						repoResult.tasks.push(taskResult);
+						continue;
+					}
 					if (dryRun) {
 						console.log('[DRY-RUN] Would create issue for', task.stableId.substring(0, 10));
 						wouldCreate = true;
@@ -860,8 +906,11 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						continue;
 					}
 					console.log('Creating issue for', task.stableId.substring(0, 10));
-					// assign to default assignee if available
-					const assignees = defaultAssignee ? [defaultAssignee] : [];
+					// NEW: Use task.assignee for parent plans, fallback to defaultAssignee
+					const effectiveAssignee = task.isParentPlan && task.assignee 
+						? task.assignee 
+						: defaultAssignee;
+					const assignees = effectiveAssignee ? [effectiveAssignee] : [];
 					const createdIssue = (function(){
 						try {
 							const args = [`repos/${fullRepo}/issues`, '-f', `title=${title}`, '-f', `body=${body}`];
@@ -1000,6 +1049,13 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						issue = upd;
 					}
 				} else {
+					// NEW: Skip creation if --update-only flag is set
+					if (updateOnly) {
+						console.log('[SKIP] No existing subtask for', s.stableId.substring(0, 10), '(update-only mode)');
+						const subResult = { stableId: s.stableId, issueNumber: null, issueNodeId: null, created: false, skipped: true, reason: 'update-only', parentStableId: s.parentStableId };
+						repoResult.tasks.push(subResult);
+						continue;
+					}
 					if (dryRun) {
 						console.log('[DRY-RUN] Would create subtask for', s.stableId.substring(0, 10));
 						wouldCreate = true;

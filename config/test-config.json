@@ -1,0 +1,23 @@
+{
+  "version": "2.0",
+  "owner": "mzfshark",
+  "repo": "mzfshark/GitIssue-Manager",
+  "localPath": ".",
+  "enableProjectSync": false,
+  "outputs": {
+    "tasksPath": "./tmp/tasks.json",
+    "subtasksPath": "./tmp/subtasks.json",
+    "engineInputPath": "./tmp/engine-input.json",
+    "metadataPath": "./tmp/metadata.json"
+  },
+  "defaults": {
+    "defaultEstimateHours": 2,
+    "defaultPriority": "NORMAL",
+    "defaultStatus": "TODO",
+    "defaultLabels": ["plan", "sync-md"]
+  },
+  "project": {
+    "url": "https://github.com/users/mzfshark/projects/5",
+    "number": 5
+  }
+}
