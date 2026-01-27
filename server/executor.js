@@ -390,7 +390,7 @@ function loadStableIdIndex(repo) {
 	return index;
 }
 
-function findIssueByCanonicalKey(repo, canonicalKey) {
+function findIssueByCanonicalKey(repo, canonicalKey, forceSearch = false) {
 	if (!canonicalKey) return null;
 	const idx = loadStableIdIndex(repo);
 	if (idx && idx.byKey && idx.byKey[canonicalKey]) {
@@ -399,7 +399,7 @@ function findIssueByCanonicalKey(repo, canonicalKey) {
 		return hit;
 	}
 
-	if (!USE_SEARCH_FALLBACK) return null;
+	if (!USE_SEARCH_FALLBACK && !forceSearch) return null;
 
 	// Last resort (opt-in): Search API. This may hit secondary rate limits; keep it disabled by default.
 	// Quote the token to avoid parsing as search syntax.
@@ -426,7 +426,7 @@ function findIssueByCanonicalKey(repo, canonicalKey) {
 	return null;
 }
 
-function findIssueByStableId(repo, stableId) {
+function findIssueByStableId(repo, stableId, forceSearch = false) {
 	const idx = loadStableIdIndex(repo);
 	if (idx && idx.byStableId && idx.byStableId[stableId]) {
 		const hit = idx.byStableId[stableId];
@@ -434,7 +434,7 @@ function findIssueByStableId(repo, stableId) {
 		return hit;
 	}
 
-	if (!USE_SEARCH_FALLBACK) return null;
+	if (!USE_SEARCH_FALLBACK && !forceSearch) return null;
 
 	// Last resort (opt-in): Search API. This may hit secondary rate limits; keep it disabled by default.
 	const q = `repo:${repo} StableId:${stableId}`;
@@ -1070,8 +1070,8 @@ async function main() {
 					const stableId = String(item.stableId);
 					const lastSyncedAt = lastSyncedAtByStableId.get(stableId) || null;
 					if (!lastSyncedAt) continue;
-					let issue = item.canonicalKey ? findIssueByCanonicalKey(fullRepo, item.canonicalKey) : null;
-					if (!issue) issue = findIssueByStableId(fullRepo, stableId);
+					let issue = item.canonicalKey ? findIssueByCanonicalKey(fullRepo, item.canonicalKey, updateOnly) : null;
+					if (!issue) issue = findIssueByStableId(fullRepo, stableId, updateOnly);
 					if (!issue) continue;
 					const remoteUpdatedAt = issue.updated_at || issue.updatedAt || null;
 					if (!remoteUpdatedAt) continue;
@@ -1119,8 +1119,8 @@ async function main() {
 					else labels.push('type:task');
 				}
 
-				let issue = task.canonicalKey ? findIssueByCanonicalKey(fullRepo, task.canonicalKey) : null;
-				if (!issue) issue = findIssueByStableId(fullRepo, task.stableId);
+				let issue = task.canonicalKey ? findIssueByCanonicalKey(fullRepo, task.canonicalKey, updateOnly) : null;
+				if (!issue) issue = findIssueByStableId(fullRepo, task.stableId, updateOnly);
 				let created = false;
 				let wouldCreate = false;
 				let wouldUpdate = false;
@@ -1295,7 +1295,7 @@ async function main() {
 				let parentIssueNodeId = parentIssue && parentIssue.issueNodeId ? parentIssue.issueNodeId : null;
 				// If the parent wasn't part of this run's task list (common for legacy plans), resolve it by stableId.
 				if ((parentNumber == null || !parentIssueNodeId) && s.parentStableId) {
-					const p = findIssueByStableId(fullRepo, String(s.parentStableId));
+					const p = findIssueByStableId(fullRepo, String(s.parentStableId), updateOnly);
 					if (p) {
 						if (parentNumber == null && p.number) parentNumber = p.number;
 						if (!parentIssueNodeId && (p.node_id || p.nodeId)) parentIssueNodeId = p.node_id || p.nodeId;
@@ -1315,8 +1315,8 @@ async function main() {
 					else if (stxt.includes('feature')) subLabels.push('type:feature');
 					else subLabels.push('type:task');
 				}
-				let issue = s.canonicalKey ? findIssueByCanonicalKey(fullRepo, s.canonicalKey) : null;
-				if (!issue) issue = findIssueByStableId(fullRepo, s.stableId);
+				let issue = s.canonicalKey ? findIssueByCanonicalKey(fullRepo, s.canonicalKey, updateOnly) : null;
+				if (!issue) issue = findIssueByStableId(fullRepo, s.stableId, updateOnly);
 				let created = false;
 				let wouldCreate = false;
 				let wouldUpdate = false;
