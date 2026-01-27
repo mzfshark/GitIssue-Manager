@@ -1,0 +1,1049 @@
+2026/01/27 15:02:21 Running all configured tools...
+2026/01/27 15:02:21 Running tools for the specified file(s)...
+2026/01/27 15:02:21 Running pmd...
+[WARN] Progressbar rendering conflicts with reporting to STDOUT. No progressbar will be shown. Try running with argument -r <file> to output the report to a file instead.
+[WARN] This analysis could be faster, please consider using Incremental Analysis: https://docs.pmd-code.org/pmd-doc-7.11.0/pmd_userdocs_incremental_analysis.html
+[WARN] 87 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:42:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:46:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:47:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:78:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:91:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:92:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:94:22: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:96:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:98:28: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:99:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:101:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:103:33: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:105:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:107:56: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:127:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:128:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:130:51: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:131:14: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:136:68: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:138:78: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:139:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:140:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:142:57: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:149:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:156:7: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:158:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:167:7: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:169:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:172:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:174:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:175:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:177:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:179:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:180:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:182:26: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:187:7: TypeError: redeclaration of variable m.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:212:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:213:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:215:54: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:265:11: TypeError: redeclaration of variable m.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:270:11: TypeError: redeclaration of const tags.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:301:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:302:49: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:312:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:315:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:317:49: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:318:21: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:319:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:320:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:322:83: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:360:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:364:17: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:366:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:369:45: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:370:41: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:371:47: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:372:43: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:373:55: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:395:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:397:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:399:11: TypeError: redeclaration of const stableId.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:405:11: TypeError: redeclaration of const priority.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:405:40: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:406:11: TypeError: redeclaration of const status.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:406:36: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:407:11: TypeError: redeclaration of const startDate.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:407:42: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:408:11: TypeError: redeclaration of const endDate.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:408:38: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:409:11: TypeError: redeclaration of const estimateHours.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:409:50: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:411:11: TypeError: redeclaration of const base.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:436:21: invalid property id
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:439:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:442:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:444:69: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:446:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:447:28: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:451:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:453:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:460:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:511:24: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:536:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:556:15: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:561:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:565:102: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:670:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:112:	AssignmentInOperand:	Avoid assignments in operands
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/prepare.js:188:	AssignmentInOperand:	Avoid assignments in operands
+[WARN] 43 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:81:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:90:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:99:7: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:101:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:104:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:106:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:107:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:109:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:111:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:112:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:114:30: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:135:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:136:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:138:29: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:145:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:146:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:148:36: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:151:9: TypeError: redeclaration of const out.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:155:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:156:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:165:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:167:30: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:168:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:169:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:171:40: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:172:8: missing ( after let
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:172:46: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:173:27: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:175:15: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:176:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:178:5: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:179:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:249:11: TypeError: redeclaration of const key.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:319:24: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:331:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:346:15: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:352:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:354:33: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:356:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:360:23: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:361:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:369:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:371:7: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js:41:	AssignmentInOperand:	Avoid assignments in operands
+[WARN] 9 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js:22:13: TypeError: redeclaration of const k.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js:23:13: TypeError: redeclaration of const nxt.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js:48:6: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js:53:13: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js:68:13: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js:72:13: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js:76:123: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js:79:13: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js:82:1: syntax error
+[WARN] 30 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:17:13: TypeError: redeclaration of const k.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:18:13: TypeError: redeclaration of const nxt.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:60:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:72:15: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:88:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:89:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:91:38: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:92:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:100:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:107:27: identifier is a reserved word: await
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:109:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:132:7: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:164:43: identifier is a reserved word: await
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:172:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:183:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:190:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:191:28: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:193:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:195:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:196:30: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:202:17: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:210:19: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:218:21: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:226:21: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:230:19: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:235:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:254:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:256:7: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:257:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js:259:1: syntax error
+[WARN] 9 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:42:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:45:25: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:63:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:64:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:81:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:98:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:99:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:119:36: missing ) after formal parameters
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:119:36: missing } after function body
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js:71:	UseBaseWithParseInt:	Always provide a base when using parseInt() functions
+[WARN] 2 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/register_project_fields.js:21:13: TypeError: redeclaration of const k.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/register_project_fields.js:22:13: TypeError: redeclaration of const nxt.
+[WARN] 60 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:52:42: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:57:37: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:139:44: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:177:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:178:30: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:186:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:186:29: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:199:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:200:59: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:211:5: 'try' without 'catch' or 'finally'
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:212:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:214:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:222:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:226:5: 'try' without 'catch' or 'finally'
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:227:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:229:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:251:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:252:9: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:255:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:256:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:258:70: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:261:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:263:68: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:266:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:268:17: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:343:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:346:40: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:358:36: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:366:11: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:370:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:372:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:393:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:406:11: TypeError: redeclaration of const md.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:432:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:440:39: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:441:14: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:442:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:443:13: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:444:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:452:7: unlabelled break must be inside loop or switch
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:457:51: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:463:7: unlabelled break must be inside loop or switch
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:475:9: unlabelled break must be inside loop or switch
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:482:15: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:488:13: TypeError: redeclaration of const projectNodeId.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:489:13: TypeError: redeclaration of const statusFieldId.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:501:17: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:508:15: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:520:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:525:7: 'try' without 'catch' or 'finally'
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:525:26: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:527:7: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:558:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:559:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:562:7: unlabelled break must be inside loop or switch
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:563:5: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:577:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:582:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:589:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/apply-issue-updates.js:591:7: syntax error
+[WARN] 1 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/executor.js:55:36: missing ) after formal parameters
+[WARN] 54 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:58:48: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:59:44: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:67:44: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:68:21: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:69:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:71:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:104:43: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:106:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:107:35: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:108:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:109:14: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:116:39: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:117:22: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:118:25: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:119:23: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:120:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:123:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:126:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:133:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:134:48: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:135:25: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:137:7: unlabelled break must be inside loop or switch
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:139:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:159:6: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:160:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:164:33: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:172:40: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:173:16: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:174:4: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:175:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:178:6: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:179:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:187:44: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:188:17: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:189:18: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:190:21: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:191:16: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:192:4: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:193:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:199:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:200:28: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:203:13: TypeError: redeclaration of const parent.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:208:91: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:209:21: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:210:22: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:211:25: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:212:20: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:213:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:222:45: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:223:20: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:224:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:227:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:229:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js:235:33: missing ) after formal parameters
+[WARN] 6 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/preflight-fetch.js:31:42: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/preflight-fetch.js:94:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/preflight-fetch.js:95:41: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/preflight-fetch.js:113:29: unlabelled break must be inside loop or switch
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/preflight-fetch.js:128:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/preflight-fetch.js:130:7: syntax error
+[WARN] 54 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:45:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:46:42: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:48:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:49:30: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:51:37: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:52:20: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:53:22: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:54:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:56:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:58:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:60:45: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:61:37: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:63:5: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:65:5: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:67:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:69:41: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:70:14: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:71:20: invalid property id
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:72:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:73:47: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:74:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:75:38: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:76:3: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:77:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:79:17: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:169:51: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:177:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:178:28: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:181:42: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:188:37: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:189:15: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:190:20: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:191:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:192:13: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:193:19: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:194:6: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:195:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:197:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:198:28: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:199:11: TypeError: redeclaration of const stableId.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:200:11: TypeError: redeclaration of const out.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:201:11: TypeError: redeclaration of const issueNumber.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:201:42: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:202:11: TypeError: redeclaration of const issueUrl.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:208:37: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:209:15: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:210:20: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:211:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:212:13: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:213:19: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:214:6: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:215:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:235:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/registry-update.js:237:7: syntax error
+[WARN] 1 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/generate-tasks.js:7:25: missing ) after formal parameters
+[WARN] 35 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:23:7: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:49:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:49:38: illegal character: \
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:49:41: illegal character: \
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:49:42: missing : in conditional expression
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:51:23: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:60:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:62:32: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:63:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:65:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:88:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:90:28: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:98:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:102:12: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:108:7: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:109:36: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:110:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:112:7: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:124:5: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:125:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:138:7: identifier is a reserved word: await
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:140:5: invalid return
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:144:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:146:11: TypeError: redeclaration of const tasksPath.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:147:11: TypeError: redeclaration of const subtasksPath.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:148:11: TypeError: redeclaration of const tasks.
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:153:17: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:155:7: identifier is a reserved word: await
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:157:3: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:161:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:202:8: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:203:24: missing ; before statement
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:204:14: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:205:15: continue must be inside loop
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js:218:3: syntax error
+[WARN] 1 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/test-graphql-fix.js:16:30: syntax error
+[WARN] 5 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-all.js:6:6: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-all.js:16:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-all.js:17:10: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-all.js:22:1: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-all.js:23:3: syntax error
+[WARN] 2 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-axodus-aragonosx-v2.js:15:6: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-axodus-aragonosx-v2.js:16:6: syntax error
+[WARN] 2 javascript problems found:
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-axodus-aragonosx.js:9:6: syntax error
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-axodus-aragonosx.js:10:6: syntax error
+2026/01/27 15:02:33 Running tools for the specified file(s)...
+2026/01/27 15:02:33 Running pylint...
+[]
+2026/01/27 15:02:37 Running tools for the specified file(s)...
+2026/01/27 15:02:37 Running revive...
+2026/01/27 15:02:37 [REVIVE] Using config file: .codacy/tools-configs/revive.toml
+2026/01/27 15:02:37 [REVIVE] revive completed successfully
+2026/01/27 15:02:37 Running tools for the specified file(s)...
+2026/01/27 15:02:37 Running semgrep...
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 175 files tracked by git with 642 Code rules:
+                                                                                                                        
+  Language      Rules   Files          Origin   Rules                                                                   
+ ─────────────────────────────        ────────────────                                                                  
+  <multilang>       8     350          Custom     642                                                                   
+  json              4      36                                                                                           
+  bash              1      27                                                                                           
+  js               74      15                                                                                           
+  yaml             23       2                                                                                           
+                                                                                                                        
+                
+                
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+Some files were skipped or only partially analyzed.
+  Scan was limited to files tracked by git.
+  Partially scanned: 3 files only partially analyzed due to parsing or internal Semgrep errors
+
+Ran 109 rules on 175 files: 0 findings.
+2026/01/27 15:03:27 Running tools for the specified file(s)...
+2026/01/27 15:03:27 Running trivy...
+2026-01-27T15:03:28-03:00	INFO	Loaded	file_path=".codacy/tools-configs/trivy.yaml"
+2026-01-27T15:03:28-03:00	INFO	[vuln] Vulnerability scanning is enabled
+2026-01-27T15:03:28-03:00	INFO	[secret] Secret scanning is enabled
+2026-01-27T15:03:28-03:00	INFO	[secret] If your scanning is slow, please try '--scanners vuln' to disable secret scanning
+2026-01-27T15:03:28-03:00	INFO	[secret] Please see https://trivy.dev/v0.66/docs/scanner/secret#recommendation for faster secret detection
+2026-01-27T15:03:31-03:00	INFO	[pnpm] To collect the license information of packages, "pnpm install" needs to be performed beforehand	dir="node_modules"
+2026-01-27T15:03:31-03:00	INFO	Number of language-specific files	num=0
+2026-01-27T15:03:31-03:00	WARN	[report] Supported files for scanner(s) not found.	scanners=[vuln]
+2026-01-27T15:03:31-03:00	INFO	[report] No issues detected with scanner(s).	scanners=[secret]
+
+Report Summary
+
+┌────────┬──────┬─────────────────┬─────────┐
+│ Target │ Type │ Vulnerabilities │ Secrets │
+├────────┼──────┼─────────────────┼─────────┤
+│   -    │  -   │        -        │    -    │
+└────────┴──────┴─────────────────┴─────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+
+📣 [34mNotices:[0m
+  - Version 0.68.2 of Trivy is now available, current version is 0.66.0
+
+To suppress version checks, run Trivy scans with the --skip-version-check flag
+
+2026/01/27 15:03:31 Running tools for the specified file(s)...
+2026/01/27 15:03:31 Running dartanalyzer...
+2026/01/27 15:03:31 No config file found, using tool defaults
+2026/01/27 15:03:37 Running tools for the specified file(s)...
+2026/01/27 15:03:37 Running eslint...
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/client/rekey.js
+  3:20  error  '__dirname' is defined but never used  no-unused-vars
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/apply_subtasks.js
+   2:19  error  'require' is not defined  no-undef
+   3:12  error  'require' is not defined  no-undef
+   4:14  error  'require' is not defined  no-undef
+   7:3   error  'console' is not defined  no-undef
+   8:3   error  'console' is not defined  no-undef
+   9:3   error  'process' is not defined  no-undef
+  14:13  error  'process' is not defined  no-undef
+  42:3   error  'console' is not defined  no-undef
+  43:3   error  'process' is not defined  no-undef
+  52:5   error  'console' is not defined  no-undef
+  67:5   error  'console' is not defined  no-undef
+  71:5   error  'console' is not defined  no-undef
+  76:56  error  'console' is not defined  no-undef
+  78:5   error  'console' is not defined  no-undef
+  81:3   error  'console' is not defined  no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/generate_mapping_and_apply.js
+    2:12   error  'require' is not defined          no-undef
+    3:14   error  'require' is not defined          no-undef
+    4:23   error  'require' is not defined          no-undef
+    5:18   error  'require' is not defined          no-undef
+    9:13   error  'process' is not defined          no-undef
+   92:3    error  'console' is not defined          no-undef
+   97:5    error  'console' is not defined          no-undef
+   99:3    error  'console' is not defined          no-undef
+  103:48   error  'process' is not defined          no-undef
+  103:71   error  'process' is not defined          no-undef
+  136:5    error  'console' is not defined          no-undef
+  137:5    error  'process' is not defined          no-undef
+  155:7    error  'console' is not defined          no-undef
+  156:7    error  'process' is not defined          no-undef
+  161:28   error  'process' is not defined          no-undef
+  171:5    error  'console' is not defined          no-undef
+  172:30   error  'console' is not defined          no-undef
+  177:5    error  'console' is not defined          no-undef
+  178:5    error  'process' is not defined          no-undef
+  201:9    error  'console' is not defined          no-undef
+  209:11   error  'console' is not defined          no-undef
+  213:70   error  Unnecessary escape character: \"  no-useless-escape
+  213:84   error  Unnecessary escape character: \"  no-useless-escape
+  213:97   error  Unnecessary escape character: \"  no-useless-escape
+  213:116  error  Unnecessary escape character: \"  no-useless-escape
+  217:13   error  'console' is not defined          no-undef
+  223:13   error  'console' is not defined          no-undef
+  225:13   error  'console' is not defined          no-undef
+  229:11   error  'console' is not defined          no-undef
+  239:5    error  'console' is not defined          no-undef
+  240:5    error  'process' is not defined          no-undef
+  244:3    error  'console' is not defined          no-undef
+  247:27   error  '__dirname' is not defined        no-undef
+  250:5    error  'console' is not defined          no-undef
+  251:5    error  'process' is not defined          no-undef
+  253:3    error  'process' is not defined          no-undef
+  257:3    error  'console' is not defined          no-undef
+  258:3    error  'process' is not defined          no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/list-repos.js
+    4:12  error  'require' is not defined                       no-undef
+    5:14  error  'require' is not defined                       no-undef
+    6:9   error  'execSync' is assigned a value but never used  no-unused-vars
+    6:22  error  'require' is not defined                       no-undef
+    8:30  error  '__dirname' is not defined                     no-undef
+   12:5   error  'console' is not defined                       no-undef
+   18:5   error  'console' is not defined                       no-undef
+   22:3   error  'console' is not defined                       no-undef
+   32:7   error  'console' is not defined                       no-undef
+   33:7   error  'console' is not defined                       no-undef
+   34:7   error  'console' is not defined                       no-undef
+   35:7   error  'console' is not defined                       no-undef
+   36:7   error  'console' is not defined                       no-undef
+   37:7   error  'console' is not defined                       no-undef
+   39:7   error  'console' is not defined                       no-undef
+   49:5   error  'console' is not defined                       no-undef
+   50:5   error  'console' is not defined                       no-undef
+   51:5   error  'process' is not defined                       no-undef
+   58:3   error  'console' is not defined                       no-undef
+   59:3   error  'console' is not defined                       no-undef
+   60:3   error  'console' is not defined                       no-undef
+   61:3   error  'console' is not defined                       no-undef
+   62:3   error  'console' is not defined                       no-undef
+   63:3   error  'console' is not defined                       no-undef
+   64:3   error  'console' is not defined                       no-undef
+   65:3   error  'console' is not defined                       no-undef
+   66:3   error  'console' is not defined                       no-undef
+   67:3   error  'console' is not defined                       no-undef
+   68:3   error  'console' is not defined                       no-undef
+   69:3   error  'console' is not defined                       no-undef
+   70:3   error  'console' is not defined                       no-undef
+   71:3   error  'console' is not defined                       no-undef
+   72:3   error  'console' is not defined                       no-undef
+   73:3   error  'console' is not defined                       no-undef
+   74:3   error  'console' is not defined                       no-undef
+   75:3   error  'console' is not defined                       no-undef
+   76:3   error  'console' is not defined                       no-undef
+   76:20  error  'process' is not defined                       no-undef
+   77:3   error  'console' is not defined                       no-undef
+   81:16  error  'process' is not defined                       no-undef
+   84:5   error  'console' is not defined                       no-undef
+   85:5   error  'console' is not defined                       no-undef
+   86:5   error  'console' is not defined                       no-undef
+   87:5   error  'console' is not defined                       no-undef
+   88:5   error  'console' is not defined                       no-undef
+   96:7   error  'console' is not defined                       no-undef
+   97:7   error  'process' is not defined                       no-undef
+  107:5   error  'console' is not defined                       no-undef
+  108:5   error  'console' is not defined                       no-undef
+  109:5   error  'console' is not defined                       no-undef
+  110:5   error  'console' is not defined                       no-undef
+  111:5   error  'console' is not defined                       no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/process-hierarchy.js
+    8:12  error  'require' is not defined                                  no-undef
+    9:14  error  'require' is not defined                                  no-undef
+   10:22  error  'require' is not defined                                  no-undef
+   22:18  error  'console' is not defined                                  no-undef
+   23:21  error  'console' is not defined                                  no-undef
+   24:18  error  'console' is not defined                                  no-undef
+   25:19  error  'console' is not defined                                  no-undef
+  157:10  error  'createOrUpdateIssue' is defined but never used           no-unused-vars
+  189:10  error  'linkIssues' is defined but never used                    no-unused-vars
+  203:10  error  'updateParentIssueBody' is defined but never used         no-unused-vars
+  223:20  error  'process' is not defined                                  no-undef
+  224:20  error  'process' is not defined                                  no-undef
+  234:5   error  'process' is not defined                                  no-undef
+  256:9   error  'originalPlanContent' is assigned a value but never used  no-unused-vars
+  259:3   error  'console' is not defined                                  no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/scripts/register_project_fields.js
+   2:22  error  'require' is not defined          no-undef
+   3:12  error  'require' is not defined          no-undef
+   4:14  error  'require' is not defined          no-undef
+   7:3   error  'console' is not defined          no-undef
+   8:3   error  'process' is not defined          no-undef
+  13:13  error  'process' is not defined          no-undef
+  37:42  error  Unnecessary escape character: \"  no-useless-escape
+  37:52  error  Unnecessary escape character: \"  no-useless-escape
+  45:5   error  'console' is not defined          no-undef
+  46:5   error  'process' is not defined          no-undef
+  51:5   error  'console' is not defined          no-undef
+  52:5   error  'process' is not defined          no-undef
+  56:32  error  'process' is not defined          no-undef
+  58:3   error  'console' is not defined          no-undef
+  60:3   error  'console' is not defined          no-undef
+  61:3   error  'process' is not defined          no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/executor.js
+    64:63   error  Empty block statement                            no-empty
+   107:10   error  'ghExec' is defined but never used               no-unused-vars
+   248:10   error  'buildIssueTitle' is defined but never used      no-unused-vars
+   562:10   error  'createIssue' is defined but never used          no-unused-vars
+   735:67   error  Unnecessary escape character: \"                 no-useless-escape
+   735:85   error  Unnecessary escape character: \"                 no-useless-escape
+   735:98   error  Unnecessary escape character: \"                 no-useless-escape
+   735:114  error  Unnecessary escape character: \"                 no-useless-escape
+   762:15   error  Empty block statement                            no-empty
+   810:76   error  Unnecessary escape character: \"                 no-useless-escape
+   810:94   error  Unnecessary escape character: \"                 no-useless-escape
+   810:104  error  Unnecessary escape character: \"                 no-useless-escape
+   810:115  error  Unnecessary escape character: \"                 no-useless-escape
+   810:126  error  Unnecessary escape character: \"                 no-useless-escape
+   810:138  error  Unnecessary escape character: \"                 no-useless-escape
+   851:76   error  Unnecessary escape character: \"                 no-useless-escape
+   851:94   error  Unnecessary escape character: \"                 no-useless-escape
+   851:104  error  Unnecessary escape character: \"                 no-useless-escape
+   851:115  error  Unnecessary escape character: \"                 no-useless-escape
+   851:126  error  Unnecessary escape character: \"                 no-useless-escape
+   851:138  error  Unnecessary escape character: \"                 no-useless-escape
+  1073:9    error  'projectCfg' is assigned a value but never used  no-unused-vars
+  1221:7    error  Unnecessary try/catch wrapper                    no-useless-catch
+  1414:7    error  Unnecessary try/catch wrapper                    no-useless-catch
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/link-hierarchy.js
+   16:12  error  'require' is not defined                         no-undef
+   17:7   error  'path' is assigned a value but never used        no-unused-vars
+   17:14  error  'require' is not defined                         no-undef
+   18:22  error  'require' is not defined                         no-undef
+   24:14  error  'process' is not defined                         no-undef
+   40:3   error  'console' is not defined                         no-undef
+   41:3   error  'process' is not defined                         no-undef
+   45:3   error  'console' is not defined                         no-undef
+   46:3   error  'process' is not defined                         no-undef
+   71:1   error  'console' is not defined                         no-undef
+   72:1   error  'console' is not defined                         no-undef
+   73:1   error  'console' is not defined                         no-undef
+   74:1   error  'console' is not defined                         no-undef
+   75:1   error  'console' is not defined                         no-undef
+   76:1   error  'console' is not defined                         no-undef
+   83:3   error  'console' is not defined                         no-undef
+   84:3   error  'console' is not defined                         no-undef
+   85:3   error  'process' is not defined                         no-undef
+   94:3   error  'console' is not defined                         no-undef
+   95:3   error  'console' is not defined                         no-undef
+  129:1   error  'console' is not defined                         no-undef
+  136:7   error  'console' is not defined                         no-undef
+  143:3   error  'console' is not defined                         no-undef
+  144:3   error  'console' is not defined                         no-undef
+  145:3   error  'console' is not defined                         no-undef
+  146:3   error  'process' is not defined                         no-undef
+  197:3   error  'console' is not defined                         no-undef
+  229:1   error  'console' is not defined                         no-undef
+  235:10  error  'ghApi' is defined but never used                no-unused-vars
+  248:5   error  'console' is not defined                         no-undef
+  279:5   error  'console' is not defined                         no-undef
+  337:5   error  'console' is not defined                         no-undef
+  354:16  error  'resolveNodeIdCached' is defined but never used  no-unused-vars
+  369:5   error  'console' is not defined                         no-undef
+  370:5   error  'process' is not defined                         no-undef
+  372:3   error  'console' is not defined                         no-undef
+  375:1   error  'console' is not defined                         no-undef
+  376:1   error  'console' is not defined                         no-undef
+  377:1   error  'console' is not defined                         no-undef
+  378:1   error  'console' is not defined                         no-undef
+  379:1   error  'console' is not defined                         no-undef
+  389:7   error  'console' is not defined                         no-undef
+  392:7   error  'console' is not defined                         no-undef
+  401:7   error  'console' is not defined                         no-undef
+  403:7   error  'console' is not defined                         no-undef
+  412:7   error  'console' is not defined                         no-undef
+  414:7   error  'console' is not defined                         no-undef
+  431:28  error  'resolveIssueNodeId' is not defined              no-undef
+  435:7   error  'console' is not defined                         no-undef
+  446:5   error  'console' is not defined                         no-undef
+  456:7   error  'console' is not defined                         no-undef
+  461:7   error  'console' is not defined                         no-undef
+  471:5   error  'console' is not defined                         no-undef
+  474:5   error  'console' is not defined                         no-undef
+  477:5   error  'console' is not defined                         no-undef
+  486:1   error  'console' is not defined                         no-undef
+  487:1   error  'console' is not defined                         no-undef
+  488:1   error  'console' is not defined                         no-undef
+  489:1   error  'console' is not defined                         no-undef
+  490:1   error  'console' is not defined                         no-undef
+  491:1   error  'console' is not defined                         no-undef
+  492:1   error  'console' is not defined                         no-undef
+  493:1   error  'console' is not defined                         no-undef
+  494:1   error  'console' is not defined                         no-undef
+  495:1   error  'console' is not defined                         no-undef
+  498:3   error  'console' is not defined                         no-undef
+  499:3   error  'console' is not defined                         no-undef
+  500:3   error  'console' is not defined                         no-undef
+  505:3   error  'process' is not defined                         no-undef
+  508:1   error  'console' is not defined                         no-undef
+  509:1   error  'console' is not defined                         no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/server/preflight-fetch.js
+  77:10  error  Unexpected constant condition  no-constant-condition
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/generate-tasks.js
+   2:12  error  'require' is not defined  no-undef
+   3:14  error  'require' is not defined  no-undef
+  19:18  error  'require' is not defined  no-undef
+  36:20  error  'process' is not defined  no-undef
+  56:7   error  'console' is not defined  no-undef
+  64:3   error  'console' is not defined  no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/sync-helper/project-helper.js
+    2:12  error  'require' is not defined          no-undef
+    3:22  error  'require' is not defined          no-undef
+    4:14  error  'require' is not defined          no-undef
+   27:18  error  'process' is not defined          no-undef
+   42:44  error  '__dirname' is not defined        no-undef
+   46:29  error  'process' is not defined          no-undef
+   47:8   error  'process' is not defined          no-undef
+   58:12  error  'process' is not defined          no-undef
+   58:30  error  'process' is not defined          no-undef
+   63:5   error  'console' is not defined          no-undef
+   64:5   error  'process' is not defined          no-undef
+   80:7   error  'console' is not defined          no-undef
+   81:7   error  'process' is not defined          no-undef
+  119:7   error  'console' is not defined          no-undef
+  121:7   error  'console' is not defined          no-undef
+  135:9   error  'console' is not defined          no-undef
+  136:9   error  'process' is not defined          no-undef
+  152:9   error  'console' is not defined          no-undef
+  167:8   error  'process' is not defined          no-undef
+  168:5   error  'console' is not defined          no-undef
+  169:5   error  'process' is not defined          no-undef
+  176:5   error  'console' is not defined          no-undef
+  177:5   error  'process' is not defined          no-undef
+  182:5   error  'console' is not defined          no-undef
+  185:61  error  Unnecessary escape character: \"  no-useless-escape
+  186:38  error  'process' is not defined          no-undef
+  191:7   error  'console' is not defined          no-undef
+  192:7   error  'process' is not defined          no-undef
+  198:5   error  'console' is not defined          no-undef
+  204:7   error  'console' is not defined          no-undef
+  211:68  error  Unnecessary escape character: \"  no-useless-escape
+  212:5   error  'console' is not defined          no-undef
+  214:28  error  'process' is not defined          no-undef
+  216:7   error  'console' is not defined          no-undef
+  221:19  error  'console' is not defined          no-undef
+  221:37  error  'process' is not defined          no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/test-graphql-fix.js
+   1:22  error  'require' is not defined  no-undef
+  12:5   error  'console' is not defined  no-undef
+  13:5   error  'process' is not defined  no-undef
+  17:3   error  'console' is not defined  no-undef
+  18:3   error  'console' is not defined  no-undef
+  23:3   error  'console' is not defined  no-undef
+  24:3   error  'process' is not defined  no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-all.js
+   1:12  error  'require' is not defined    no-undef
+   2:14  error  'require' is not defined    no-undef
+   3:27  error  '__dirname' is not defined  no-undef
+  24:1   error  'console' is not defined    no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-axodus-aragonosx-v2.js
+   1:12  error  'require' is not defined    no-undef
+   2:14  error  'require' is not defined    no-undef
+   3:27  error  '__dirname' is not defined  no-undef
+  23:1   error  'console' is not defined    no-undef
+
+/mnt/d/Rede/Github/mzfshark/GitIssue-Manager/tmp/compare-orphans-axodus-aragonosx.js
+   1:12  error  'require' is not defined    no-undef
+   2:14  error  'require' is not defined    no-undef
+   3:27  error  '__dirname' is not defined  no-undef
+  17:1   error  'console' is not defined    no-undef
+
+✖ 294 problems (294 errors, 0 warnings)
+
+2026/01/27 15:03:38 Running tools for the specified file(s)...
+2026/01/27 15:03:38 Running lizard...
+================================================
+  NLOC    CCN   token  PARAM  length  location  
+------------------------------------------------
+       3      1     23      1       3 sha1@18-20@./client/prepare.js
+       5      3     44      1       5 extractExplicitId@22-26@./client/prepare.js
+       1      1      3      0       1 (anonymous)@31-31@./client/prepare.js
+       3      2     32      1       3 computePlanFingerprint@29-31@./client/prepare.js
+       6      2     52      1       6 extractPlanTitle@53-58@./client/prepare.js
+       3      1     20      1       3 readJson@94-96@./client/prepare.js
+       4      1     43      2       4 writeJson@98-101@./client/prepare.js
+       1      1      7      0       1 (anonymous)@104-104@./client/prepare.js
+       3      1     26      1       3 hasDotSegment@103-105@./client/prepare.js
+       4      1     51      2       4 extractLinkedMarkdownFiles@107-110@./client/prepare.js
+      11      9    110      3      11 resolvePlanFile@130-140@./client/prepare.js
+      35     12    280      3      39 getPlanFiles@142-180@./client/prepare.js
+       1      1      6      0       1 (anonymous)@207-207@./client/prepare.js
+       1      1      6      0       1 (anonymous)@319-319@./client/prepare.js
+       4      3     53      2       4 mergeLabels@317-320@./client/prepare.js
+       8      2     60      6      10 buildHierarchy@322-331@./client/prepare.js
+      21      7    122      1      26 extractExplicitId@414-439@./client/prepare.js
+       3      2     16      1      29 extractExplicitId@414-442@./client/prepare.js
+       4      2     25      0       4 (anonymous)@455-458@./client/prepare.js
+      14      6    116      3      18 sumSubtaskEstimates@444-461@./client/prepare.js
+      20      8    128      1      26 Array.isArray@472-497@./client/prepare.js
+       1      1      6      0       1 (anonymous)@511-511@./client/prepare.js
+       2      1     13      1       2 sha1@583-584@./client/prepare.js
+      32      5    193     13      32 tasks.map@632-663@./client/prepare.js
+       8      1     68      1      42 tasks.map@632-673@./client/prepare.js
+      14      1     11      0      15 usage@11-25@./client/rekey.js
+       3      1     20      1       3 readJson@27-29@./client/rekey.js
+       1      1      7      0       1 (anonymous)@32-32@./client/rekey.js
+       3      1     26      1       3 hasDotSegment@31-33@./client/rekey.js
+       4      1     51      2       4 extractLinkedMarkdownFiles@35-38@./client/rekey.js
+       9      9    110      3      11 resolvePlanFile@62-72@./client/rekey.js
+      35     12    280      3      39 getPlanFiles@74-112@./client/rekey.js
+      20      6    115      1      23 loadConfig@114-136@./client/rekey.js
+       9      2     66      1       9 encodeTime@138-146@./client/rekey.js
+      19      5    132      1      22 randomBase32Values@148-169@./client/rekey.js
+      10      3     54      1      10 incrementBase32Values@171-180@./client/rekey.js
+       1      1      5      0       1 (anonymous)@201-201@./client/rekey.js
+      14      3     86      0      17 ulid@186-202@./client/rekey.js
+       4      1     21      0      21 makeUlidFactory@182-202@./client/rekey.js
+       3      1     27      1       3 lineHasKeyTag@206-208@./client/rekey.js
+       3      1     28      1       4 lineLooksLikeParentHeading@210-213@./client/rekey.js
+      23      3    115      3      26 injectKeysIntoMarkdown@215-240@./client/rekey.js
+       1      1      6      0       1 (anonymous)@319-319@./client/rekey.js
+      60     24    527      0      78 main@273-350@./client/rekey.js
+       1      1     13      0       1 (anonymous)@360-360@./client/rekey.js
+       5      1     25      0       5 usage@6-10@./scripts/apply_subtasks.js
+      17      8    182      0      17 parseArgs@12-28@./scripts/apply_subtasks.js
+       1      2     17      0       1 (anonymous)@40-40@./scripts/apply_subtasks.js
+       1      1      4      0       1 (anonymous)@42-42@./scripts/apply_subtasks.js
+      17      8    182      0      17 parseArgs@7-23@./scripts/generate_mapping_and_apply.js
+       3      2     27      1       3 fileExists@34-36@./scripts/generate_mapping_and_apply.js
+       3      1     20      1       3 readJson@38-40@./scripts/generate_mapping_and_apply.js
+       2      1     30      1       2 ghGraphQL@42-43@./scripts/generate_mapping_and_apply.js
+       4      2     24      1       4 listRepoCandidatesFromConfigs@49-52@./scripts/generate_mapping_and_apply.js
+       1      1      7      0       1 (anonymous)@55-55@./scripts/generate_mapping_and_apply.js
+       1      1      9      0       1 (anonymous)@56-56@./scripts/generate_mapping_and_apply.js
+       7      4     73      1       7 printCandidates@91-97@./scripts/generate_mapping_and_apply.js
+       1      1      9      0       1 (anonymous)@104-104@./scripts/generate_mapping_and_apply.js
+       1      1      9      0       1 question@104-104@./scripts/generate_mapping_and_apply.js
+       1      1      4      0       1 (anonymous)@112-112@./scripts/generate_mapping_and_apply.js
+       1      1      6      0       1 (anonymous)@120-120@./scripts/generate_mapping_and_apply.js
+       1      1      7      0       1 (anonymous)@122-122@./scripts/generate_mapping_and_apply.js
+       1      3     17      0       1 (anonymous)@123-123@./scripts/generate_mapping_and_apply.js
+       1      1      7      0       1 (anonymous)@126-126@./scripts/generate_mapping_and_apply.js
+       3      1      5      0       3 rl.close@128-130@./scripts/generate_mapping_and_apply.js
+       1      1     16      0       1 (anonymous)@151-151@./scripts/generate_mapping_and_apply.js
+       1      1      5      0       1 (anonymous)@169-169@./scripts/generate_mapping_and_apply.js
+       1      1      4      0       1 (anonymous)@175-175@./scripts/generate_mapping_and_apply.js
+      56     22    455      1      69 fileExists@145-213@./scripts/generate_mapping_and_apply.js
+       4      3     28      0       4 (anonymous)@256-259@./scripts/generate_mapping_and_apply.js
+       1      1      7      0       1 (anonymous)@16-16@./scripts/list-repos.js
+       7      1     75      0       8 (anonymous)@25-32@./scripts/list-repos.js
+      15      3    106      0      25 listConfigs@10-34@./scripts/list-repos.js
+       2      1     18      1       2 showCommands@46-47@./scripts/list-repos.js
+      29      6    182      0      34 main@80-113@./scripts/list-repos.js
+       5      2     30      1       5 parseMarkdownHierarchy@31-35@./scripts/process-hierarchy.js
+      17      5    110      1      23 buildHierarchyTree@76-98@./scripts/process-hierarchy.js
+       4      1     24      2       5 generateProgressTracking@103-107@./scripts/process-hierarchy.js
+       1      1      4      0       1 (anonymous)@112-112@./scripts/process-hierarchy.js
+      14      2     83      1      47 extractIssueNumber@69-115@./scripts/process-hierarchy.js
+       7      4     65      2       7 renderTree@118-124@./scripts/process-hierarchy.js
+      10      4     60      1      10 flattenTree@142-151@./scripts/process-hierarchy.js
+       6      1     33      4       7 createOrUpdateIssue@156-162@./scripts/process-hierarchy.js
+       3      1     24      3       3 linkIssues@187-189@./scripts/process-hierarchy.js
+      62      1     77      4      63 updateParentIssueBody@201-263@./scripts/process-hierarchy.js
+       4      1     18      0       4 usage@6-9@./scripts/register_project_fields.js
+      17      8    182      0      17 parseArgs@11-27@./scripts/register_project_fields.js
+       3      1     20      1       3 readJson@12-14@./server/apply-issue-updates.js
+       3      1     30      2       3 writeTextAtomic@16-18@./server/apply-issue-updates.js
+       3      1     23      2       3 writeJsonAtomic@23-25@./server/apply-issue-updates.js
+       3      3     24      1       3 repoIsAllowed@27-29@./server/apply-issue-updates.js
+       6      3     47      1       6 resolveRepoRootAbs@31-36@./server/apply-issue-updates.js
+       4      2     27      1       4 normalizeExplicitId@38-41@./server/apply-issue-updates.js
+       7      4     68      1       7 isLikelyNodeId@43-49@./server/apply-issue-updates.js
+       4      2     38      1       4 ghApi@51-54@./server/apply-issue-updates.js
+       3      1     24      1       3 ghApiNoJson@56-58@./server/apply-issue-updates.js
+       6      4     56      1       6 extractUpdatesSection@70-75@./server/apply-issue-updates.js
+       5      2     23      0       5 pushCurrent@87-91@./server/apply-issue-updates.js
+      11      2     46      0      12 2.toLowerCase@109-120@./server/apply-issue-updates.js
+      27      9    201      1      51 parseUpdates@77-127@./server/apply-issue-updates.js
+       1      1      6      0       1 (anonymous)@138-138@./server/apply-issue-updates.js
+       5      2     43      1       5 loadRegistry@167-171@./server/apply-issue-updates.js
+      24     22    255      3      27 queryProjectStatusValue@189-215@./server/apply-issue-updates.js
+       3      1     24      2       3 issueHasInProgressLabel@217-219@./server/apply-issue-updates.js
+       1      2     13      0       1 (anonymous)@221-221@./server/apply-issue-updates.js
+       3      1     24      1       4 reg.byExplicitId.get@243-246@./server/apply-issue-updates.js
+       2      1     20      2       2 graphqlMutation@249-250@./server/apply-issue-updates.js
+       4      1     31      4       4 updateProjectNumberField@258-261@./server/apply-issue-updates.js
+       4      1     31      4       4 updateProjectDateField@263-266@./server/apply-issue-updates.js
+       8      2     80      0       9 Date.toISOString@302-310@./server/apply-issue-updates.js
+       1      1      8      0       1 (anonymous)@470-470@./server/apply-issue-updates.js
+       3      1     23      1       3 sha1@18-20@./server/executor.js
+       1      1     20      1       1 readJson@22-22@./server/executor.js
+       1      1     43      2       1 writeJson@23-23@./server/executor.js
+       4      5     42      1       4 isRateLimitError@25-28@./server/executor.js
+       4      3     53      1       4 toRateLimitError@37-40@./server/executor.js
+       9      4     59      0       9 throttleGh@45-53@./server/executor.js
+      17      9    175      2      17 ghApiWithRetry@55-71@./server/executor.js
+      13      6    132      2      13 ghExecWithRetry@81-93@./server/executor.js
+       3      1     11      1       3 ghApi@103-105@./server/executor.js
+       3      1     11      1       3 ghExec@107-109@./server/executor.js
+       4      3     37      1       6 sleepMs@111-116@./server/executor.js
+       3      3     24      1       4 repoIsAllowed@118-121@./server/executor.js
+       1      1      9      0       1 (anonymous)@125-125@./server/executor.js
+       4      2     58      2       4 normalizeLabels@123-126@./server/executor.js
+       5      3     43      1       5 getRepoName@129-133@./server/executor.js
+       8      3     69      1       9 findExplicitId@135-143@./server/executor.js
+       4      2     33      1       5 stripLeadingId@146-150@./server/executor.js
+       7      2     35      1       9 stripInlineShortcodes@152-160@./server/executor.js
+      25     18    221      2      25 getBreadcrumbSegments@175-199@./server/executor.js
+       4      4     46      2       4 buildBreadcrumbTitle@201-204@./server/executor.js
+      14     13    151      1      43 findTypeFromItem@162-204@./server/executor.js
+       3      1     12      1       3 buildParentIssueBody@212-214@./server/executor.js
+       5      2     26      1       8 buildIssueBody@233-240@./server/executor.js
+       5      2     42      2       5 buildIssueTitle@248-252@./server/executor.js
+       6      2     36      2       6 resolveProjectNodeIdForOrg@1032-1037@./server/executor.js
+      11      5     86      1      12 String@1143-1154@./server/executor.js
+       4      1     23      1      15 String@1143-1157@./server/executor.js
+       1      1     12      0       1 (anonymous)@1175-1175@./server/executor.js
+       3      1     21      0       3 (anonymous)@1220-1222@./server/executor.js
+       1      1      8      0       1 (anonymous)@1356-1356@./server/executor.js
+       1      1     11      0       1 (anonymous)@1375-1375@./server/executor.js
+       3      1     21      0       3 (anonymous)@1413-1415@./server/executor.js
+       5      3     35      1       5 getArg@26-30@./server/link-hierarchy.js
+      21     17    165      1      25 buildStableMap@102-126@./server/link-hierarchy.js
+     276      1     31      2     276 ghApi@235-510@./server/link-hierarchy.js
+       3      1     20      1       3 readJson@9-11@./server/preflight-fetch.js
+       3      1     30      2       3 writeJsonAtomic@13-15@./server/preflight-fetch.js
+       3      3     24      1       3 repoIsAllowed@20-22@./server/preflight-fetch.js
+       4      2     38      1       4 ghApi@30-33@./server/preflight-fetch.js
+      11      7    126      3      13 resolveOutputPath@35-47@./server/preflight-fetch.js
+      37     10    244      0      42 main@49-90@./server/preflight-fetch.js
+       1      2      6      0       1 (anonymous)@107-107@./server/preflight-fetch.js
+       9      6     88      1      10 issue.labels.map@106-115@./server/preflight-fetch.js
+       3      1     20      1       3 readJson@8-10@./server/registry-update.js
+       3      1     30      2       3 writeJsonAtomic@12-14@./server/registry-update.js
+       3      3     24      1       3 repoIsAllowed@19-21@./server/registry-update.js
+       6      3     47      1       6 resolveRepoRootAbs@23-28@./server/registry-update.js
+       6      4     50      2       6 resolveMaybeRelative@30-35@./server/registry-update.js
+       4      2     27      1       4 normalizeExplicitId@37-40@./server/registry-update.js
+      17     17    147      2      17 indexEngineOutput@42-58@./server/registry-update.js
+       8      3     36      1       8 loadExistingRegistry@60-67@./server/registry-update.js
+       9      7     95      2       9 mergePreferNonNull@69-77@./server/registry-update.js
+       1      2      8      0       1 (anonymous)@158-158@./server/registry-update.js
+       1      1     16      0       1 (anonymous)@170-170@./server/registry-update.js
+      52     34    550      2      64 path.join@119-182@./server/registry-update.js
+       1      2      6      0       1 (anonymous)@219-219@./server/registry-update.js
+       1      1     11      0       1 (anonymous)@219-219@./server/registry-update.js
+       1      1     14      0       1 (anonymous)@221-221@./server/registry-update.js
+       1      1     17      1       1 isMarkdown@5-5@./sync-helper/generate-tasks.js
+      10     10    124      2      10 walk@7-16@./sync-helper/generate-tasks.js
+       4      1     31      1       4 sha1@18-21@./sync-helper/generate-tasks.js
+      19      7    229      0      20 main@35-54@./sync-helper/generate-tasks.js
+      10      2     43      0      30 1.toLowerCase@29-58@./sync-helper/generate-tasks.js
+       1      1     20      1       1 loadJson@14-14@./sync-helper/project-helper.js
+       1      1     25      2       1 writeJson@15-15@./sync-helper/project-helper.js
+       5      5     80      1       5 extractProjectNumberFromUrl@17-21@./sync-helper/project-helper.js
+      15      7    111      0      15 parseArgs@25-39@./sync-helper/project-helper.js
+       5      4     43      0       5 getDefaultEstimateHours@72-76@./sync-helper/project-helper.js
+       8      1     53      0       9 Date.toISOString@117-125@./sync-helper/project-helper.js
+      19      9    150      2      23 applyProjectUpdates@163-185@./sync-helper/project-helper.js
+      39     13    251      0      78 Date@117-194@./sync-helper/project-helper.js
+      50     27    399      2     134 processOne@78-211@./sync-helper/project-helper.js
+       1      1     16      0       1 (anonymous)@221-221@./sync-helper/project-helper.js
+16 file analyzed.
+==============================================================
+NLOC    Avg.NLOC  AvgCCN  Avg.token  function_cnt    file
+--------------------------------------------------------------
+     68       0.0     0.0        0.0         0     ./.codacy/tools-configs/eslint.config.mjs
+    553       7.9     3.0       60.1        25     ./client/prepare.js
+    298      11.8     3.9       85.0        20     ./client/rekey.js
+     70       6.0     3.0       57.0         4     ./scripts/apply_subtasks.js
+    218       5.3     2.8       45.0        21     ./scripts/generate_mapping_and_apply.js
+     96      10.8     2.4       77.6         5     ./scripts/list-repos.js
+    200      12.9     2.2       51.0        10     ./scripts/process-hierarchy.js
+     52      10.5     4.5      100.0         2     ./scripts/register_project_fields.js
+    488       5.9     2.9       48.4        24     ./server/apply-issue-updates.js
+   1444       5.6     3.2       49.8        32     ./server/executor.js
+    430     100.7     7.0       77.0         3     ./server/link-hierarchy.js
+    106       8.9     4.0       72.0         8     ./server/preflight-fetch.js
+    195       7.7     5.5       72.1        15     ./server/registry-update.js
+     59       8.8     4.2       88.8         5     ./sync-helper/generate-tasks.js
+    185      14.4     6.9      114.8        10     ./sync-helper/project-helper.js
+     20       0.0     0.0        0.0         0     ./test-graphql-fix.js
+
+===========================================================================================================
+!!!! Warnings (cyclomatic_complexity > 15 or length > 1000 or nloc > 1000000 or parameter_count > 100) !!!!
+================================================
+  NLOC    CCN   token  PARAM  length  location  
+------------------------------------------------
+      60     24    527      0      78 main@273-350@./client/rekey.js
+      56     22    455      1      69 fileExists@145-213@./scripts/generate_mapping_and_apply.js
+      24     22    255      3      27 queryProjectStatusValue@189-215@./server/apply-issue-updates.js
+      25     18    221      2      25 getBreadcrumbSegments@175-199@./server/executor.js
+      21     17    165      1      25 buildStableMap@102-126@./server/link-hierarchy.js
+      17     17    147      2      17 indexEngineOutput@42-58@./server/registry-update.js
+      52     34    550      2      64 path.join@119-182@./server/registry-update.js
+      50     27    399      2     134 processOne@78-211@./sync-helper/project-helper.js
+==========================================================================================
+Total nloc   Avg.NLOC  AvgCCN  Avg.token   Fun Cnt  Warning cnt   Fun Rt   nloc Rt
+------------------------------------------------------------------------------------------
+      4482       9.6     3.6       63.6      184            8      0.04    0.17
