@@ -460,26 +460,100 @@ function findIssueByStableId(repo, stableId) {
 	return null;
 }
 
+function extractInvalidLabelsFromApiError(response) {
+	if (!response || typeof response !== 'object') return [];
+	const errors = Array.isArray(response.errors) ? response.errors : [];
+	const invalid = [];
+	for (const e of errors) {
+		if (!e || typeof e !== 'object') continue;
+		const code = String(e.code || '').toLowerCase();
+		const field = String(e.field || '').toLowerCase();
+		const value = e.value != null ? String(e.value) : '';
+		if ((code === 'invalid' || code === 'missing_field') && field === 'labels' && value) invalid.push(value);
+	}
+	return invalid;
+}
+
+function stripInvalidLabels(labels, invalid) {
+	if (!Array.isArray(labels) || labels.length === 0) return [];
+	if (!Array.isArray(invalid) || invalid.length === 0) return labels.slice();
+	const bad = new Set(invalid.map((x) => String(x).toLowerCase()));
+	return labels.filter((l) => !bad.has(String(l).toLowerCase()));
+}
+
+function isDoneStatus(status) {
+	if (!status) return false;
+	const s = String(status).trim().toUpperCase();
+	return s === 'DONE' || s === 'COMPLETED' || s === 'CLOSED' || s === 'MERGED';
+}
+
+function desiredIssueStateFromItem(item) {
+	// Default: keep issues open unless explicitly marked done.
+	if (!item) return 'open';
+	if (isDoneStatus(item.status)) return 'closed';
+	// Some plans might only use checkboxes; treat checked items as done.
+	if (item.checked === true) return 'closed';
+	return 'open';
+}
+
+function setIssueState(repo, number, desiredState) {
+	if (!repo || !number || !desiredState) return null;
+	const state = String(desiredState).toLowerCase();
+	if (state !== 'open' && state !== 'closed') return null;
+	return ghApi([`repos/${repo}/issues/${number}`, '-X', 'PATCH', '-f', `state=${state}`]);
+}
+
 function createIssue(repo, title, body, labels, assignee) {
-	const args = [`repos/${repo}/issues`, '-f', `title=${title}`, '-f', `body=${body}`];
-	for (const l of labels || []) args.push('-f', `labels[]=${l}`);
-	// NEW: Support auto-assign for parent plan issues
-	if (assignee) args.push('-f', `assignees[]=${assignee}`);
+	const attemptCreate = (labelList) => {
+		const args = [`repos/${repo}/issues`, '-f', `title=${title}`, '-f', `body=${body}`];
+		for (const l of labelList || []) args.push('-f', `labels[]=${l}`);
+		if (assignee) args.push('-f', `assignees[]=${assignee}`);
+		return ghApi(args);
+	};
+
 	try {
-		const out = ghApi(args);
+		let out = attemptCreate(labels || []);
+		if (out && !out.number && out.message) {
+			const invalid = extractInvalidLabelsFromApiError(out);
+			if (invalid.length > 0) {
+				const filtered = stripInvalidLabels(labels || [], invalid);
+				console.warn(`WARN: createIssue failed due to invalid label(s): ${invalid.join(', ')}; retrying without them.`);
+				out = attemptCreate(filtered);
+			}
+		}
+		if (out && !out.number && out.message) {
+			const suffix = out.errors ? ` errors=${JSON.stringify(out.errors).slice(0, 300)}` : '';
+			throw new Error(`GitHub API error creating issue: ${out.message}${suffix}`);
+		}
 		return out;
 	} catch (e) {
-		if (e.message && e.message.includes('rate limit')) {
-			throw new Error('RATE_LIMIT: ' + e.message.substring(0, 100));
+		if (e && e.message && String(e.message).includes('rate limit')) {
+			throw new Error('RATE_LIMIT: ' + String(e.message).substring(0, 160));
 		}
 		throw e;
 	}
 }
 
 function updateIssue(repo, number, title, body, labels) {
-	const args = [`repos/${repo}/issues/${number}`, '-X', 'PATCH', '-f', `title=${title}`, '-f', `body=${body}`];        
-	for (const l of labels || []) args.push('-f', `labels[]=${l}`);
-	const out = ghApi(args);
+	const attemptUpdate = (labelList) => {
+		const args = [`repos/${repo}/issues/${number}`, '-X', 'PATCH', '-f', `title=${title}`, '-f', `body=${body}`];
+		for (const l of labelList || []) args.push('-f', `labels[]=${l}`);
+		return ghApi(args);
+	};
+
+	let out = attemptUpdate(labels || []);
+	if (out && !out.number && out.message) {
+		const invalid = extractInvalidLabelsFromApiError(out);
+		if (invalid.length > 0) {
+			const filtered = stripInvalidLabels(labels || [], invalid);
+			console.warn(`WARN: updateIssue #${number} failed due to invalid label(s): ${invalid.join(', ')}; retrying without them.`);
+			out = attemptUpdate(filtered);
+		}
+	}
+	if (out && !out.number && out.message) {
+		const suffix = out.errors ? ` errors=${JSON.stringify(out.errors).slice(0, 300)}` : '';
+		throw new Error(`GitHub API error updating issue #${number}: ${out.message}${suffix}`);
+	}
 	return out;
 }
 
@@ -565,6 +639,33 @@ function parseProjectMirrorPath(pathStr) {
 	return null;
 }
 
+function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
+	if (!projectNodeId || !issueNodeId) return null;
+	try {
+		// Initial page
+		const q0 = `query($projectId:ID!){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } pageInfo{ hasNextPage endCursor } } } } } }`;
+		let res = graphql(q0, { projectId: projectNodeId });
+		let nodes = res && res.data && res.data.node && res.data.node.items && res.data.node.items.nodes ? res.data.node.items.nodes : [];
+		for (const n of nodes) {
+			if (n && n.content && n.content.id === issueNodeId) return n.id;
+		}
+		let pageInfo = res && res.data && res.data.node && res.data.node.items && res.data.node.items.pageInfo ? res.data.node.items.pageInfo : null;
+		while (pageInfo && pageInfo.hasNextPage) {
+			const qn = `query($projectId:ID!,$after:String){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100, after:$after){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } pageInfo{ hasNextPage endCursor } } } } } }`;
+			res = graphql(qn, { projectId: projectNodeId, after: pageInfo.endCursor });
+			nodes = res && res.data && res.data.node && res.data.node.items && res.data.node.items.nodes ? res.data.node.items.nodes : [];
+			for (const n of nodes) {
+				if (n && n.content && n.content.id === issueNodeId) return n.id;
+			}
+			pageInfo = res && res.data && res.data.node && res.data.node.items && res.data.node.items.pageInfo ? res.data.node.items.pageInfo : null;
+		}
+		return null;
+	} catch (e) {
+		console.warn('findProjectItemIdForIssue failed:', e.message);
+		return null;
+	}
+}
+
 function ensureProjectItem(projectNodeId, issueNodeId) {
 	if (!projectNodeId || typeof projectNodeId !== 'string' || !projectNodeId.startsWith('PVT_')) {
 		console.error('Invalid projectNodeId for addProjectV2ItemById:', projectNodeId);
@@ -581,10 +682,28 @@ function ensureProjectItem(projectNodeId, issueNodeId) {
 		if (data && data.data && data.data.addProjectV2ItemById && data.data.addProjectV2ItemById.item) {
 			return data.data.addProjectV2ItemById.item.id;
 		}
-		console.error('addProjectV2ItemById: unexpected response', JSON.stringify(data));
+		// If the item already exists in the project, GitHub may return errors instead of data.
+		// In that case, resolve the existing item id via a lookup so field updates can still apply.
+		const errText = JSON.stringify(data);
+		if (errText.toLowerCase().includes('already') || errText.toLowerCase().includes('exists')) {
+			const existing = findProjectItemIdForIssue(projectNodeId, issueNodeId);
+			if (existing) return existing;
+		}
+		console.error('addProjectV2ItemById: unexpected response', errText);
 		return null;
 	} catch (e) {
-		console.error('addProjectV2ItemById failed:', e.message);
+		const msg = String((e && e.message) || '');
+		// Common case: the issue is already in the project. Treat as success by resolving item id.
+		if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('exists')) {
+			const existing = findProjectItemIdForIssue(projectNodeId, issueNodeId);
+			if (existing) return existing;
+		}
+		console.error('addProjectV2ItemById failed:', msg);
+		// Best-effort fallback: try to resolve item id even on other errors.
+		try {
+			const existing = findProjectItemIdForIssue(projectNodeId, issueNodeId);
+			if (existing) return existing;
+		} catch (_) {}
 		return null;
 	}
 }
@@ -842,34 +961,6 @@ async function main() {
 	const defaultAssignee = engine.defaults && engine.defaults.assignee ? engine.defaults.assignee : null;
 	if (!outputPath) outputPath = './tmp/engine-output.json';
 	const output = { generatedAt: new Date().toISOString(), results: [] };
-
-
-function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
-	if (!projectNodeId || !issueNodeId) return null;
-	try {
-		// Initial page
-		const q0 = `query($projectId:ID!){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } } pageInfo{ hasNextPage endCursor } } } } }`;
-		let res = graphql(q0, { projectId: projectNodeId });
-		let nodes = res && res.data && res.data.node && res.data.node.items && res.data.node.items.nodes ? res.data.node.items.nodes : [];
-		for (const n of nodes) {
-			if (n && n.content && n.content.id === issueNodeId) return n.id;
-		}
-		let pageInfo = res && res.data && res.data.node && res.data.node.items && res.data.node.items.pageInfo ? res.data.node.items.pageInfo : null;
-		while (pageInfo && pageInfo.hasNextPage) {
-			const qn = `query($projectId:ID!,$after:String){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100, after:$after){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } } pageInfo{ hasNextPage endCursor } } } } }`;
-			res = graphql(qn, { projectId: projectNodeId, after: pageInfo.endCursor });
-			nodes = res && res.data && res.data.node && res.data.node.items && res.data.node.items.nodes ? res.data.node.items.nodes : [];
-			for (const n of nodes) {
-				if (n && n.content && n.content.id === issueNodeId) return n.id;
-			}
-			pageInfo = res && res.data && res.data.node && res.data.node.items && res.data.node.items.pageInfo ? res.data.node.items.pageInfo : null;
-		}
-		return null;
-	} catch (e) {
-		console.warn('findProjectItemIdForIssue failed:', e.message);
-		return null;
-	}
-}
 	// Resolve main project node id when possible.
 	// Prefer a pre-resolved node id from engine-input.json to avoid extra API calls and failures.
 	let viewerProjectNodeId = null;
@@ -1078,6 +1169,19 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 					created = true;
 				}
 
+				// Sync open/closed based on status/checkbox state.
+				if (!dryRun && issue && issue.number) {
+					try {
+						const desired = desiredIssueStateFromItem(task);
+						const current = String(issue.state || '').toLowerCase();
+						if ((desired === 'closed' || desired === 'open') && current && desired !== current) {
+							setIssueState(fullRepo, issue.number, desired);
+						}
+					} catch (e) {
+						console.warn('WARN: Could not sync issue state for', task.stableId.substring(0, 10), '-', (e && e.message) ? e.message.split('\n')[0] : String(e));
+					}
+				}
+
 				const issueNumber = issue.number;
 				const issueNodeId = issue.node_id || issue.nodeId || null;
 
@@ -1097,9 +1201,14 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 
 						// Prefer resolving via projectNodeId (node query). Fallback to owner/projectNumber only when node id is missing.
 						const projectNumber = (engine.project && engine.project.number) || null;
-						const estimateFieldNodeId = canResolveByNodeId(projectNodeId)
+						let estimateFieldNodeId = canResolveByNodeId(projectNodeId)
 							? resolveProjectFieldNodeId(projectNodeId, estimateFieldCandidate)
 							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, estimateFieldCandidate) : null);
+						if (!estimateFieldNodeId) {
+							estimateFieldNodeId = canResolveByNodeId(projectNodeId)
+								? resolveProjectFieldNodeId(projectNodeId, 'estimate')
+								: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, 'estimate') : null);
+						}
 						if (estimateFieldNodeId && task.estimateHours != null) {
 							updateProjectField(projectNodeId, projectItemId, estimateFieldNodeId, { number: task.estimateHours });
 						}
@@ -1113,13 +1222,23 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						const end = new Date(today.getTime()); end.setUTCDate(end.getUTCDate()+7);
 						const eyyyy = end.getUTCFullYear(); const emm = String(end.getUTCMonth()+1).padStart(2,'0'); const edd = String(end.getUTCDate()).padStart(2,'0');
 						const endDateStr = (task.endDate && task.endDate !== 'TBD') ? task.endDate : `${eyyyy}-${emm}-${edd}`;
-												const startFieldNodeId = canResolveByNodeId(projectNodeId)
+												let startFieldNodeId = canResolveByNodeId(projectNodeId)
 													? resolveProjectFieldNodeId(projectNodeId, startFieldCandidate)
 													: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, startFieldCandidate) : null);
+												if (!startFieldNodeId) {
+													startFieldNodeId = canResolveByNodeId(projectNodeId)
+														? resolveProjectFieldNodeId(projectNodeId, 'start')
+														: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, 'start') : null);
+												}
 												if (startFieldNodeId) updateProjectField(projectNodeId, projectItemId, startFieldNodeId, { date: startDateStr });
-												const endFieldNodeId = canResolveByNodeId(projectNodeId)
+												let endFieldNodeId = canResolveByNodeId(projectNodeId)
 													? resolveProjectFieldNodeId(projectNodeId, endFieldCandidate)
 													: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, endFieldCandidate) : null);
+												if (!endFieldNodeId) {
+													endFieldNodeId = canResolveByNodeId(projectNodeId)
+														? resolveProjectFieldNodeId(projectNodeId, 'end')
+														: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, 'end') : null);
+												}
 												if (endFieldNodeId) updateProjectField(projectNodeId, projectItemId, endFieldNodeId, { date: endDateStr });
 
 										// Status / Priority: single-select fields — map by option name
@@ -1172,7 +1291,16 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 		for (const s of t.subtasks || []) {
 			try {
 				const parentIssue = repoResult.tasks.find(x => x.stableId === s.parentStableId);
-				const parentNumber = parentIssue && parentIssue.issueNumber;
+				let parentNumber = parentIssue && parentIssue.issueNumber ? parentIssue.issueNumber : null;
+				let parentIssueNodeId = parentIssue && parentIssue.issueNodeId ? parentIssue.issueNodeId : null;
+				// If the parent wasn't part of this run's task list (common for legacy plans), resolve it by stableId.
+				if ((parentNumber == null || !parentIssueNodeId) && s.parentStableId) {
+					const p = findIssueByStableId(fullRepo, String(s.parentStableId));
+					if (p) {
+						if (parentNumber == null && p.number) parentNumber = p.number;
+						if (!parentIssueNodeId && (p.node_id || p.nodeId)) parentIssueNodeId = p.node_id || p.nodeId;
+					}
+				}
 				let subRawTitle = buildBreadcrumbTitle(s, byStableId);
 				const title = subRawTitle.length > 120 ? subRawTitle.slice(0, 117) + '...' : subRawTitle;
 				let body = buildIssueBody(s);
@@ -1230,6 +1358,19 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 					issue = createdIssue;
 					created = true;
 				}
+
+				// Sync open/closed based on status/checkbox state.
+				if (!dryRun && issue && issue.number) {
+					try {
+						const desired = desiredIssueStateFromItem(s);
+						const current = String(issue.state || '').toLowerCase();
+						if ((desired === 'closed' || desired === 'open') && current && desired !== current) {
+							setIssueState(fullRepo, issue.number, desired);
+						}
+					} catch (e) {
+						console.warn('WARN: Could not sync issue state for subtask', s.stableId.substring(0, 10), '-', (e && e.message) ? e.message.split('\n')[0] : String(e));
+					}
+				}
 				const subIssueNodeId = issue.node_id || null;
 
 				const subResult = { stableId: s.stableId, issueNumber: issue.number, issueNodeId: subIssueNodeId, created, wouldCreate, wouldUpdate, parentStableId: s.parentStableId };
@@ -1240,6 +1381,15 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						const projectItemId = ensureProjectItem(projectNodeId, subIssueNodeId);
 						subResult.projectItemId = projectItemId;
 
+						// Ensure the parent issue is also present in the project when subtasks are.
+						// GitHub Projects doesn't automatically add parents when a sub-issue is added.
+						if (parentIssueNodeId) {
+							const parentProjectItemId = ensureProjectItem(projectNodeId, parentIssueNodeId);
+							if (parentProjectItemId && parentIssue && !parentIssue.projectItemId) {
+								parentIssue.projectItemId = parentProjectItemId;
+							}
+						}
+
 						const cfgFields = (engine.project && engine.project.fieldIds) || {};
 						const estimateFieldCandidate = cfgFields.estimateHoursFieldId || cfgFields.estimateFieldId || null;
 						const startFieldCandidate = cfgFields.startDateFieldId || cfgFields.startFieldId || null;
@@ -1248,9 +1398,14 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						const priorityFieldCandidate = cfgFields.priorityFieldId || null;
 						const projectNumber = (engine.project && engine.project.number) || null;
 
-						const estimateFieldNodeId = canResolveByNodeId(projectNodeId)
+						let estimateFieldNodeId = canResolveByNodeId(projectNodeId)
 							? resolveProjectFieldNodeId(projectNodeId, estimateFieldCandidate)
 							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, estimateFieldCandidate) : null);
+						if (!estimateFieldNodeId) {
+							estimateFieldNodeId = canResolveByNodeId(projectNodeId)
+								? resolveProjectFieldNodeId(projectNodeId, 'estimate')
+								: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, 'estimate') : null);
+						}
 						if (estimateFieldNodeId && s.estimateHours != null) {
 							updateProjectField(projectNodeId, projectItemId, estimateFieldNodeId, { number: s.estimateHours });
 						}
@@ -1267,13 +1422,23 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 						const edd = String(end.getUTCDate()).padStart(2, '0');
 						const endDateStr = (s.endDate && s.endDate !== 'TBD') ? s.endDate : `${eyyyy}-${emm}-${edd}`;
 
-						const startFieldNodeId = canResolveByNodeId(projectNodeId)
+						let startFieldNodeId = canResolveByNodeId(projectNodeId)
 							? resolveProjectFieldNodeId(projectNodeId, startFieldCandidate)
 							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, startFieldCandidate) : null);
+						if (!startFieldNodeId) {
+							startFieldNodeId = canResolveByNodeId(projectNodeId)
+								? resolveProjectFieldNodeId(projectNodeId, 'start')
+								: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, 'start') : null);
+						}
 						if (startFieldNodeId) updateProjectField(projectNodeId, projectItemId, startFieldNodeId, { date: startDateStr });
-						const endFieldNodeId = canResolveByNodeId(projectNodeId)
+						let endFieldNodeId = canResolveByNodeId(projectNodeId)
 							? resolveProjectFieldNodeId(projectNodeId, endFieldCandidate)
 							: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, endFieldCandidate) : null);
+						if (!endFieldNodeId) {
+							endFieldNodeId = canResolveByNodeId(projectNodeId)
+								? resolveProjectFieldNodeId(projectNodeId, 'end')
+								: (projectNumber ? resolveProjectFieldNodeIdByProject(owner, projectNumber, 'end') : null);
+						}
 						if (endFieldNodeId) updateProjectField(projectNodeId, projectItemId, endFieldNodeId, { date: endDateStr });
 
 						const statusFieldNodeId = canResolveByNodeId(projectNodeId)
