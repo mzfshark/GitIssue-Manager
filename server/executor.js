@@ -266,6 +266,13 @@ function extractCanonicalKeyFromBody(body) {
 	return m ? m[1] : null;
 }
 
+function extractSourcePathFromBody(body) {
+	if (!body) return null;
+	const m = String(body).match(/\bSource:\s*([^\s#]+)(?:#L\d+)?/i);
+	if (!m) return null;
+	return String(m[1]).trim();
+}
+
 // Cache issue lookup indices by repo to reduce Search API calls.
 // Shape: { [repo]: { byStableId: Record<string, Issue>, byKey: Record<string, Issue> } }
 const stableIdIndexCache = {};
@@ -292,7 +299,7 @@ function loadGithubStateIndex(repo, githubStatePath) {
 	try {
 		const data = readJson(githubStatePath);
 		if (!data || data.repo !== repo || !Array.isArray(data.issues)) return null;
-		const idx = { byStableId: {}, byKey: {}, byStableMeta: {} };
+		const idx = { byStableId: {}, byKey: {}, byStableMeta: {}, bySourceTitle: {} };
 		for (const it of data.issues) {
 			if (!it || !it.stableId || !it.number) continue;
 			// executor expects an object shaped similarly to the gh issues REST response (at least: number, body)
@@ -310,6 +317,11 @@ function loadGithubStateIndex(repo, githubStatePath) {
 			const key = extractCanonicalKeyFromBody(issueLike.body);
 			if (key) idx.byKey[key] = issueLike;
 			idx.byStableMeta[String(it.stableId)] = { updatedAt: it.updatedAt || null, number: it.number };
+			const sourcePath = extractSourcePathFromBody(issueLike.body);
+			if (sourcePath && issueLike.title) {
+				const sourceKey = `${sourcePath}::${issueLike.title}`;
+				idx.bySourceTitle[sourceKey] = issueLike;
+			}
 		}
 		githubStateIndexCache[repo] = idx;
 		return idx;
@@ -339,10 +351,14 @@ function loadStableIdIndex(repo) {
 	if (stableIdIndexCache[repo]) return stableIdIndexCache[repo];
 	// If preflight fetch produced github-state.json, prefer it to avoid GitHub API churn.
 	if (githubStateIndexCache[repo]) {
-		stableIdIndexCache[repo] = { byStableId: githubStateIndexCache[repo].byStableId || {}, byKey: githubStateIndexCache[repo].byKey || {} };
+		stableIdIndexCache[repo] = {
+			byStableId: githubStateIndexCache[repo].byStableId || {},
+			byKey: githubStateIndexCache[repo].byKey || {},
+			bySourceTitle: githubStateIndexCache[repo].bySourceTitle || {},
+		};
 		return stableIdIndexCache[repo];
 	}
-	const index = { byStableId: {}, byKey: {} };
+	const index = { byStableId: {}, byKey: {}, bySourceTitle: {} };
 	let page = 1;
 	let hasMore = true;
 	while (hasMore) {
@@ -378,6 +394,11 @@ function loadStableIdIndex(repo) {
 			if (stableId) index.byStableId[stableId] = issue;
 			const key = extractCanonicalKeyFromBody(issue.body);
 			if (key) index.byKey[key] = issue;
+			const sourcePath = extractSourcePathFromBody(issue.body);
+			if (sourcePath && issue.title) {
+				const sourceKey = `${sourcePath}::${issue.title}`;
+				index.bySourceTitle[sourceKey] = issue;
+			}
 		}
 		if (items.length < 100) {
 			hasMore = false;
@@ -443,6 +464,41 @@ function findIssueByStableId(repo, stableId, forceSearch = false) {
 			const res = ghApi(['search/issues', '-X', 'GET', '-f', `q=${q}`]);
 			if (res && res.total_count && res.items && res.items.length) {
 				console.log('[DEBUG] Found existing issue (search):', res.items[0].number, 'for', stableId.substring(0, 10));
+				return res.items[0];
+			}
+			return null;
+		} catch (e) {
+			const msg = String(e && e.message || '');
+			if (msg.includes('RATE_LIMIT') || isRateLimitError(e)) {
+				throw (msg.includes('RATE_LIMIT') ? e : toRateLimitError(e));
+			}
+			if (!msg.includes('HTTP 404')) {
+				console.warn('[WARN] search issues failed:', msg.substring(0, 120));
+			}
+			return null;
+		}
+	}
+	return null;
+}
+
+function findIssueBySourceTitle(repo, sourcePath, title, forceSearch = false) {
+	if (!repo || !sourcePath || !title) return null;
+	const idx = loadStableIdIndex(repo);
+	if (idx && idx.bySourceTitle) {
+		const key = `${sourcePath}::${title}`;
+		const hit = idx.bySourceTitle[key];
+		if (hit) {
+			console.log('[DEBUG] Found existing issue (source+title):', hit.number, 'for', sourcePath);
+			return hit;
+		}
+	}
+	if (!USE_SEARCH_FALLBACK && !forceSearch) return null;
+	const q = `repo:${repo} "Source: ${sourcePath}" "${title}"`;
+	for (let attempt = 1; attempt <= 2; attempt++) {
+		try {
+			const res = ghApi(['search/issues', '-X', 'GET', '-f', `q=${q}`]);
+			if (res && res.total_count && res.items && res.items.length) {
+				console.log('[DEBUG] Found existing issue (search source+title):', res.items[0].number, 'for', sourcePath);
 				return res.items[0];
 			}
 			return null;
@@ -1072,6 +1128,10 @@ async function main() {
 					if (!lastSyncedAt) continue;
 					let issue = item.canonicalKey ? findIssueByCanonicalKey(fullRepo, item.canonicalKey, updateOnly) : null;
 					if (!issue) issue = findIssueByStableId(fullRepo, stableId, updateOnly);
+					if (!issue && item.file) {
+						const title = buildBreadcrumbTitle(item, byStableId);
+						issue = findIssueBySourceTitle(fullRepo, item.file, title, updateOnly);
+					}
 					if (!issue) continue;
 					const remoteUpdatedAt = issue.updated_at || issue.updatedAt || null;
 					if (!remoteUpdatedAt) continue;
@@ -1121,6 +1181,9 @@ async function main() {
 
 				let issue = task.canonicalKey ? findIssueByCanonicalKey(fullRepo, task.canonicalKey, updateOnly) : null;
 				if (!issue) issue = findIssueByStableId(fullRepo, task.stableId, updateOnly);
+				if (!issue && task.file && !task.canonicalKey) {
+					issue = findIssueBySourceTitle(fullRepo, task.file, title, updateOnly);
+				}
 				let created = false;
 				let wouldCreate = false;
 				let wouldUpdate = false;
@@ -1317,6 +1380,9 @@ async function main() {
 				}
 				let issue = s.canonicalKey ? findIssueByCanonicalKey(fullRepo, s.canonicalKey, updateOnly) : null;
 				if (!issue) issue = findIssueByStableId(fullRepo, s.stableId, updateOnly);
+				if (!issue && s.file && !s.canonicalKey) {
+					issue = findIssueBySourceTitle(fullRepo, s.file, title, updateOnly);
+				}
 				let created = false;
 				let wouldCreate = false;
 				let wouldUpdate = false;

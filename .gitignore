@@ -5,4 +5,5 @@ build/
 tmp/
 cleanup_*.log
 logs/.gitissuer/state.json
-.gitissuer/state.json
+.gitissuer
+tmp/
