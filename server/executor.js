@@ -643,7 +643,7 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 	if (!projectNodeId || !issueNodeId) return null;
 	try {
 		// Initial page
-		const q0 = `query($projectId:ID!){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } pageInfo{ hasNextPage endCursor } } } } } }`;
+		const q0 = `query($projectId:ID!){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } } pageInfo{ hasNextPage endCursor } } } } }`;
 		let res = graphql(q0, { projectId: projectNodeId });
 		let nodes = res && res.data && res.data.node && res.data.node.items && res.data.node.items.nodes ? res.data.node.items.nodes : [];
 		for (const n of nodes) {
@@ -651,7 +651,7 @@ function findProjectItemIdForIssue(projectNodeId, issueNodeId) {
 		}
 		let pageInfo = res && res.data && res.data.node && res.data.node.items && res.data.node.items.pageInfo ? res.data.node.items.pageInfo : null;
 		while (pageInfo && pageInfo.hasNextPage) {
-			const qn = `query($projectId:ID!,$after:String){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100, after:$after){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } pageInfo{ hasNextPage endCursor } } } } } }`;
+			const qn = `query($projectId:ID!,$after:String){ node(id:$projectId){ __typename ... on ProjectV2{ items(first:100, after:$after){ nodes{ id content{ __typename ... on Issue{ id } ... on PullRequest{ id } } } pageInfo{ hasNextPage endCursor } } } } }`;
 			res = graphql(qn, { projectId: projectNodeId, after: pageInfo.endCursor });
 			nodes = res && res.data && res.data.node && res.data.node.items && res.data.node.items.nodes ? res.data.node.items.nodes : [];
 			for (const n of nodes) {
