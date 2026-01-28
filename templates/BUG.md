@@ -1,41 +1,80 @@
-#  #BUG-001 - <Bug Title>
+# [<PLAN_SLUG> | SPRINT-XXX | BUG-NNN] <Bug Title>
 
 **Repository:** <REPO>(<OWNER>/<REPO>)  
+**Parent:** [<PLAN_SLUG> | SPRINT-XXX](#) <!-- Link to parent SPRINT issue -->  
 **End Date Goal:** <date>  
-**Priority:** <PRIORITY> [ LOW | HIGH | URGENT | MEDIUM ]  
+**Priority:** <PRIORITY> [ LOW | MEDIUM | HIGH | URGENT ]  
 **Estimative Hours:** <ESTIMATE>  
-**Status:** <STATUS> [ in progress | Ready | Done | in Review | Backlog ]
+**Status:** <STATUS> [ Backlog | TODO | In Progress | In Review | Done ]
 
 ---
 
-## Executive Summary
+## Technical Summary
 
-Describe the bug, impact, and expected resolution.
+Brief technical description of the bug, root cause analysis, and proposed fix. Keep it concise (2-4 paragraphs max).
+
+### Bug Description
+
+- **Observed behavior:** <what happens>
+- **Expected behavior:** <what should happen>
+- **Reproduction steps:** <how to reproduce>
+
+### Impact
+
+- **Severity:** [ Critical | High | Medium | Low ]
+- **Affected users/systems:** <scope of impact>
 
 ---
 
-## Subtasks (Linked)
+## Root Cause Analysis
 
-Use headings that include an ID (e.g., BUG-001). Checklist items under these headings become subtasks.
+Technical analysis of why the bug occurs.
 
-### BUG-001: <Bug Fix Milestone>
+### Files to Modify
 
-- [ ] <Subtask title> [key:<canonical-key>] [labels:type:bug, area:<area>] [status:TODO] [priority:HIGH] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
-- [ ] <Subtask title> [key:<canonical-key>] [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:2h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- `path/to/file1.ts` — <description>
+- `path/to/file2.ts` — <description>
+
+### Fix Approach
+
+1. Step 1: <action>
+2. Step 2: <action>
+3. Step 3: <action>
 
 ---
 
-## Milestones
+## Checklist
 
-- **Milestone 1:** <Milestone name> — <status> — <start> → <end>
-- **Milestone 2:** <Milestone name> — <status> — <start> → <end>
+- [ ] Root cause identified
+- [ ] Fix implemented
+- [ ] Regression tests added
+- [ ] Verified in staging
+- [ ] Code reviewed
+- [ ] Merged to target branch
 
 ---
 
 ## Template Instructions
 
-1. Use the `#BUG-001` format in the title.
-2. Keep the technical info block at the top.
-3. Put checklists only inside “Subtasks (Linked)”.
-4. Add `[key:<canonical-key>]` to every checklist item to keep identity stable across moves/edits.
-5. GitHub issue titles are generated as breadcrumbs (no `-NNN` numbering in GitHub titles), e.g. `[PLAN / EPIC / BUG] - Title`.
+### Naming Convention
+
+This is a **Level 3** work unit under a SPRINT. Title format:
+```
+[<PLAN_SLUG> | SPRINT-XXX | BUG-NNN] Bug Title
+```
+
+**Examples:**
+- `[PLAN-HarmonyVoting | SPRINT-001 | BUG-001] Fix reorg detection edge case`
+- `[EPIC-Indexing | SPRINT-002 | BUG-003] Memory leak in queue processor`
+
+### Parent Linking
+
+Use both methods to link to parent SPRINT:
+1. **GitHub task list:** This bug appears as `- [ ] #123` in the parent SPRINT issue
+2. **Metadata tag:** `[parent:<PLAN_SLUG>-SPRINT-XXX]` in this issue body
+
+---
+
+**Version:** 2.0  
+**Last Updated:** 2026-01-28  
+**Status:** Ready to use

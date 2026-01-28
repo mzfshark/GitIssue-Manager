@@ -1,41 +1,77 @@
-#  #TASK-001 - <Task Title>
+# [<PLAN_SLUG> | SPRINT-XXX | TASK-NNN] <Task Title>
 
 **Repository:** <REPO>(<OWNER>/<REPO>)  
+**Parent:** [<PLAN_SLUG> | SPRINT-XXX](#) <!-- Link to parent SPRINT issue -->  
 **End Date Goal:** <date>  
-**Priority:** <PRIORITY> [ LOW | HIGH | URGENT | MEDIUM ]  
+**Priority:** <PRIORITY> [ LOW | MEDIUM | HIGH | URGENT ]  
 **Estimative Hours:** <ESTIMATE>  
-**Status:** <STATUS> [ in progress | Ready | Done | in Review | Backlog ]
+**Status:** <STATUS> [ Backlog | TODO | In Progress | In Review | Done ]
 
 ---
 
-## Executive Summary
+## Technical Summary
 
-Describe the task scope and expected outcome.
+Brief technical description of the task scope, implementation approach, and expected outcome. Keep it concise (2-4 paragraphs max).
 
----
+### Acceptance Criteria
 
-## Subtasks (Linked)
-
-Use headings that include an ID (e.g., TASK-001). Checklist items under these headings become subtasks.
-
-### TASK-001: <Task Milestone>
-
-- [ ] <Subtask title> [key:<canonical-key>] [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:3h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
-- [ ] <Subtask title> [key:<canonical-key>] [labels:type:task, area:<area>] [status:TODO] [priority:LOW] [estimate:2h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- [ ] Criterion 1: <measurable outcome>
+- [ ] Criterion 2: <measurable outcome>
+- [ ] Criterion 3: <measurable outcome>
 
 ---
 
-## Milestones
+## Implementation Notes
 
-- **Milestone 1:** <Milestone name> — <status> — <start> → <end>
-- **Milestone 2:** <Milestone name> — <status> — <start> → <end>
+Technical details, code references, or architecture notes relevant to this task.
+
+### Files to Modify
+
+- `path/to/file1.ts` — <description>
+- `path/to/file2.ts` — <description>
+
+### Dependencies
+
+- Depends on: #<!-- issue number --> [<PLAN_SLUG> | SPRINT-XXX | TASK-YYY] <dependency title>
+- Blocks: #<!-- issue number --> [<PLAN_SLUG> | SPRINT-XXX | FEATURE-ZZZ] <blocked item>
+
+---
+
+## Checklist
+
+- [ ] Implementation complete
+- [ ] Tests added/updated
+- [ ] Documentation updated
+- [ ] Code reviewed
+- [ ] Merged to target branch
 
 ---
 
 ## Template Instructions
 
-1. Use the `#TASK-001` format in the title.
-2. Keep the technical info block at the top.
-3. Put checklists only inside “Subtasks (Linked)”.
-4. Add `[key:<canonical-key>]` to every checklist item to keep identity stable across moves/edits.
-5. GitHub issue titles are generated as breadcrumbs (no `-NNN` numbering in GitHub titles), e.g. `[PLAN / EPIC / TASK] - Title`.
+### Naming Convention
+
+This is a **Level 3** work unit under a SPRINT. Title format:
+```
+[<PLAN_SLUG> | SPRINT-XXX | TASK-NNN] Task Title
+```
+
+**Examples:**
+- `[PLAN-HarmonyVoting | SPRINT-001 | TASK-001] Configure Prometheus metrics`
+- `[EPIC-Indexing | SPRINT-002 | TASK-003] Implement batch processing`
+
+### Parent Linking
+
+Use both methods to link to parent SPRINT:
+1. **GitHub task list:** This task appears as `- [ ] #123` in the parent SPRINT issue
+2. **Metadata tag:** `[parent:<PLAN_SLUG>-SPRINT-XXX]` in this issue body
+
+### Key Tags (Dedupe)
+
+If this task appears in a checklist, include `[key:<ULID>]` for canonical identity.
+
+---
+
+**Version:** 2.0  
+**Last Updated:** 2026-01-28  
+**Status:** Ready to use

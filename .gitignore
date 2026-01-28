@@ -7,3 +7,4 @@ cleanup_*.log
 logs/.gitissuer/state.json
 .gitissuer
 tmp/
+docs/plans/archive

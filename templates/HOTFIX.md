@@ -1,41 +1,95 @@
-#  #HOTFIX-001 - <Hotfix Title>
+# [<PLAN_SLUG> | SPRINT-XXX | HOTFIX-NNN] <Hotfix Title>
 
 **Repository:** <REPO>(<OWNER>/<REPO>)  
+**Parent:** [<PLAN_SLUG> | SPRINT-XXX](#) <!-- Link to parent SPRINT issue (if applicable) -->  
 **End Date Goal:** <date>  
-**Priority:** <PRIORITY> [ LOW | HIGH | URGENT | MEDIUM ]  
+**Priority:** URGENT  
 **Estimative Hours:** <ESTIMATE>  
-**Status:** <STATUS> [ in progress | Ready | Done | in Review | Backlog ]
+**Status:** <STATUS> [ TODO | In Progress | In Review | Done ]
 
 ---
 
-## Executive Summary
+## Technical Summary
 
-Describe the hotfix scope, impact, and SLA target.
+Brief technical description of the hotfix scope, root cause, and fix approach. HOTFIXes are urgent fixes that bypass normal sprint planning.
+
+### Issue Description
+
+- **Incident:** <incident description>
+- **Impact:** <severity and scope>
+- **SLA Target:** <response time requirement>
+
+### Root Cause
+
+Brief analysis of what caused the issue.
 
 ---
 
-## Subtasks (Linked)
+## Fix Details
 
-Use headings that include an ID (e.g., HOTFIX-001). Checklist items under these headings become subtasks.
+### Files to Modify
 
-### HOTFIX-001: <Hotfix Milestone>
+- `path/to/file1.ts` — <description>
+- `path/to/file2.ts` — <description>
 
-- [ ] <Subtask title> [key:<canonical-key>] [labels:type:hotfix, area:<area>] [status:TODO] [priority:URGENT] [estimate:2h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
-- [ ] <Subtask title> [key:<canonical-key>] [labels:type:deploy, area:<area>] [status:TODO] [priority:URGENT] [estimate:1h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+### Fix Approach
+
+1. Step 1: <action>
+2. Step 2: <action>
+3. Step 3: <action>
+
+### Rollback Plan
+
+If the fix fails:
+1. Revert commit: `git revert <sha>`
+2. Deploy previous version
+3. Notify stakeholders
 
 ---
 
-## Milestones
+## Checklist
 
-- **Milestone 1:** <Milestone name> — <status> — <start> → <end>
-- **Milestone 2:** <Milestone name> — <status> — <start> → <end>
+- [ ] Root cause identified
+- [ ] Fix implemented
+- [ ] Emergency tests passed
+- [ ] Deployed to production
+- [ ] Incident documented
+- [ ] Post-mortem scheduled
 
 ---
 
 ## Template Instructions
 
-1. Use the `#HOTFIX-001` format in the title.
-2. Keep the technical info block at the top.
-3. Put checklists only inside “Subtasks (Linked)”.
-4. Add `[key:<canonical-key>]` to every checklist item to keep identity stable across moves/edits.
-5. GitHub issue titles are generated as breadcrumbs (no `-NNN` numbering in GitHub titles), e.g. `[PLAN / EPIC / HOTFIX] - Title`.
+### Naming Convention
+
+HOTFIXes can be **standalone** (Level 1) or under a SPRINT (Level 3):
+
+**Standalone:**
+```
+[HOTFIX] Critical login failure
+```
+
+**Under SPRINT:**
+```
+[<PLAN_SLUG> | SPRINT-XXX | HOTFIX-NNN] Hotfix Title
+```
+
+**Examples:**
+- `[HOTFIX] Fix production database connection timeout`
+- `[PLAN-HarmonyVoting | SPRINT-001 | HOTFIX-001] Emergency patch for vote calculation`
+
+### Priority
+
+HOTFIXes are always **URGENT** priority. If it's not urgent, use BUG instead.
+
+### Parent Linking (if under SPRINT)
+
+Use both methods to link to parent SPRINT:
+1. **GitHub task list:** This hotfix appears as `- [ ] #123` in the parent SPRINT issue
+2. **Metadata tag:** `[parent:<PLAN_SLUG>-SPRINT-XXX]` in this issue body
+
+---
+
+**Version:** 2.0  
+**Last Updated:** 2026-01-28  
+**Status:** Ready to use

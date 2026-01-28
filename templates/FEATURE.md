@@ -1,47 +1,86 @@
-#  #FEATURE-001 - <Feature Title>
+# [<PLAN_SLUG> | SPRINT-XXX | FEATURE-NNN] <Feature Title>
 
 **Repository:** <REPO>(<OWNER>/<REPO>)  
+**Parent:** [<PLAN_SLUG> | SPRINT-XXX](#) <!-- Link to parent SPRINT issue -->  
 **End Date Goal:** <date>  
-**Priority:** <PRIORITY> [ LOW | HIGH | URGENT | MEDIUM ]  
+**Priority:** <PRIORITY> [ LOW | MEDIUM | HIGH | URGENT ]  
 **Estimative Hours:** <ESTIMATE>  
-**Status:** <STATUS> [ in progress | Ready | Done | in Review | Backlog ]
+**Status:** <STATUS> [ Backlog | TODO | In Progress | In Review | Done ]
 
 ---
 
-## Executive Summary
+## Technical Summary
 
-Describe the feature scope, value, and expected outcome.
+Brief technical description of the feature scope, implementation approach, and expected outcome. Keep it concise (2-4 paragraphs max).
+
+### Feature Description
+
+- **What:** <feature description>
+- **Why:** <business value>
+- **Who:** <target users/systems>
+
+### Acceptance Criteria
+
+- [ ] Criterion 1: <measurable outcome>
+- [ ] Criterion 2: <measurable outcome>
+- [ ] Criterion 3: <measurable outcome>
 
 ---
 
-## Subtasks (Linked)
+## Implementation Notes
 
-Use headings that include an ID (e.g., FEATURE-001). Checklist items under these headings become subtasks.
+Technical details, code references, or architecture notes relevant to this feature.
 
-### FEATURE-001: <Feature Milestone>
+### Files to Create/Modify
 
-- [ ] <Subtask title> [key:<canonical-key>] [labels:type:feature, area:<area>] [status:TODO] [priority:HIGH] [estimate:6h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
-- [ ] <Subtask title> [key:<canonical-key>] [labels:type:task, area:<area>] [status:TODO] [priority:MEDIUM] [estimate:4h] [start:YYYY-MM-DD] [end:YYYY-MM-DD]
+- `path/to/file1.ts` — <description>
+- `path/to/file2.ts` — <description>
+
+### API Changes
+
+- **New endpoints:** <list if any>
+- **Modified endpoints:** <list if any>
+- **Breaking changes:** <yes/no + details>
+
+### Dependencies
+
+- Depends on: #<!-- issue number --> [<PLAN_SLUG> | SPRINT-XXX | TASK-YYY] <dependency title>
+- Blocks: #<!-- issue number --> [<PLAN_SLUG> | SPRINT-XXX | FEATURE-ZZZ] <blocked item>
 
 ---
 
-## Milestones
+## Checklist
 
-- **Milestone 1:** <Milestone name> — <status> — <start> → <end>
-- **Milestone 2:** <Milestone name> — <status> — <start> → <end>
+- [ ] Design approved
+- [ ] Implementation complete
+- [ ] Tests added (unit + integration)
+- [ ] Documentation updated
+- [ ] Code reviewed
+- [ ] Merged to target branch
 
 ---
 
 ## Template Instructions
 
-1. Use the `#FEATURE-001` format in the title.
-2. Keep the technical info block at the top.
-3. Put checklists only inside “Subtasks (Linked)”.
-4. Add `[key:<canonical-key>]` to every checklist item to keep identity stable across moves/edits.
-5. GitHub issue titles are generated as breadcrumbs (no `-NNN` numbering in GitHub titles), e.g. `[PLAN / EPIC / FEATURE] - Title`.
+### Naming Convention
+
+This is a **Level 3** work unit under a SPRINT. Title format:
+```
+[<PLAN_SLUG> | SPRINT-XXX | FEATURE-NNN] Feature Title
+```
+
+**Examples:**
+- `[PLAN-HarmonyVoting | SPRINT-001 | FEATURE-001] Add Band Oracle integration`
+- `[EPIC-Indexing | SPRINT-002 | FEATURE-003] Implement IPFS fallback`
+
+### Parent Linking
+
+Use both methods to link to parent SPRINT:
+1. **GitHub task list:** This feature appears as `- [ ] #123` in the parent SPRINT issue
+2. **Metadata tag:** `[parent:<PLAN_SLUG>-SPRINT-XXX]` in this issue body
 
 ---
 
-**Version:** 1.0  
-**Last Updated:** 2026-01-21  
-**Status:** Ready to use  
+**Version:** 2.0  
+**Last Updated:** 2026-01-28  
+**Status:** Ready to use

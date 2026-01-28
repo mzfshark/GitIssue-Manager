@@ -1,47 +1,125 @@
-# GitIssue Templates
+# Issue Templates — GitIssue-Manager
 
-This folder contains standardized templates for plan and issue tracking files.
+This directory contains canonical templates for creating GitHub issues with proper hierarchy and naming conventions.
 
-## Standard Format
+## Hierarchy Overview
 
-Each template follows the same structure:
+```
+Level 1: PAI (Parent Issues)
+├── [PLAN] Title     ← Full project/release roadmap
+└── [EPIC] Title     ← Cross-functional feature set
 
-1. Title in the format `#  #<TYPE>-NNN - <Title>`
-2. Technical info block (repository, dates, priority, estimate, status)
-3. Executive Summary
-4. Subtasks (Linked) section with checklists under headings that include an ID (e.g., `FEATURE-001`)
-5. Milestones section at the end
+Level 2: SPRINT
+└── [<PLAN_SLUG> | SPRINT-XXX] Title    ← Execution unit with grouped tasks
 
-### Canonical identity (recommended)
+Level 3: Work Units
+├── [<PLAN_SLUG> | SPRINT-XXX | TASK-NNN] Title
+├── [<PLAN_SLUG> | SPRINT-XXX | BUG-NNN] Title
+├── [<PLAN_SLUG> | SPRINT-XXX | FEATURE-NNN] Title
+└── [<PLAN_SLUG> | SPRINT-XXX | HOTFIX-NNN] Title
+```
 
-To prevent duplicate GitHub issues when checklist items are moved or edited, add a canonical key tag to every checklist item you expect to sync:
+## Templates
 
-- Example: `- [ ] Do something [key:01J0ABCDE...] [labels:...] [status:TODO] ...`
+| Template | Level | Description |
+|----------|-------|-------------|
+| [PLAN.md](PLAN.md) | 1 (PAI) | Project/release roadmap with all milestones |
+| [EPIC.md](EPIC.md) | 1 (PAI) | Cross-functional feature set spanning sprints |
+| [SPRINT.md](SPRINT.md) | 2 | Execution unit grouping tasks |
+| [TASK.md](TASK.md) | 3 | General work item |
+| [BUG.md](BUG.md) | 3 | Bug fix |
+| [FEATURE.md](FEATURE.md) | 3 | New feature implementation |
+| [HOTFIX.md](HOTFIX.md) | 3 | Urgent fix (can be standalone at Level 1) |
 
-Recommended format: ULID (26 chars, time-sortable).
+## Naming Convention
 
-You can auto-inject missing keys safely:
+### Parent Issues (PAI) — Level 1
 
-- Preview: `gitissuer rekey --repo <owner/name> --dry-run`
-- Apply: `gitissuer rekey --repo <owner/name> --confirm`
+No numeric suffix. Title format:
+```
+[PLAN] HarmonyVoting Production Rollout
+[EPIC] Indexing System Resilience
+```
 
-When present, GitIssue-Manager derives a stable `StableId` from `key`, and also writes `Key: ...` into the GitHub issue body.
+### SPRINT — Level 2
 
-### GitHub issue title format
+Uses parent slug + sprint number:
+```
+[PLAN-HarmonyVoting | SPRINT-001] Infrastructure Setup
+[EPIC-Indexing | SPRINT-002] Monitoring Phase
+```
 
-GitIssue-Manager creates GitHub issues using a breadcrumb title format (no `-NNN` numbering in the GitHub title):
+### Work Units — Level 3
 
-- Example: `[PLAN / EPIC / TASK] - Title`
+Uses parent slug + sprint + type + number:
+```
+[PLAN-HarmonyVoting | SPRINT-001 | TASK-001] Configure Prometheus
+[PLAN-HarmonyVoting | SPRINT-001 | BUG-001] Fix reorg detection
+[PLAN-HarmonyVoting | SPRINT-001 | FEATURE-001] Add alerting
+[PLAN-HarmonyVoting | SPRINT-001 | HOTFIX-001] Patch memory leak
+```
 
-The `TYPE-NNN` numbering remains in Markdown to keep the document structured and searchable.
+## Slug Generation
 
-## Files
+The `<PLAN_SLUG>` is auto-generated from the parent title:
 
-- `.gitissue/metadata.config.json`: Default metadata and allowed values.
-- `PLAN.md`, `EPIC.md`, `FEATURE.md`, `TASK.md`, `BUG.md`, `HOTFIX.md`: Canonical templates.
+1. Remove special characters and stop words
+2. Convert to PascalCase (max 20 chars)
+3. Prefix with document type
 
-## How to use in a target repository
+**Examples:**
+- `HarmonyVoting Production Rollout` → `PLAN-HarmonyVoting`
+- `Production-Ready Indexing System` → `EPIC-IndexingSystem`
+- `Q1 2026 Infrastructure Upgrade` → `PLAN-Q1InfraUpgrade`
 
-1. Copy the templates to the repository root.
-2. Customize defaults and allowed values in `.gitissue/metadata.config.json`.
-3. Ensure checklists only appear inside “Subtasks (Linked)” sections.
+## Linking Children to Parents
+
+Use both methods for robust linking:
+
+### 1. GitHub Task List (in parent issue body)
+
+```markdown
+## Tasks (Linked)
+
+- [ ] #123 [PLAN-HarmonyVoting | SPRINT-001 | TASK-001] Configure Prometheus
+- [ ] #124 [PLAN-HarmonyVoting | SPRINT-001 | FEATURE-001] Add alerting
+```
+
+### 2. Metadata Tag (in child issue body)
+
+```markdown
+**Parent:** [PLAN-HarmonyVoting | SPRINT-001](#123)
+```
+
+Or in checklist items:
+```markdown
+- [ ] Task title [key:01KFRBTZSPJTN6GNH4YKG3DMJP] [parent:PLAN-HarmonyVoting-SPRINT-001]
+```
+
+## Key Tags (Dedupe)
+
+Every checklist item intended for GitHub sync MUST include a canonical key:
+
+```markdown
+- [ ] Task title [key:<ULID>] [labels:type:task, area:backend] [status:TODO] [priority:MEDIUM] [estimate:4h]
+```
+
+Generate ULIDs via:
+```bash
+gitissuer rekey --repo <owner>/<repo> --dry-run    # Preview
+gitissuer rekey --repo <owner>/<repo> --confirm    # Apply
+```
+
+## Content Guidelines
+
+| Level | Body Content |
+|-------|--------------|
+| **PAI (PLAN/EPIC)** | Full detailed scope, all milestones, all sprints |
+| **SPRINT** | Execution instructions, grouped tasks, validation criteria |
+| **TASK/BUG/FEATURE/HOTFIX** | Brief technical summary, acceptance criteria |
+
+---
+
+**Version:** 2.0  
+**Last Updated:** 2026-01-28  
+**Status:** Ready to use
