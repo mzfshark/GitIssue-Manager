@@ -83,7 +83,7 @@ Update per-repo registry from engine input/output
   registry:update           [--repo <owner/name>]                
                             [--config <path>]
 
-Link parent↔child hierarchy only (E2E stage 5)
+Link parent-child hierarchy only (E2E stage 5)
   link-hierarchy            [--repo <owner/name>]                 
                             [--parent-number <n>] 
                             [--metadata-file <path>] 
@@ -149,6 +149,181 @@ Issues subcommands:
                             [--show-project]
 EOF
 }
+
+# Handle --fetch convenience: perform a dry-run before confirm when requested.
+# Usage: keep backward-compat; this only triggers when 'sync' + '--confirm' + '--fetch' present.
+for __a in "$@"; do
+  if [[ "$__a" == --fetch* ]]; then
+    # supports --fetch and --fetch=prompt|merge|accept-remote
+    FETCH_RAW="$__a"
+    break
+  fi
+done
+
+if [[ -n "${FETCH_RAW-}" ]]; then
+  # default mode: accept-remote
+  FETCH_MODE="accept-remote"
+  if [[ "$FETCH_RAW" == *=* ]]; then
+    FETCH_MODE="${FETCH_RAW#*=}"
+  fi
+
+  has_sync=0; has_confirm=0
+  for __a in "$@"; do
+    if [[ "$__a" == "sync" ]]; then has_sync=1; fi
+    if [[ "$__a" == "--confirm" ]]; then has_confirm=1; fi
+  done
+
+  if [[ $has_sync -eq 1 && $has_confirm -eq 1 ]]; then
+    # Build arg list without the fetch arg
+    newargs=()
+    for __a in "$@"; do
+      case "$__a" in
+        --fetch* ) continue ;;
+        * ) newargs+=("$__a") ;;
+      esac
+    done
+
+    echo "[INFO] --fetch detected (mode=$FETCH_MODE): running dry-run first to refresh remote snapshot..." >&2
+    # Replace --confirm with --dry-run for the preliminary run
+    dryargs=()
+    for __a in "${newargs[@]}"; do
+      if [[ "$__a" == "--confirm" ]]; then
+        dryargs+=("--dry-run")
+      else
+        dryargs+=("$__a")
+      fi
+    done
+
+    if [[ -n "${SCRIPT_PATH-}" && -f "${SCRIPT_PATH}" ]]; then
+      "${SCRIPT_PATH}" "${dryargs[@]}"
+
+      # Interactive/prompt mode: show artifacts and ask before forcing
+      if [[ "$FETCH_MODE" == "prompt" ]]; then
+        echo "" >&2
+        echo "Dry-run artifacts:" >&2
+        echo " - engine-input: ./tmp/*/engine-input.json" >&2
+        echo " - engine-output: ./tmp/*/engine-output.json" >&2
+        echo " - github-state: ./tmp/*/github-state.json" >&2
+        echo "" >&2
+        if [[ -t 0 && -t 1 && "${GITISSUER_NONINTERACTIVE-}" != "1" ]]; then
+          read -r -p "Proceed to apply changes and overwrite remote issues? [y/N]: " reply
+          reply="$(printf '%s' "$reply" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+          if [[ "$reply" == "y" || "$reply" == "yes" ]]; then
+            echo "[INFO] User approved overwrite; proceeding with --force." >&2
+            newargs+=("--force")
+            exec "${SCRIPT_PATH}" "${newargs[@]}"
+          else
+            echo "[INFO] Aborting sync per user choice." >&2
+            exit 0
+          fi
+        else
+          echo "[ERROR] Non-interactive session; cannot prompt. Use --fetch=accept-remote or run interactively." >&2
+          exit 1
+        fi
+
+      elif [[ "$FETCH_MODE" == "merge" ]]; then
+        # Merge strategy: conservative - prefer remote non-empty fields, fill missing from local
+        echo "[INFO] Merge mode: performing conservative merge (remote wins for non-empty fields)." >&2
+
+        # Determine --repo value from newargs
+        repo_full=""
+        for __a in "${newargs[@]}"; do
+          if [[ "${__a}" == "--repo" ]]; then
+            # next arg is the repo
+            : # handled in next iteration
+          fi
+        done
+        # Simple parse: find the value after --repo
+        for ((i=0;i<${#newargs[@]};i++)); do
+          if [[ "${newargs[$i]}" == "--repo" ]]; then
+            next=$((i+1))
+            if (( next < ${#newargs[@]} )); then
+              repo_full="${newargs[$next]}"
+            fi
+            break
+          fi
+        done
+
+        if [[ -z "$repo_full" ]]; then
+          echo "[WARN] Could not determine --repo from args; falling back to --force." >&2
+          newargs+=("--force")
+          exec "${SCRIPT_PATH}" "${newargs[@]}"
+        fi
+
+        # Compute tmp directory name: owner-repo pattern (replace / with -)
+        repo_slug="${repo_full//\//-}"
+        repo_tmp_dir="./tmp/${repo_slug}"
+        engine_input_file="$repo_tmp_dir/engine-input.json"
+        github_state_file="$repo_tmp_dir/github-state.json"
+
+        if [[ ! -f "$engine_input_file" || ! -f "$github_state_file" ]]; then
+          echo "[WARN] Required dry-run artifacts not found: $engine_input_file or $github_state_file" >&2
+          echo "[WARN] Continuing with --force fallback." >&2
+          newargs+=("--force")
+          exec "${SCRIPT_PATH}" "${newargs[@]}"
+        fi
+
+        # Backup original engine-input
+        cp -a "$engine_input_file" "${engine_input_file}.orig-$(date -u +%Y%m%dT%H%M%SZ)" || true
+
+        # Use jq to merge: for each task/subtask, prefer remote non-empty title/body/labels
+        if command -v jq >/dev/null 2>&1; then
+          echo "[INFO] Merging github-state into engine-input via jq..." >&2
+          tmp_out="${engine_input_file}.merged"
+          jq --argfile gh "$github_state_file" '
+            ( $gh.issues // [] ) as $issues
+            | ($issues | map({ (.
+                stableId): . }) ) | add as $index
+            | (.targets[]?.tasks? // []) as $tlist
+            | (.targets[]?.subtasks? // []) as $slist
+            | ( . )
+            | (.targets |= map(
+                (.tasks |= (if . == null then . else map(
+                  ( . as $it )
+                  | ( $index[$it.stableId] // {} ) as $remote
+                  | (if ($remote.title // "") | length > 0 then $it.text = $remote.title else $it end)
+                  | (if ($remote.body // "") | length > 0 then $it.body = $remote.body else $it end)
+                  | (if ($remote.labels // []) | length > 0 then $it.labels = $remote.labels else $it end)
+                ) end)
+              | .subtasks |= (if . == null then . else map(
+                  ( . as $it )
+                  | ( $index[$it.stableId] // {} ) as $remote
+                  | (if ($remote.title // "") | length > 0 then $it.text = $remote.title else $it end)
+                  | (if ($remote.body // "") | length > 0 then $it.body = $remote.body else $it end)
+                  | (if ($remote.labels // []) | length > 0 then $it.labels = $remote.labels else $it end)
+                ) end)
+              ) )
+          ' "$engine_input_file" >"$tmp_out" 2>/dev/null || true
+
+          if [[ -f "$tmp_out" ]]; then
+            mv "$tmp_out" "$engine_input_file"
+            echo "[OK] Wrote merged engine-input: $engine_input_file" >&2
+          else
+            echo "[WARN] jq merge failed; falling back to --force." >&2
+            newargs+=("--force")
+            exec "${SCRIPT_PATH}" "${newargs[@]}"
+          fi
+        else
+          echo "[ERROR] jq is required for merge mode but not found; install jq or use --fetch=accept-remote." >&2
+          exit 2
+        fi
+
+        # Continue with normal confirm (no --force) to attempt to apply merged payload
+        echo "[INFO] Running confirm with merged payload (no --force)." >&2
+        exec "${SCRIPT_PATH}" "${newargs[@]}"
+
+      else
+        # accept-remote (default): auto-force
+        echo "[INFO] Dry-run complete; proceeding with confirm using --force to accept remote changes..." >&2
+        newargs+=("--force")
+        exec "${SCRIPT_PATH}" "${newargs[@]}"
+      fi
+
+    else
+      echo "[WARN] Could not determine script path to re-invoke; skipping --fetch behavior." >&2
+    fi
+  fi
+fi
 
 passthrough_has_flag() {
   local want="$1"

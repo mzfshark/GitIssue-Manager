@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "repo": "mzfshark/GitIssue-Manager",
-  "updatedAt": "2026-01-26T20:29:37.913Z",
+  "updatedAt": "2026-01-28T14:19:34.221Z",
   "planFingerprint": "cc4d57112d9f8b4833e99239abc019e837bc5548",
   "planFiles": [
     {
@@ -23,7 +23,7 @@
         "file": "PLAN.md",
         "line": 1
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.209Z"
     },
     {
       "stableId": "5ae91db8b8fca1591467fb5c2621d50f2f753945",
@@ -38,7 +38,7 @@
         "file": "PLAN.md",
         "line": 44
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.210Z"
     },
     {
       "stableId": "67e826bd6253691bd7382562efeca20d71cd82d9",
@@ -53,7 +53,7 @@
         "file": "PLAN.md",
         "line": 64
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.210Z"
     },
     {
       "stableId": "cc5a8422e225fcc6b7ecc6b0b4e73c798fed25fc",
@@ -68,7 +68,7 @@
         "file": "PLAN.md",
         "line": 101
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.210Z"
     },
     {
       "stableId": "4a99e6f403c735944c865f66470ffa712e3f4e32",
@@ -83,7 +83,7 @@
         "file": "PLAN.md",
         "line": 116
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.210Z"
     },
     {
       "stableId": "43f1deb5082f4c8d811a01da1a023522ea219e41",
@@ -98,7 +98,7 @@
         "file": "PLAN.md",
         "line": 46
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.210Z"
     },
     {
       "stableId": "6c8e0d4ba12a3477a43f5634ad08eabbc0078c55",
@@ -113,7 +113,7 @@
         "file": "PLAN.md",
         "line": 47
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.210Z"
     },
     {
       "stableId": "fff2f26a1e3b61a8bf5a277d582431f9a23a962f",
@@ -128,7 +128,7 @@
         "file": "PLAN.md",
         "line": 48
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "c12ecc5a3cb6e46aa71cf2b7316dc6623f28dad1",
@@ -143,7 +143,7 @@
         "file": "PLAN.md",
         "line": 49
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "55395e4729ac2b752966590929d8fb6b42278e1d",
@@ -158,7 +158,7 @@
         "file": "PLAN.md",
         "line": 50
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "2612b8de03589fd45f25fb2ef594fc18d4256e95",
@@ -173,7 +173,7 @@
         "file": "PLAN.md",
         "line": 51
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "1436833f0bebff18b65119527d47b68f36280504",
@@ -188,7 +188,7 @@
         "file": "PLAN.md",
         "line": 52
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "b5001a6b90e3dd9ae5851ad016a97f0bea3daec7",
@@ -203,7 +203,7 @@
         "file": "PLAN.md",
         "line": 53
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "a1431d1169d8b36c4726ba393d237c053237288d",
@@ -218,7 +218,7 @@
         "file": "PLAN.md",
         "line": 54
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "a4a66491b7c6f7b838e83ca86045f58a8c3cf9e8",
@@ -233,7 +233,7 @@
         "file": "PLAN.md",
         "line": 55
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "9fb34ce2f97833dee250531f31408a79c1253f42",
@@ -248,7 +248,7 @@
         "file": "PLAN.md",
         "line": 103
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "39a11a5565d101bccd997ebcc0397ef42e5a97a1",
@@ -263,7 +263,7 @@
         "file": "PLAN.md",
         "line": 104
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "9f35e0156d1d74654df1fed3ad742a377d1a5c14",
@@ -278,7 +278,7 @@
         "file": "PLAN.md",
         "line": 105
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "80310c0f3618bedfbdff35a354bf9eecebc4719e",
@@ -293,7 +293,7 @@
         "file": "PLAN.md",
         "line": 106
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "144fc5ba6f50cf454590e2ead6856c343a9fae4f",
@@ -308,7 +308,7 @@
         "file": "PLAN.md",
         "line": 107
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "3b4561b38efc5a2b43d8b7268fa41c63e2a895d9",
@@ -323,7 +323,7 @@
         "file": "PLAN.md",
         "line": 108
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "2fb888e8baf912cab0859a4b2c844de80552f37a",
@@ -338,7 +338,7 @@
         "file": "PLAN.md",
         "line": 109
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     },
     {
       "stableId": "3ce92b29fa57eae4b4806d3f47fbbaaa1ff3537f",
@@ -353,7 +353,7 @@
         "file": "PLAN.md",
         "line": 110
       },
-      "lastSyncedAt": "2026-01-26T20:29:37.908Z"
+      "lastSyncedAt": "2026-01-28T14:19:34.211Z"
     }
   ]
 }

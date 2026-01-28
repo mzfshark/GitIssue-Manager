@@ -85,15 +85,15 @@ Implement a complete **E2E (End-to-End) flow** for generating issue hierarchies 
 
 ### STAGE 1: SETUP
 - [ ] Validate config file exists (e2e-config.json)
-- [ ] Check GitHub auth (gh auth status)
+- [x] Check GitHub auth (gh auth status)
 - [ ] Fetch org info + ProjectV2 schema
 - [ ] Verify repositories accessible
 
 **Output:** `config.validated.json`
 
 ### STAGE 2: PREPARE
-- [ ] Scan docs/plans/ directory
-- [ ] Parse PLAN.md + SPRINT.md
+- [x] Scan docs/plans/ directory
+- [x] Parse PLAN.md + SPRINT.md
 - [ ] Build task hierarchy (parent→child→grandchild)
 - [ ] Extract metadata (assignee, labels, type, estimate, dates)
 

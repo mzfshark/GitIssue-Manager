@@ -569,6 +569,25 @@ function createIssue(repo, title, body, labels, assignee) {
 
 	try {
 		let out = attemptCreate(labels || []);
+		// If API returned an error object (no number), persist diagnostic info for post-mortem.
+		if (out && !out.number && out.message) {
+			try {
+				const diag = {
+					ts: new Date().toISOString(),
+					repo: repo,
+					title: title ? String(title).slice(0, 200) : '',
+					bodyPreview: body ? String(body).slice(0, 1000) : '',
+					labels: labels || [],
+					assignee: assignee || null,
+					response: out
+				};
+				const diagPath = path.join(process.cwd(), 'tmp', `github-create-error-${Date.now()}.json`);
+				writeJson(diagPath, diag);
+				console.warn(`[DIAG] Wrote GitHub create-error diagnostic to ${diagPath}`);
+			} catch (diagErr) {
+				console.warn('[DIAG] Failed to write GitHub diagnostic file:', String(diagErr && diagErr.message));
+			}
+		}
 		if (out && !out.number && out.message) {
 			const invalid = extractInvalidLabelsFromApiError(out);
 			if (invalid.length > 0) {
