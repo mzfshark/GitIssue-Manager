@@ -1,0 +1,20 @@
+{
+  "owner": "mzfshark",
+  "repo": "mzfshark/AragonOSX",
+  "localPath": "/mnt/d/Rede/Github/mzfshark/AragonOSX",
+  "enableProjectSync": true,
+  "gitissuer": {
+    "enabled": true,
+    "autoDeploy": true
+  },
+  "defaults": {
+    "defaultEstimateHours": 1,
+    "defaultPriority": "Low",
+    "defaultStatus": "Backlog",
+    "defaultStartDate": "2026-01-28",
+    "defaultEndDate": "TBD",
+    "defaultLabels": [
+      "contracts"
+    ]
+  }
+}

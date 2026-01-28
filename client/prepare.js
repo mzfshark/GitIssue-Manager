@@ -108,8 +108,10 @@ function extractLinkedMarkdownFiles(planPath, absRoot) {
   const content = fs.readFileSync(planPath, 'utf8');
   const links = new Set();
   const linkRe = /\[[^\]]*\]\(([^)]+)\)/g;
-  let m;
-  while ((m = linkRe.exec(content)) !== null) {
+  // Avoid assignment in loop condition while still advancing regex state.
+  while (true) {
+    const m = linkRe.exec(content);
+    if (m === null) break;
     let link = m[1].trim();
     if (!link || link.startsWith('http://') || link.startsWith('https://') || link.startsWith('mailto:') || link.startsWith('#')) {
       continue;
@@ -184,8 +186,10 @@ function parseTags(text) {
   // [estimate:2h] [priority:URGENT] [status:In Progress] [start:2026-01-01] [end:2026-01-31] [labels:plan,backend] [key:01J...]
   const out = { cleaned: text };
   const tagRe = /\[(estimate|priority|status|start|end|label|labels|key):([^\]]+)\]/gi;
-  let m;
-  while ((m = tagRe.exec(text)) !== null) {
+  // Avoid assignment in loop condition while still advancing regex state.
+  while (true) {
+    const m = tagRe.exec(text);
+    if (m === null) break;
     const key = m[1].toLowerCase();
     const value = m[2].trim();
     if (key === 'estimate') {
@@ -514,9 +518,18 @@ function main() {
     selectedPlans.push(planArg.trim());
   }
 
-  // Output paths are resolved relative to where the command is executed.
-  // This keeps all generated artifacts in the GitIssue-Manager repo even when scanning external repos.
-  const outBaseDir = process.cwd();
+  // Output paths should resolve relative to the GitIssue-Manager repo root, not the caller cwd.
+  // Derive from config location when possible.
+  const resolveOutBaseDir = (cfgFilePath) => {
+    try {
+      if (!cfgFilePath) return process.cwd();
+      const absCfg = path.isAbsolute(cfgFilePath) ? cfgFilePath : path.resolve(process.cwd(), cfgFilePath);
+      // Expecting .../GitIssue-Manager/sync-helper/configs/<config>.json
+      return path.resolve(path.dirname(absCfg), '..', '..');
+    } catch (_) {
+      return process.cwd();
+    }
+  };
 
   if (!fs.existsSync(cfgPath)) {
     console.error('Config not found:', cfgPath);
@@ -524,6 +537,7 @@ function main() {
   }
 
   const { cfg, defaults, targets } = loadConfig(cfgPath);
+  const outBaseDir = resolveOutBaseDir(cfgPath);
 
   const engine = {
     version: '1.0',
@@ -539,6 +553,19 @@ function main() {
     const tasksPath = out.tasksPath || './tmp/tasks.json';
     const subtasksPath = out.subtasksPath || './tmp/subtasks.json';
     const engineInputPath = out.engineInputPath || './tmp/engine-input.json';
+
+    // Ensure per-repo tmp directory: ./tmp/<owner>-<repo>/
+    const ownerName = (cfg && cfg.owner) ? String(cfg.owner) : 'mzfshark';
+    const repoFull = target.repo || '';
+    const repoName = (repoFull && repoFull.includes('/')) ? repoFull.split('/')[1] : repoFull || 'repo';
+    const repoTmpDir = path.resolve(outBaseDir, 'tmp', `${ownerName}-${repoName}`);
+    fs.mkdirSync(repoTmpDir, { recursive: true });
+
+    const resolveOutputPath = (outPath) => {
+      if (!outPath) return null;
+      if (path.isAbsolute(outPath)) return outPath;
+      return path.resolve(repoTmpDir, path.basename(outPath));
+    };
 
     // Resolve localPath relative to GitIssue-Manager root (outBaseDir)
     const absRoot = path.resolve(outBaseDir, localPath);
@@ -574,8 +601,10 @@ function main() {
 
     sumSubtaskEstimates(tasks, subtasks, defaults.defaultEstimateHours);
 
-    writeJson(path.resolve(outBaseDir, tasksPath), tasks);
-    writeJson(path.resolve(outBaseDir, subtasksPath), subtasks);
+    const resolvedTasksPath = resolveOutputPath(tasksPath);
+    const resolvedSubtasksPath = resolveOutputPath(subtasksPath);
+    writeJson(resolvedTasksPath, tasks);
+    writeJson(resolvedSubtasksPath, subtasks);
 
     const planFiles = mdFiles.map((f) => ({
       path: path.relative(absRoot, f).replace(/\\/g, '/'),
@@ -595,7 +624,9 @@ function main() {
     });
 
     // Write engine input in the GitIssue-Manager repo (cwd) so the executor can always find it.
-    writeJson(path.resolve(outBaseDir, engineInputPath), engine);
+    // Write engine input for this target into the per-repo tmp directory
+    const resolvedEngineInputPath = resolveOutputPath(engineInputPath);
+    writeJson(resolvedEngineInputPath, engine);
 
     // Build and write metadata file for this target
     const metadataPath = out.metadataPath || path.join(path.dirname(tasksPath), 'metadata.json');
@@ -662,11 +693,13 @@ function main() {
       })),
     };
 
-    writeJson(path.resolve(outBaseDir, metadataPath), metadata);
+    // Ensure metadata is written into per-repo tmp dir as well
+    const resolvedMetadataPath = resolveOutputPath(metadataPath);
+    writeJson(resolvedMetadataPath, metadata);
 
     console.log('Prepared:', target.repo);
     console.log('  tasks:', tasks.length, 'subtasks:', subtasks.length);
-    console.log('  outputs:', tasksPath, subtasksPath, engineInputPath);
+    console.log('  outputs:', path.relative(outBaseDir, repoTmpDir));
   }
 }
 

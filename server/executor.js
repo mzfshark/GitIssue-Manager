@@ -281,12 +281,15 @@ const stableIdIndexCache = {};
 // Shape: { [repo]: { byStableId: Record<string, any>, byKey: Record<string, any>, byStableMeta: Record<string, {updatedAt?:string, number?:number}> } }
 const githubStateIndexCache = {};
 
-function resolveGithubStatePathFromConfig(configPath, config, repo) {
+function resolveGithubStatePathFromConfig(configPath, config, repo, baseDir) {
 	try {
 		const configured = config && config.outputs && config.outputs.githubStatePath ? String(config.outputs.githubStatePath) : '';
-		if (configured) return path.isAbsolute(configured) ? configured : path.resolve(process.cwd(), configured);
-		const configName = configPath ? path.basename(configPath, path.extname(configPath)) : (repo ? repo.replace('/', '-') : 'repo');
-		return path.resolve(process.cwd(), 'tmp', configName, 'github-state.json');
+		const root = baseDir || process.cwd();
+		if (configured) return path.isAbsolute(configured) ? configured : path.resolve(root, configured);
+		// Default to per-repo tmp folder: ./tmp/<owner>-<repo>/github-state.json
+		const ownerName = (config && config.owner) ? String(config.owner) : (repo && repo.includes('/') ? repo.split('/')[0] : 'mzfshark');
+		const repoName = repo && repo.includes('/') ? repo.split('/')[1] : (repo || 'repo');
+		return path.resolve(root, 'tmp', `${ownerName}-${repoName}`, 'github-state.json');
 	} catch (_) {
 		return null;
 	}
@@ -993,12 +996,25 @@ async function main() {
 			process.exit(2);
 		}
 		const cfg = readJson(configPath);
-		inputPath = cfg.outputs?.engineInputPath || './tmp/engine-input.json';
-		outputPath = cfg.outputs?.engineOutputPath || './tmp/engine-output.json';
+		const resolveBaseDirFromConfig = (cfgFilePath) => {
+			try {
+				const absCfg = path.isAbsolute(cfgFilePath) ? cfgFilePath : path.resolve(process.cwd(), cfgFilePath);
+				return path.resolve(path.dirname(absCfg), '..', '..');
+			} catch (_) {
+				return process.cwd();
+			}
+		};
+		const outBaseDir = resolveBaseDirFromConfig(configPath);
+		const repoFull = cfg.repo || (cfg.owner && cfg.repoName ? `${cfg.owner}/${cfg.repoName}` : '');
+		const ownerName = cfg.owner || (repoFull && repoFull.includes('/') ? repoFull.split('/')[0] : 'mzfshark');
+		const repoName = repoFull && repoFull.includes('/') ? repoFull.split('/')[1] : (cfg.repoName || 'repo');
+		const repoTmpDir = path.resolve(outBaseDir, 'tmp', `${ownerName}-${repoName}`);
+		inputPath = cfg.outputs?.engineInputPath || path.join(repoTmpDir, 'engine-input.json');
+		outputPath = cfg.outputs?.engineOutputPath || path.join(repoTmpDir, 'engine-output.json');
 		// Load optional preflight snapshot for stableId resolution + conflict detection.
 		try {
 			const repoFromCfg = cfg.repo || null;
-			const githubStatePath = resolveGithubStatePathFromConfig(configPath, cfg, repoFromCfg);
+			const githubStatePath = resolveGithubStatePathFromConfig(configPath, cfg, repoFromCfg, outBaseDir);
 			if (repoFromCfg && githubStatePath) {
 				loadGithubStateIndex(repoFromCfg, githubStatePath);
 			}

@@ -1,0 +1,22 @@
+{
+  "owner": "mzfshark",
+  "repo": "mzfshark/osx-plugin-foundry",
+  "localPath": "/mnt/d/Rede/Github/mzfshark/osx-plugin-foundry",
+  "enableProjectSync": true,
+  "gitissuer": {
+    "enabled": true,
+    "autoDeploy": true
+  },
+  "defaults": {
+    "defaultEstimateHours": 1,
+    "defaultPriority": "LOW",
+    "defaultStatus": "Backlog",
+    "defaultStartDate": "2026-01-28",
+    "defaultEndDate": "TBD",
+    "defaultLabels": [
+      "plugin",
+      "harmony",
+      "governance"
+    ]
+  }
+}

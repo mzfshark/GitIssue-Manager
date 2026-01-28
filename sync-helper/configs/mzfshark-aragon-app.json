@@ -1,0 +1,30 @@
+{
+  "owner": "mzfshark",
+  "repo": "mzfshark/aragon-app",
+  "localPath": "/mnt/d/Rede/Github/mzfshark/aragon-app",
+  "enableProjectSync": true,
+  "outputs": {
+    "engineInputPath": "/mnt/d/Rede/Github/mzfshark/aragon-app/tmp/mzfshark-aragon-app/engine-input.json",
+    "engineOutputPath": "/mnt/d/Rede/Github/mzfshark/aragon-app/tmp/mzfshark-aragon-app/engine-output.json",
+    "tasksPath": "/mnt/d/Rede/Github/mzfshark/aragon-app/tmp/mzfshark-aragon-app/tasks.json",
+    "subtasksPath": "/mnt/d/Rede/Github/mzfshark/aragon-app/tmp/mzfshark-aragon-app/subtasks.json",
+    "metadataPath": "/mnt/d/Rede/Github/mzfshark/aragon-app/tmp/mzfshark-aragon-app/metadata.json",
+    "githubStatePath": "/mnt/d/Rede/Github/mzfshark/aragon-app/tmp/mzfshark-aragon-app/github-state.json"
+  },
+  "gitissuer": {
+    "enabled": true,
+    "autoDeploy": true
+  },
+  "defaults": {
+    "defaultEstimateHours": 1,
+    "defaultPriority": "LOW",
+    "defaultStatus": "Backlog",
+    "defaultStartDate": "2026-01-28",
+    "defaultEndDate": "TBD",
+    "defaultLabels": [
+      "frontend",
+      "harmony",
+      "governance"
+    ]
+  }
+}
