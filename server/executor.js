@@ -1114,14 +1114,42 @@ async function main() {
 			projectNodeId = engine.project.projectNodeId;
 		}
 
-		// If preflight snapshot exists for this repo, load it so stableId resolution and conflict
-		// detection are consistent and avoid extra GitHub API calls.
+		// If preflight snapshot exists for this repo, try loading it from several likely paths
+		// so stableId resolution + conflict detection are consistent and avoid extra GitHub API calls.
 		try {
 			if (configIndex >= 0 && args[configIndex + 1]) {
 				const configPath = args[configIndex + 1];
 				const cfg = readJson(configPath);
-				const githubStatePath = resolveGithubStatePathFromConfig(configPath, cfg, fullRepo);
-				loadGithubStateIndex(fullRepo, githubStatePath);
+				const ownerPart = fullRepo && fullRepo.includes('/') ? fullRepo.split('/')[0] : 'mzfshark';
+				const repoPart = fullRepo && fullRepo.includes('/') ? fullRepo.split('/')[1] : (cfg.repoName || 'repo');
+				const candidates = [];
+				// Preferred configured path (resolves absolute/relative)
+				try {
+					const p = resolveGithubStatePathFromConfig(configPath, cfg, fullRepo, outBaseDir);
+					if (p) candidates.push(p);
+				} catch (_) {}
+				// Candidate: relative to config location (two levels up -> tmp/<owner>-<repo>)
+				try {
+					const alt = path.resolve(path.dirname(configPath), '..', '..', 'tmp', `${ownerPart}-${repoPart}`, 'github-state.json');
+					candidates.push(alt);
+				} catch (_) {}
+				// Candidate: cwd/tmp/<owner>-<repo>
+				try {
+					const alt2 = path.resolve(process.cwd(), 'tmp', `${ownerPart}-${repoPart}`, 'github-state.json');
+					candidates.push(alt2);
+				} catch (_) {}
+
+				for (const cand of candidates) {
+					try {
+						const idx = loadGithubStateIndex(fullRepo, cand);
+						if (idx) {
+							console.log('[DEBUG] Loaded github-state snapshot from', cand);
+							break;
+						}
+					} catch (e) {
+						// ignore per-candidate failures
+					}
+				}
 			}
 		} catch (_) {
 			// best-effort
@@ -1247,6 +1275,23 @@ async function main() {
 						continue;
 					}
 					console.log('Creating issue for', task.stableId.substring(0, 10));
+					// Diagnostic: record why we're creating an issue (no existing match found)
+					try {
+						const diag = {
+							ts: new Date().toISOString(),
+							repo: fullRepo,
+							stableId: task.stableId,
+							titlePreview: String(title).slice(0, 200),
+							bodyPreview: String(body || '').slice(0, 1000),
+							labels: labels || [],
+							note: 'Creating because no existing issue matched by stableId/canonicalKey/sourceTitle'
+						};
+						const diagPath = path.join(process.cwd(), 'tmp', `created-missing-match-${fullRepo.replace('/', '-')}-${String(task.stableId).slice(0,10)}.json`);
+						writeJson(diagPath, diag);
+						console.log('[DIAG] Wrote create diagnostic to', diagPath);
+					} catch (e) {
+						// ignore diagnostics failures
+					}
 					// NEW: Use task.assignee for parent plans, fallback to defaultAssignee
 					const effectiveAssignee = task.isParentPlan && task.assignee 
 						? task.assignee 
@@ -1445,6 +1490,25 @@ async function main() {
 						continue;
 					}
 					const assignees = defaultAssignee ? [defaultAssignee] : [];
+					console.log('Creating subtask for', s.stableId.substring(0, 10));
+					// Diagnostic: record why we're creating a subtask (no existing match found)
+					try {
+						const diag = {
+							ts: new Date().toISOString(),
+							repo: fullRepo,
+							stableId: s.stableId,
+							parentStableId: s.parentStableId,
+							titlePreview: String(title).slice(0, 200),
+							bodyPreview: String(body || '').slice(0, 1000),
+							labels: subLabels || [],
+							note: 'Creating subtask because no existing issue matched by stableId/canonicalKey/sourceTitle'
+						};
+						const diagPath = path.join(process.cwd(), 'tmp', `created-missing-subtask-${fullRepo.replace('/', '-')}-${String(s.stableId).slice(0,10)}.json`);
+						writeJson(diagPath, diag);
+						console.log('[DIAG] Wrote create diagnostic to', diagPath);
+					} catch (e) {
+						// ignore diagnostics failures
+					}
 					const createdIssue = (function(){
 						try {
 							const args = [`repos/${fullRepo}/issues`, '-f', `title=${title}`, '-f', `body=${body}`];

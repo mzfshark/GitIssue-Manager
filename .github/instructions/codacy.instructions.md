@@ -64,7 +64,10 @@ Configuration for AI behavior when interacting with Codacy's MCP Server
 - Do not try to manually install Codacy CLI using either brew, npm, npx, or any other package manager.
 - If the Codacy CLI is not installed, just run the `codacy_cli_analyze` tool from Codacy's MCP Server.
 - When calling `codacy_cli_analyze`, only send provider, organization and repository if the project is a git repository.
-- Ignore *.md files.
+
+## CRITICAL: Dont use with some extension files 
+Codacy dont support *.md files. Skip it when files are markdown.
+dont support solidity *.sol files. Skip it when files are solidity.
 
 ## Whenever a call to a Codacy tool that uses `repository` or `organization` as a parameter returns a 404 error
 - Offer to run the `codacy_setup_repository` tool to add the repository to Codacy
