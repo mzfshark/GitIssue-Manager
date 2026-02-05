@@ -637,11 +637,12 @@ cmd_link_hierarchy() {
   local repo_full=""
   local config_path=""
   local dry_run="true"
-
   local parent_number=""
   local metadata_file=""
   local engine_output_file=""
   local replace_parent="false"
+  local plan_arg=""
+
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -651,6 +652,7 @@ cmd_link_hierarchy() {
       --dry-run) dry_run="true"; shift ;;
       --non-interactive) shift ;; # accepted for compatibility
       --parent-number) parent_number="$2"; shift 2 ;;
+      --plan) plan_arg="$2"; shift 2 ;;
       --metadata-file) metadata_file="$2"; shift 2 ;;
       --engine-output-file) engine_output_file="$2"; shift 2 ;;
       --replace-parent) replace_parent="true"; shift ;;
@@ -675,6 +677,9 @@ cmd_link_hierarchy() {
   fi
   if [[ -n "$parent_number" ]]; then
     link_args+=(--parent-number "$parent_number")
+  fi
+  if [[ -n "$plan_arg" ]]; then
+    link_args+=(--plan "$plan_arg")
   fi
   if [[ -n "$engine_output_file" ]]; then
     link_args+=(--engine-output-file "$engine_output_file")

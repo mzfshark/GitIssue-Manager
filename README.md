@@ -219,6 +219,36 @@ Done! Check your GitHub repo—issues should be created and linked to ProjectV2.
 4. Execute:
    - Executor applies changes to GitHub and writes final audit entries to `logs/audit.jsonl`.
 
+## Per-plan linking (`--plan`)
+
+You can scope linking operations to a single plan/sprint file using the `--plan` flag. This is useful when multiple plan files live in a repo and you only want to link tasks/subtasks from one file.
+
+Usage (wrapper):
+
+```bash
+gitissuer link-hierarchy --repo <owner/repo> --plan docs/plans/SPRINT_001A_DELEGATION_FIXES.md [--dry-run] [--parent-number <issueNumber>]
+```
+
+Important details:
+- The plan file must be present in the metadata produced by `prepare` (run `gitissuer prepare --repo <owner/repo> --plan <path>` first).
+- Parent issue detection order (first applicable):
+   1. `--parent-number` CLI argument
+   2. repo config `gitissuer.hierarchy.parentIssueNumber`
+   3. engine-output marker `isParentPlan`
+   4. metadata marker label `plan-parent` or `explicitId` starting with `PLAN`
+   5. fallback to the first top-level mapped issue for that plan
+- If the requested `--plan` is not found in `tmp/<repo>/metadata.json`, run `prepare` for the plan before linking.
+
+Example (dry-run):
+
+```bash
+# generate metadata for this plan
+gitissuer prepare --repo mzfshark/osx-plugin-foundry --plan docs/plans/SPRINT_001A_DELEGATION_FIXES.md
+
+# preview linking actions for that plan
+gitissuer link-hierarchy --repo mzfshark/osx-plugin-foundry --plan docs/plans/SPRINT_001A_DELEGATION_FIXES.md --dry-run
+```
+
 ## Configuration
 - Configs support top-level `repo` or a `targets[]` array (the parser accepts both forms).
 - ProjectV2 field mapping: only `text`, `number`, `date`, `singleSelectOptionId`, and `iterationId` are reliably supported for updates via GraphQL.

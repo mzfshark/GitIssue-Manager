@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+/* eslint-env node */
+/* global require, process, console */
 /**
  * link-hierarchy.js
  * 
@@ -16,6 +18,19 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+
+// Blocking sleep utility (works in Node.js): use Atomics.wait on a SharedArrayBuffer
+function sleep(ms) {
+  try {
+    const sab = new SharedArrayBuffer(4);
+    const ia = new Int32Array(sab);
+    Atomics.wait(ia, 0, 0, ms);
+  } catch (e) {
+    // Fallback: busy-wait (shouldn't normally happen)
+    const end = Date.now() + ms;
+    while (Date.now() < end) { /* noop */ }
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CLI Argument Parsing
@@ -62,6 +77,8 @@ const defaultMetadataPath = config.outputs?.metadataPath || config.outputs?.task
 const engineOutputPath = engineOutputFileArg || defaultEngineOutputPath;
 const metadataPath = metadataFileArg || defaultMetadataPath;
 
+// Optional: process a single plan file (basename or path) or auto-process per metadata.planFiles
+const planArg = getArg('--plan'); // e.g. PLAN.md or docs/plans/SPRINT_001.md
 // Parent issue number: CLI arg > config > null
 let parentIssueNumber = parentNumberArg ? parseInt(parentNumberArg, 10) : null;
 if (!parentIssueNumber && config.gitissuer?.hierarchy?.parentIssueNumber) {
@@ -128,7 +145,7 @@ function buildStableMap(engineOut) {
 const stableMap = buildStableMap(engineOutput);
 console.log(`[INFO] Loaded ${stableMap.size} items from engine-output`);
 
-// Auto-detect parent issue from isParentPlan flag if not provided
+// Auto-detect parent issue from isParentPlan flag if not provided (global fallback)
 if (!parentIssueNumber) {
   for (const [, item] of stableMap) {
     if (item.isParentPlan && item.issueNumber) {
@@ -139,7 +156,8 @@ if (!parentIssueNumber) {
   }
 }
 
-if (!parentIssueNumber) {
+// If caller requested a single plan via --plan, allow per-plan parent detection instead
+if (!parentIssueNumber && !planArg) {
   console.error('ERROR: Parent issue number not found.');
   console.error('HINT: Provide --parent-number <n>, set gitissuer.hierarchy.parentIssueNumber in config,');
   console.error('      or ensure the parent plan issue was created (isParentPlan: true).');
@@ -147,11 +165,288 @@ if (!parentIssueNumber) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Build Link Plan
+// Build Link Plan (support per-plan processing)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const tasks = Array.isArray(metadata.tasks) ? metadata.tasks : [];
 const subtasks = Array.isArray(metadata.subtasks) ? metadata.subtasks : [];
+
+function buildLinkPlanForSets(localTasks, localSubtasks, parentNumberForPlan) {
+  const lp = [];
+
+  // top-level tasks -> plan parent
+  for (const t of localTasks) {
+    if (!t?.stableId) continue;
+    const hit = stableMap.get(t.stableId) || {};
+    if (hit.isParentPlan) continue;
+    lp.push({
+      kind: 'task->parent',
+      parentType: 'pai',
+      parentIssueNumber: parentNumberForPlan,
+      parentStableId: null,
+      childStableId: t.stableId,
+      childIssueNumber: hit.issueNumber ?? null,
+      childNodeId: hit.issueNodeId ?? null,
+    });
+  }
+
+  // subtasks -> their parentStableId
+  for (const s of localSubtasks) {
+    if (!s?.stableId || !s.parentStableId) continue;
+    const child = stableMap.get(s.stableId) || {};
+    const parent = stableMap.get(s.parentStableId) || {};
+    lp.push({
+      kind: 'subtask->parent',
+      parentType: 'stable',
+      parentStableId: s.parentStableId,
+      parentIssueNumber: parent.issueNumber ?? null,
+      parentNodeId: parent.issueNodeId ?? null,
+      childStableId: s.stableId,
+      childIssueNumber: child.issueNumber ?? null,
+      childNodeId: child.issueNodeId ?? null,
+    });
+  }
+
+  // fallback: if empty, use engine-output parentStableId map for these stableIds
+  if (lp.length === 0) {
+    for (const [stableId, item] of stableMap) {
+      // only include items that belong to localTasks/localSubtasks by stableId
+      const belongs = localTasks.find(x => x.stableId === stableId) || localSubtasks.find(x => x.stableId === stableId);
+      if (!belongs) continue;
+      if (item.isParentPlan) continue;
+      if (item.parentStableId) {
+        const parent = stableMap.get(item.parentStableId) || {};
+        lp.push({
+          kind: 'child->parent',
+          parentType: parent.isParentPlan ? 'pai' : 'stable',
+          parentStableId: item.parentStableId,
+          parentIssueNumber: parent.isParentPlan ? parentNumberForPlan : (parent.issueNumber ?? null),
+          parentNodeId: parent.issueNodeId ?? null,
+          childStableId: stableId,
+          childIssueNumber: item.issueNumber ?? null,
+          childNodeId: item.issueNodeId ?? null,
+        });
+      } else {
+        lp.push({
+          kind: 'orphan->pai',
+          parentType: 'pai',
+          parentIssueNumber: parentNumberForPlan,
+          parentStableId: null,
+          childStableId: stableId,
+          childIssueNumber: item.issueNumber ?? null,
+          childNodeId: item.issueNodeId ?? null,
+        });
+      }
+    }
+  }
+
+  return lp;
+}
+
+// Helper: execute linking for a built linkPlan under a specific parent
+function executeLinkPlanFor(planLabel, linkPlanLocal, parentNumberForPlan) {
+  console.log(`[INFO] Plan: ${planLabel} → ${linkPlanLocal.length} relationships to process`);
+
+  // Resolve parent node ID upfront
+  let parentNodeIdLocal = null;
+  if (!dryRun) {
+    if (!parentNumberForPlan) {
+      console.error(`[WARN] No parent issue provided for plan ${planLabel}; skipping`);
+      return { linked: 0, skipped: 0, failed: 0, already: 0 };
+    }
+    parentNodeIdLocal = resolveIssueInfo(parentNumberForPlan)?.id;
+    if (!parentNodeIdLocal) {
+      console.error(`ERROR: Failed to resolve node ID for parent issue #${parentNumberForPlan} (plan ${planLabel})`);
+      return { linked: 0, skipped: 0, failed: 1, already: 0 };
+    }
+    console.log(`[INFO] Parent issue node ID for plan ${planLabel}: ${parentNodeIdLocal}`);
+  }
+
+  // Execute the linking loop (similar to main loop below)
+  let linkCountLocal = 0;
+  let skipCountLocal = 0;
+  let failCountLocal = 0;
+  let alreadyLinkedCountLocal = 0;
+
+  for (const link of linkPlanLocal) {
+    const { kind, parentType, parentStableId, childStableId, childIssueNumber } = link;
+    let { parentIssueNumber: linkParentNumber, parentNodeId: linkParentNodeId } = link;
+    const desiredParentNumber = parentType === 'pai' ? parentNumberForPlan : linkParentNumber;
+
+    if (!childIssueNumber) {
+      if (dryRun) {
+        console.log(`[DRY-RUN] Would link (missing child issue) stableId=${childStableId?.slice(0, 12)}... kind=${kind}`);
+        skipCountLocal++;
+      } else {
+        console.error(`[FAIL] Missing child issue number for stableId=${childStableId?.slice(0, 12)}... Re-run deploy without --dry-run.`);
+        failCountLocal++;
+      }
+      continue;
+    }
+
+    if (desiredParentNumber && childIssueNumber === desiredParentNumber) {
+      if (dryRun) {
+        console.log(`[DRY-RUN] Would skip self-link #${childIssueNumber} -> #${desiredParentNumber}`);
+      } else {
+        console.log(`[SKIP] #${childIssueNumber} self-link avoided`);
+      }
+      skipCountLocal++;
+      continue;
+    }
+
+    if (dryRun) {
+      if (parentType === 'pai') {
+        console.log(`[DRY-RUN] Would link #${childIssueNumber} as sub-issue of PAI #${parentNumberForPlan}`);
+      } else {
+        console.log(`[DRY-RUN] Would link #${childIssueNumber} as sub-issue of #${linkParentNumber || '?'} (${parentStableId?.slice(0, 12)}...)`);
+      }
+      linkCountLocal++;
+      continue;
+    }
+
+    // LIVE mode
+    let targetParentNodeId = null;
+    if (parentType === 'pai') {
+      targetParentNodeId = parentNodeIdLocal;
+      linkParentNumber = parentNumberForPlan;
+    } else {
+      if (linkParentNodeId) {
+        targetParentNodeId = linkParentNodeId;
+      } else if (linkParentNumber) {
+        targetParentNodeId = resolveIssueNodeId(linkParentNumber);
+      }
+      if (!targetParentNodeId) {
+        console.error(`[FAIL] Cannot resolve parent node ID for #${linkParentNumber} (${parentStableId?.slice(0, 12)}...)`);
+        failCountLocal++;
+        continue;
+      }
+    }
+
+    const childInfo = resolveIssueInfo(childIssueNumber);
+    const targetChildNodeId = link.childNodeId || childInfo?.id;
+    if (!targetChildNodeId) {
+      console.error(`[FAIL] Cannot resolve child node ID for #${childIssueNumber}`);
+      failCountLocal++;
+      continue;
+    }
+
+    if (childInfo?.parentNumber) {
+      if (childInfo.parentNumber === linkParentNumber) {
+        console.log(`[SKIP] #${childIssueNumber} already linked to #${linkParentNumber}`);
+        alreadyLinkedCountLocal++;
+        continue;
+      }
+      if (!replaceParent) {
+        console.log(`[SKIP] #${childIssueNumber} already has parent #${childInfo.parentNumber} (use --replace-parent to move)`);
+        skipCountLocal++;
+        continue;
+      }
+    }
+
+    const result = addSubIssue(targetParentNodeId, targetChildNodeId, replaceParent);
+    if (result?.alreadyLinked) {
+      console.log(`[SKIP] #${childIssueNumber} already linked to #${linkParentNumber}`);
+      alreadyLinkedCountLocal++;
+    } else if (result?.data?.addSubIssue) {
+      console.log(`[OK] Linked #${childIssueNumber} as sub-issue of #${linkParentNumber}`);
+      linkCountLocal++;
+    } else {
+      console.error(`[FAIL] Failed to link #${childIssueNumber} to #${linkParentNumber}`);
+      failCountLocal++;
+    }
+    // Pause briefly between live updates to avoid hitting API rate limits
+    try { sleep(5000); } catch (e) { /* ignore sleep errors */ }
+  }
+
+  console.log('');
+  console.log('─'.repeat(60));
+  console.log(`  Plan: ${planLabel} — Linked: ${linkCountLocal}, Already: ${alreadyLinkedCountLocal}, Skipped: ${skipCountLocal}, Failed: ${failCountLocal}`);
+  console.log('─'.repeat(60));
+
+  return { linked: linkCountLocal, skipped: skipCountLocal, failed: failCountLocal, already: alreadyLinkedCountLocal };
+}
+
+// Determine plan candidates: explicit --plan or metadata.planFiles
+let planCandidates = [];
+if (planArg) {
+  planCandidates = [planArg];
+} else if (Array.isArray(metadata.planFiles) && metadata.planFiles.length > 0) {
+  planCandidates = metadata.planFiles.map(p => p.path);
+}
+
+// If we have planCandidates, process each plan separately; otherwise fall back to global behavior
+if (planCandidates.length > 0) {
+  let totals = { linked: 0, skipped: 0, failed: 0, already: 0 };
+  for (const planPath of planCandidates) {
+    const base = path.basename(planPath);
+    const tasksForPlan = tasks.filter(t => t.file === planPath || t.file === base);
+    const subtasksForPlan = subtasks.filter(s => s.file === planPath || s.file === base);
+
+    if (tasksForPlan.length === 0 && subtasksForPlan.length === 0) {
+      console.log(`[INFO] No tasks/subtasks found for plan ${planPath}; skipping`);
+      continue;
+    }
+
+    // Determine parent issue for this plan: CLI arg (only when --plan used), config fallback, or auto-detect via isParentPlan in stableMap
+    let parentForThisPlan = null;
+    if (planArg && parentNumberArg) {
+      parentForThisPlan = parseInt(parentNumberArg, 10);
+    } else if (config.gitissuer?.hierarchy?.parentIssueNumber) {
+      parentForThisPlan = config.gitissuer.hierarchy.parentIssueNumber;
+    } else {
+      // try to find isParentPlan among stableIds in tasksForPlan or detect by metadata markers
+      // 1) prefer explicit isParentPlan flag from engine-output
+      for (const t of tasksForPlan) {
+        const v = stableMap.get(t.stableId);
+        if (v && v.isParentPlan && v.issueNumber) {
+          parentForThisPlan = v.issueNumber;
+          break;
+        }
+      }
+
+      // 2) look for metadata marker label 'plan-parent' or explicitId starting with 'PLAN'
+      if (!parentForThisPlan) {
+        for (const t of tasksForPlan) {
+          const labels = Array.isArray(t.labels) ? t.labels.map(x => String(x).toLowerCase()) : [];
+          const explicit = t.explicitId || '';
+          if (labels.includes('plan-parent') || String(explicit).toUpperCase().startsWith('PLAN')) {
+            const v = stableMap.get(t.stableId);
+            if (v && v.issueNumber) {
+              parentForThisPlan = v.issueNumber;
+              break;
+            }
+          }
+        }
+      }
+
+      // 3) fallback: pick a top-level task from metadata that maps to an issueNumber
+      if (!parentForThisPlan && tasksForPlan.length > 0) {
+        for (const t of tasksForPlan) {
+          const v = stableMap.get(t.stableId);
+          if (v && v.issueNumber) {
+            parentForThisPlan = v.issueNumber;
+            break;
+          }
+        }
+      }
+    }
+
+    const linkPlanLocal = buildLinkPlanForSets(tasksForPlan, subtasksForPlan, parentForThisPlan);
+    const res = executeLinkPlanFor(planPath, linkPlanLocal, parentForThisPlan);
+    totals.linked += res.linked; totals.skipped += res.skipped; totals.failed += res.failed; totals.already += res.already;
+  }
+
+  console.log('');
+  console.log('[INFO] All plans processed. Totals:', totals);
+  if (totals.failed > 0) process.exit(1);
+  process.exit(0);
+}
+
+// If no planCandidates found, fall back to legacy/global processing below.
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Legacy: Build Link Plan (global)
+// ─────────────────────────────────────────────────────────────────────────────
 
 const linkPlan = [];
 
@@ -232,22 +527,12 @@ console.log(`[INFO] Link plan: ${linkPlan.length} relationships to process`);
 // GraphQL Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ghApi(query, variables = {}) {
-  const payload = JSON.stringify({ query, variables });
-  const escaped = payload.replace(/'/g, "'\\''");
-  
-  try {
-    const result = execSync(`gh api graphql -f query='${escaped}'`, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    return JSON.parse(result);
-  } catch (err) {
-    const stderr = err.stderr?.toString() || '';
-    const stdout = err.stdout?.toString() || '';
-    console.error(`GraphQL error: ${stderr || stdout}`);
-    return null;
-  }
+// `ghApi` was removed because `ghApiWithVars` is used consistently below.
+
+// Helper to resolve node ID synchronously (wrapper around resolveIssueInfo)
+function resolveIssueNodeId(issueNumber) {
+  const info = resolveIssueInfo(issueNumber);
+  return info?.id ?? null;
 }
 
 function ghApiWithVars(query, vars) {
@@ -348,18 +633,7 @@ let skipCount = 0;
 let failCount = 0;
 let alreadyLinkedCount = 0;
 
-// Cache for node IDs
-const nodeIdCache = new Map();
-
-async function resolveNodeIdCached(issueNumber) {
-  if (!issueNumber) return null;
-  if (nodeIdCache.has(issueNumber)) {
-    return nodeIdCache.get(issueNumber);
-  }
-  const info = resolveIssueInfo(issueNumber);
-  if (info?.id) nodeIdCache.set(issueNumber, info.id);
-  return info?.id ?? null;
-}
+// Note: we intentionally do synchronous resolution via `resolveIssueInfo()` in this script.
 
 // Resolve parent issue node ID upfront
 let parentNodeId = null;
@@ -477,6 +751,8 @@ for (const link of linkPlan) {
     console.error(`[FAIL] Failed to link #${childIssueNumber} to #${linkParentNumber}`);
     failCount++;
   }
+  // Pause briefly between live updates to avoid hitting API rate limits
+  try { sleep(5000); } catch (e) { /* ignore sleep errors */ }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
