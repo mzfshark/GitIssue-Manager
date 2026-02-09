@@ -246,6 +246,10 @@ cmd_sync() {
   local link_hierarchy="true"
   local parent_number=""
   local replace_parent="false"
+  local batch_size=""
+  local delay_ms=""
+  local max_retries=""
+  local max_backoff_ms=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -262,6 +266,10 @@ cmd_sync() {
       --link-hierarchy) link_hierarchy="true"; shift ;;
       --no-link-hierarchy) link_hierarchy="false"; shift ;;
       --parent-number) parent_number="$2"; shift 2 ;;
+      --batch-size) batch_size="$2"; shift 2 ;;
+      --delay-ms) delay_ms="$2"; shift 2 ;;
+      --max-retries) max_retries="$2"; shift 2 ;;
+      --max-backoff-ms) max_backoff_ms="$2"; shift 2 ;;
       --replace-parent) replace_parent="true"; shift ;;
       --batch) shift ;; # accepted for compatibility; sub-steps are non-interactive
       -h|--help) usage; exit 0 ;;
@@ -384,6 +392,10 @@ cmd_deploy() {
       --link-hierarchy) link_hierarchy="true"; shift ;;
       --no-link-hierarchy) link_hierarchy="false"; shift ;;
       --parent-number) parent_number="$2"; shift 2 ;;
+      --batch-size) batch_size="$2"; shift 2 ;;
+      --delay-ms) delay_ms="$2"; shift 2 ;;
+      --max-retries) max_retries="$2"; shift 2 ;;
+      --max-backoff-ms) max_backoff_ms="$2"; shift 2 ;;
       --replace-parent) replace_parent="true"; shift ;;
       --batch) shift ;; # accepted for compatibility; executor is non-interactive
       -h|--help) usage; exit 0 ;;
@@ -502,6 +514,30 @@ cmd_deploy() {
     link_args+=(--engine-output-file "$engine_output_file" --metadata-file "$metadata_file")
     if [[ "$replace_parent" == "true" ]]; then
       link_args+=(--replace-parent)
+    fi
+    if [[ -n "$batch_size" ]]; then
+      link_args+=(--batch-size "$batch_size")
+    fi
+    if [[ -n "$delay_ms" ]]; then
+      link_args+=(--delay-ms "$delay_ms")
+    fi
+    if [[ -n "$max_retries" ]]; then
+      link_args+=(--max-retries "$max_retries")
+    fi
+    if [[ -n "$max_backoff_ms" ]]; then
+      link_args+=(--max-backoff-ms "$max_backoff_ms")
+    fi
+    if [[ -n "$batch_size" ]]; then
+      link_args+=(--batch-size "$batch_size")
+    fi
+    if [[ -n "$delay_ms" ]]; then
+      link_args+=(--delay-ms "$delay_ms")
+    fi
+    if [[ -n "$max_retries" ]]; then
+      link_args+=(--max-retries "$max_retries")
+    fi
+    if [[ -n "$max_backoff_ms" ]]; then
+      link_args+=(--max-backoff-ms "$max_backoff_ms")
     fi
     cmd_link_hierarchy "${link_args[@]}"
     echo "OK: hierarchy linked for $repo_full" >&2
@@ -690,6 +726,12 @@ cmd_link_hierarchy() {
   if [[ "$replace_parent" == "true" ]]; then
     link_args+=(--replace-parent)
   fi
+  # Batch controls (optional)
+  # Default batch-size=10, delay-ms=5000
+  link_args+=(--batch-size "${LINK_BATCH_SIZE:-10}")
+  link_args+=(--delay-ms "${LINK_DELAY_MS:-5000}")
+  link_args+=(--max-retries "${LINK_MAX_RETRIES:-5}")
+  link_args+=(--max-backoff-ms "${LINK_MAX_BACKOFF_MS:-60000}")
 
   node "$PROJECT_ROOT/server/link-hierarchy.js" "${link_args[@]}"
 

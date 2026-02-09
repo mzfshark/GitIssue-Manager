@@ -79,6 +79,10 @@ const metadataPath = metadataFileArg || defaultMetadataPath;
 
 // Optional: process a single plan file (basename or path) or auto-process per metadata.planFiles
 const planArg = getArg('--plan'); // e.g. PLAN.md or docs/plans/SPRINT_001.md
+const batchSize = parseInt(getArg('--batch-size') || process.env.LINK_BATCH_SIZE || '10', 10);
+const delayMs = parseInt(getArg('--delay-ms') || process.env.LINK_DELAY_MS || '5000', 10);
+const maxRetries = parseInt(getArg('--max-retries') || process.env.LINK_MAX_RETRIES || '5', 10);
+const maxBackoffMs = parseInt(getArg('--max-backoff-ms') || process.env.LINK_MAX_BACKOFF_MS || '60000', 10);
 // Parent issue number: CLI arg > config > null
 let parentIssueNumber = parentNumberArg ? parseInt(parentNumberArg, 10) : null;
 if (!parentIssueNumber && config.gitissuer?.hierarchy?.parentIssueNumber) {
@@ -91,6 +95,7 @@ console.log(`[INFO] Metadata: ${metadataPath}`);
 console.log(`[INFO] Parent issue: ${parentIssueNumber || '(auto-detect from engine-output)'}`);
 console.log(`[INFO] Dry run: ${dryRun}`);
 console.log(`[INFO] Replace parent: ${replaceParent}`);
+console.log(`[INFO] Batch size: ${batchSize}, delay-ms: ${delayMs}, max-retries: ${maxRetries}`);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Load Artifacts
@@ -268,94 +273,101 @@ function executeLinkPlanFor(planLabel, linkPlanLocal, parentNumberForPlan) {
   let failCountLocal = 0;
   let alreadyLinkedCountLocal = 0;
 
-  for (const link of linkPlanLocal) {
-    const { kind, parentType, parentStableId, childStableId, childIssueNumber } = link;
-    let { parentIssueNumber: linkParentNumber, parentNodeId: linkParentNodeId } = link;
-    const desiredParentNumber = parentType === 'pai' ? parentNumberForPlan : linkParentNumber;
+  // Process linkPlanLocal in batches to avoid GitHub API rate limits
+  for (let i = 0; i < linkPlanLocal.length; i += batchSize) {
+    const batch = linkPlanLocal.slice(i, i + batchSize);
+    for (const link of batch) {
+      const { kind, parentType, parentStableId, childStableId, childIssueNumber } = link;
+      let { parentIssueNumber: linkParentNumber, parentNodeId: linkParentNodeId } = link;
+      const desiredParentNumber = parentType === 'pai' ? parentNumberForPlan : linkParentNumber;
 
-    if (!childIssueNumber) {
-      if (dryRun) {
-        console.log(`[DRY-RUN] Would link (missing child issue) stableId=${childStableId?.slice(0, 12)}... kind=${kind}`);
+      if (!childIssueNumber) {
+        if (dryRun) {
+          console.log(`[DRY-RUN] Would link (missing child issue) stableId=${childStableId?.slice(0, 12)}... kind=${kind}`);
+          skipCountLocal++;
+        } else {
+          console.error(`[FAIL] Missing child issue number for stableId=${childStableId?.slice(0, 12)}... Re-run deploy without --dry-run.`);
+          failCountLocal++;
+        }
+        continue;
+      }
+
+      if (desiredParentNumber && childIssueNumber === desiredParentNumber) {
+        if (dryRun) {
+          console.log(`[DRY-RUN] Would skip self-link #${childIssueNumber} -> #${desiredParentNumber}`);
+        } else {
+          console.log(`[SKIP] #${childIssueNumber} self-link avoided`);
+        }
         skipCountLocal++;
-      } else {
-        console.error(`[FAIL] Missing child issue number for stableId=${childStableId?.slice(0, 12)}... Re-run deploy without --dry-run.`);
-        failCountLocal++;
+        continue;
       }
-      continue;
-    }
 
-    if (desiredParentNumber && childIssueNumber === desiredParentNumber) {
       if (dryRun) {
-        console.log(`[DRY-RUN] Would skip self-link #${childIssueNumber} -> #${desiredParentNumber}`);
-      } else {
-        console.log(`[SKIP] #${childIssueNumber} self-link avoided`);
+        if (parentType === 'pai') {
+          console.log(`[DRY-RUN] Would link #${childIssueNumber} as sub-issue of PAI #${parentNumberForPlan}`);
+        } else {
+          console.log(`[DRY-RUN] Would link #${childIssueNumber} as sub-issue of #${linkParentNumber || '?'} (${parentStableId?.slice(0, 12)}...)`);
+        }
+        linkCountLocal++;
+        continue;
       }
-      skipCountLocal++;
-      continue;
-    }
 
-    if (dryRun) {
+      // LIVE mode - resolve parent/child node IDs
+      let targetParentNodeId = null;
       if (parentType === 'pai') {
-        console.log(`[DRY-RUN] Would link #${childIssueNumber} as sub-issue of PAI #${parentNumberForPlan}`);
+        targetParentNodeId = parentNodeIdLocal;
+        linkParentNumber = parentNumberForPlan;
       } else {
-        console.log(`[DRY-RUN] Would link #${childIssueNumber} as sub-issue of #${linkParentNumber || '?'} (${parentStableId?.slice(0, 12)}...)`);
+        if (linkParentNodeId) {
+          targetParentNodeId = linkParentNodeId;
+        } else if (linkParentNumber) {
+          targetParentNodeId = resolveIssueNodeId(linkParentNumber);
+        }
+        if (!targetParentNodeId) {
+          console.error(`[FAIL] Cannot resolve parent node ID for #${linkParentNumber} (${parentStableId?.slice(0, 12)}...)`);
+          failCountLocal++;
+          continue;
+        }
       }
-      linkCountLocal++;
-      continue;
-    }
 
-    // LIVE mode
-    let targetParentNodeId = null;
-    if (parentType === 'pai') {
-      targetParentNodeId = parentNodeIdLocal;
-      linkParentNumber = parentNumberForPlan;
-    } else {
-      if (linkParentNodeId) {
-        targetParentNodeId = linkParentNodeId;
-      } else if (linkParentNumber) {
-        targetParentNodeId = resolveIssueNodeId(linkParentNumber);
-      }
-      if (!targetParentNodeId) {
-        console.error(`[FAIL] Cannot resolve parent node ID for #${linkParentNumber} (${parentStableId?.slice(0, 12)}...)`);
+      const childInfo = resolveIssueInfo(childIssueNumber);
+      const targetChildNodeId = link.childNodeId || childInfo?.id;
+      if (!targetChildNodeId) {
+        console.error(`[FAIL] Cannot resolve child node ID for #${childIssueNumber}`);
         failCountLocal++;
         continue;
       }
-    }
 
-    const childInfo = resolveIssueInfo(childIssueNumber);
-    const targetChildNodeId = link.childNodeId || childInfo?.id;
-    if (!targetChildNodeId) {
-      console.error(`[FAIL] Cannot resolve child node ID for #${childIssueNumber}`);
-      failCountLocal++;
-      continue;
-    }
+      if (childInfo?.parentNumber) {
+        if (childInfo.parentNumber === linkParentNumber) {
+          console.log(`[SKIP] #${childIssueNumber} already linked to #${linkParentNumber}`);
+          alreadyLinkedCountLocal++;
+          continue;
+        }
+        if (!replaceParent) {
+          console.log(`[SKIP] #${childIssueNumber} already has parent #${childInfo.parentNumber} (use --replace-parent to move)`);
+          skipCountLocal++;
+          continue;
+        }
+      }
 
-    if (childInfo?.parentNumber) {
-      if (childInfo.parentNumber === linkParentNumber) {
+      const result = retryAddSubIssue(targetParentNodeId, targetChildNodeId, replaceParent);
+      if (result?.alreadyLinked) {
         console.log(`[SKIP] #${childIssueNumber} already linked to #${linkParentNumber}`);
         alreadyLinkedCountLocal++;
-        continue;
-      }
-      if (!replaceParent) {
-        console.log(`[SKIP] #${childIssueNumber} already has parent #${childInfo.parentNumber} (use --replace-parent to move)`);
-        skipCountLocal++;
-        continue;
+      } else if (result?.data?.addSubIssue) {
+        console.log(`[OK] Linked #${childIssueNumber} as sub-issue of #${linkParentNumber}`);
+        linkCountLocal++;
+      } else {
+        console.error(`[FAIL] Failed to link #${childIssueNumber} to #${linkParentNumber}`);
+        failCountLocal++;
       }
     }
 
-    const result = addSubIssue(targetParentNodeId, targetChildNodeId, replaceParent);
-    if (result?.alreadyLinked) {
-      console.log(`[SKIP] #${childIssueNumber} already linked to #${linkParentNumber}`);
-      alreadyLinkedCountLocal++;
-    } else if (result?.data?.addSubIssue) {
-      console.log(`[OK] Linked #${childIssueNumber} as sub-issue of #${linkParentNumber}`);
-      linkCountLocal++;
-    } else {
-      console.error(`[FAIL] Failed to link #${childIssueNumber} to #${linkParentNumber}`);
-      failCountLocal++;
+    // Pause between batches to reduce chance of hitting rate limits
+    if (i + batchSize < linkPlanLocal.length) {
+      try { sleep(delayMs); } catch (e) { /* ignore */ }
     }
-    // Pause briefly between live updates to avoid hitting API rate limits
-    try { sleep(5000); } catch (e) { /* ignore sleep errors */ }
   }
 
   console.log('');
@@ -619,9 +631,34 @@ function addSubIssue(parentNodeId, childNodeId, replaceParentFlag) {
     ) {
       return { alreadyLinked: true };
     }
-    console.error(`addSubIssue error: ${stderr || stdout}`);
-    return null;
+    const message = stderr || stdout || String(err);
+    console.error(`addSubIssue error: ${message}`);
+    return { error: message };
   }
+}
+
+// Retry wrapper for addSubIssue with exponential backoff on transient errors (rate limits)
+function retryAddSubIssue(parentNodeId, childNodeId, replaceParentFlag) {
+  let attempt = 0;
+  let lastResult = null;
+  while (attempt < maxRetries) {
+    lastResult = addSubIssue(parentNodeId, childNodeId, replaceParentFlag);
+    // Success cases
+    if (lastResult && (lastResult.alreadyLinked || lastResult.data)) return lastResult;
+
+    // If explicit error message, inspect for rate-limit or transient
+    const errMsg = lastResult?.error ? String(lastResult.error).toLowerCase() : '';
+    const isRateLimit = errMsg.includes('rate limit') || errMsg.includes('api rate limit') || errMsg.includes('403');
+    const isTransient = isRateLimit || errMsg.includes('timeout') || errMsg.includes('temporarily');
+
+    attempt += 1;
+    if (attempt >= maxRetries || !isTransient) break;
+
+    const backoff = Math.min((2 ** attempt) * 1000, maxBackoffMs);
+    console.warn(`[WARN] addSubIssue transient error detected; retrying in ${backoff}ms (attempt ${attempt}/${maxRetries})`);
+    try { sleep(backoff); } catch (e) { /* ignore */ }
+  }
+  return lastResult;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
