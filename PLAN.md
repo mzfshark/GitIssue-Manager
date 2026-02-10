@@ -1,3 +1,22 @@
+# [EPIC] Logic Convergence: The Impeccable Workflow [key:01JPUIE63F2YV5S0WPYF3B0R8V]
+
+**Repository:** GitIssue-Manager  
+**Status:** [ IN PROGRESS ]  
+**Priority:** [ URGENT ]  
+**Sprint:** [SPRINT-001](../plans/SPRINT_001_CORE_UNIFICATION.md)
+
+## Executive Summary
+
+This Epic converts the "Impeccable Workflow" (manually validated during the Harmony HIP migration) into the core logic of `gitissuer`. It replaces fragile title-based matching with ULID-based identity and enforces strict Markdown-to-GitHub status synchronization (Close/Reopen).
+
+### Key Objectives
+- **Deduplication:** Uses ULIDs in issue bodies for 100% reliable matching.
+- **Status Sync:** Automatically closes issues when marked `[x]` and reopens when unchecked.
+- **Canonical Titles:** Enforces the `[SLUG | SPRINT | TYPE-NNN] Title` format.
+- **Managed Sections:** Updates issue metadata without overwriting human comments.
+
+---
+
 # #PLAN-002 - Single Source of Truth for Issue Generation (sync-helper + E2E) [key:01KFXQ0FJPGFR7BX34GK62ZCAD]
 
 Repository: GitIssue-Manager (mzfshark/GitIssue-Manager)
